@@ -1,0 +1,25 @@
+name: Performance report
+description: Share a controlled performance comparison or regression.
+title: "[Performance] "
+body:
+  - type: textarea
+    id: setup
+    attributes:
+      label: Hardware and settings
+      description: Include GPU/driver, CPU, OS, Minecraft/Iris/Sodium versions, resolution, preset, render mode, and render distance.
+    validations:
+      required: true
+  - type: textarea
+    id: method
+    attributes:
+      label: Reproduction and measurement method
+      description: Match position, time, weather, settings, warm-up, and frame cap across comparisons.
+    validations:
+      required: true
+  - type: textarea
+    id: measurements
+    attributes:
+      label: Results
+      description: Compare shaders off, Balanced + Native, and Speed + Native. Provide average FPS/frame times when measured; label estimates.
+    validations:
+      required: true

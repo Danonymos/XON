@@ -1,0 +1,62 @@
+XON Shader Personal Use and Contribution License 1.1
+
+Copyright (c) 2026 the XON Shader copyright holder and respective contributors.
+All rights reserved except for the permissions expressly granted below.
+
+1. Free personal use
+You may download, install, and run XON Shader free of charge for your own
+personal, non-commercial Minecraft: Java Edition gameplay, including playing
+on multiplayer servers. You may keep private backup copies for that use.
+You may adjust the shader's exposed in-game settings and configuration values
+for your own installation. Except as allowed by section 3, this does not permit
+changes to shader source code or bundled assets.
+
+2. Restrictions
+Except as expressly allowed by section 3 or with the copyright holder's prior
+written permission, you may not modify, adapt, translate, port, or create
+derivative works from the source code or bundled assets; copy or reuse any part
+in another shader or project; redistribute, reupload, mirror, sublicense, sell,
+or otherwise supply the pack or its components to others; or bundle the pack
+in a publicly distributed modpack or other downloadable collection. Link to
+the official project instead. Do not remove copyright, license, or attribution
+notices. No commercial-use rights are granted by this license.
+
+3. Contributions to the official project
+You may view and study the source and create a GitHub fork of the official
+repository at https://github.com/Danonymos/XON solely to prepare, test, and
+submit improvements to that official repository as pull requests. For that
+purpose, you may modify the source and assets, run private test builds, and
+publish the source changes in your contribution fork and pull request.
+Retain this license and all applicable notices, and clearly identify your
+fork as an unofficial contribution fork. This exception does not permit
+publishing standalone shader releases, binary downloads, competing packs,
+ports, or reuse in other projects.
+
+Submit only work you own or have permission to contribute. By submitting a
+contribution, you license it under these same project terms and grant the
+official project's copyright holder a non-exclusive, worldwide, perpetual,
+royalty-free permission to use, modify, and distribute that contribution as
+part of XON Shader. You retain copyright in your original contributions.
+Submission does not guarantee acceptance or grant maintainer access.
+
+4. Hosting
+The copyright holder may publish the project through services of their choice,
+including Modrinth and GitHub, and authorize those services to host and deliver
+it under their applicable terms. Other users receive only the permissions
+expressly stated in this license. Nothing here limits rights independently
+granted by the hosting platform's applicable terms.
+
+5. Ownership and mandatory rights
+Ownership remains with the respective copyright holders. No other rights are
+granted. These terms do not restrict rights that applicable law makes
+non-waivable, or rights in Minecraft or third-party software that the holders
+do not own.
+
+6. Warranty and liability
+To the extent permitted by applicable law, the project is provided "AS IS",
+without warranties of any kind, and the copyright holders are not liable for
+loss or damage arising from its use. Mandatory statutory rights remain intact.
+
+For uses outside these permissions, obtain prior written permission through
+the official repository's issue tracker or the project author's public
+contact channels.
