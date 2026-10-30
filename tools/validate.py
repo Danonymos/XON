@@ -178,25 +178,28 @@ def validate():
                     'effects_off': {'XON_MOTION_BLUR': False, 'XON_HAND_LIGHT': False,
                                     'XON_CLOUD_LIGHTING': False, 'XON_WATER_DETAIL': 0,
                                     'XON_SHADOWS': False, 'XON_LIGHT_SHAFTS': False,
-                                    'XON_EMISSIVE_ORES': False, 'XON_BLOOM': False,
+                                    'XON_EMISSIVE_ORES': False, 'XON_COLORED_EMISSIVE_LIGHTING': False,
+                                    'XON_BLOOM': False,
                                     'XON_REFRACTION': False, 'XON_COLOR_GRADE': False,
-                                    'XON_EDGE_AA': False, 'XON_CLOUD_STYLE': 0},
-                    'speed': {'XON_SHADOWS': False, 'XON_LIGHT_SHAFTS': False,
-                              'XON_BLOOM': False, 'XON_REFRACTION': False, 'XON_CLOUD_STYLE': 0},
+                                    'XON_CLOUD_STYLE': 0},
+                    'speed': {'XON_SHADOWS': False, 'XON_COLORED_EMISSIVE_LIGHTING': False,
+                              'XON_LIGHT_SHAFTS': False,
+                              'XON_BLOOM': False, 'XON_REFRACTION': False, 'XON_CLOUD_STYLE': 0,
+                              'XON_ANISOTROPIC': 0},
                     'shadow1536_fog': {'shadowMapResolution': 1536, 'XON_AIR_FOG': 1},
                     'cinematic': {'shadowMapResolution': 1536, 'shadowDistance': '128.0',
-                                  'XON_AA_MODE': 2, 'XON_ANISOTROPIC': 6, 'XON_AIR_FOG': 1,
+                                  'XON_ANISOTROPIC': 6, 'XON_AIR_FOG': 1,
                                   'XON_SMOOTH_SHADOW_LOD': 1},
                     'minimum_shadows': {'shadowMapResolution': 512, 'shadowDistance': '64.0',
-                                        'XON_AA_MODE': 0, 'XON_ANISOTROPIC': 0},
+                                        'XON_ANISOTROPIC': 0},
                     'water_no_refraction': {'XON_REFRACTION': False},
                     'water_no_shadows': {'XON_SHADOWS': False}}
         for label, options in variants.items():
             count = 0
             entrypoints = sorted(path for path in SHADERS.rglob('*.vsh')
                                  if path.parent in [SHADERS, SHADERS / 'world-1', SHADERS / 'world1'])
-            if len(entrypoints) != 82:
-                raise ValueError(f'Expected 82 runtime entrypoints, found {len(entrypoints)}')
+            if len(entrypoints) != 84:
+                raise ValueError(f'Expected 84 runtime entrypoints, found {len(entrypoints)}')
             for vertex_path in entrypoints:
                 fragment_path = vertex_path.with_suffix('.fsh')
                 if not fragment_path.is_file():

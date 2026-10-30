@@ -6,7 +6,7 @@
 #include "/lib/shadows.glsl"
 #include "/lib/lighting.glsl"
 #include "/lib/materials.glsl"
-#if defined XON_COLORED_EMISSIVE_LIGHTING && XON_DIMENSION == 0 && !defined XON_UNLIT && !defined XON_BASIC && !defined XON_CLOUD && !defined XON_WATER && !defined XON_HAND
+#if defined XON_COLORED_EMISSIVE_LIGHTING && !defined XON_UNLIT && !defined XON_BASIC && !defined XON_CLOUD && !defined XON_WATER && !defined XON_HAND
 #define XON_EMISSIVE_SAMPLING
 #include "/lib/emissive_light.glsl"
 #endif
@@ -59,7 +59,24 @@ float xonPortalLightField(vec2 x, float time) {
 #endif
 
 vec4 xonSampleAnisotropic(vec2 uv) {
+#if defined XON_TERRAIN || (XON_ANISOTROPIC > 0 && defined XON_WATER && !defined XON_HAND)
+    vec2 du = dFdx(uv);
+    vec2 dv = dFdy(uv);
+#endif
+#ifdef XON_TERRAIN
+    vec2 atlasSize = vec2(textureSize(gtexture, 0));
+    vec2 texelU = du * atlasSize;
+    vec2 texelV = dv * atlasSize;
+    float footprint = max(dot(texelU, texelU), dot(texelV, texelV));
+    float mipBlend = smoothstep(1.0, 4.0, footprint);
+    // Preserve cutout coverage; only minified opaque terrain gets the small stability bias.
+    if (abs(xonMaterial - 10003.0) < 0.5 || abs(xonMaterial - 10004.0) < 0.5
+        || abs(xonMaterial - 10006.0) < 0.5) mipBlend = 0.0;
+    vec4 base = texture(gtexture, uv, mipBlend * 0.32);
+    if (mipBlend > 0.001 && base.a < 0.99) return textureGrad(gtexture, uv, du, dv);
+#else
     vec4 base = texture(gtexture, uv);
+#endif
 #if XON_ANISOTROPIC > 0 && (defined XON_TERRAIN || defined XON_WATER) && !defined XON_HAND
     if (base.a < 0.99 || abs(xonMaterial - 10004.0) < 0.5) return base;
     float viewDistSq = dot(xonViewPosition, xonViewPosition);
@@ -68,13 +85,11 @@ vec4 xonSampleAnisotropic(vec2 uv) {
     if (abs(surfNormal.y) < 0.72) return base;
     vec3 viewDir = xonSafeNormalize(xonPlayerPosition);
     float NoV = abs(dot(viewDir, surfNormal));
-    // Target flat floors/ceilings viewed at shallow angles within 38m; distant floors are handled by 0-overdraw FXAA/SMAA in final.fsh.
+    // Extra grazing-angle taps stay local; the base mip footprint remains stable at every distance.
     float anisoStrength = (1.0 - smoothstep(0.08, 0.76, NoV))
                         * smoothstep(4.0, 25.0, viewDistSq)
                         * (1.0 - smoothstep(900.0, 1444.0, viewDistSq));
     if (anisoStrength <= 0.01) return base;
-    vec2 du = dFdx(uv);
-    vec2 dv = dFdy(uv);
     float lenU = dot(du, du);
     float lenV = dot(dv, dv);
     if (max(lenU, lenV) < min(lenU, lenV) * 1.75) return base;
@@ -85,23 +100,23 @@ vec4 xonSampleAnisotropic(vec2 uv) {
     vec2 maxBound = hasBounds ? (xonAtlasBounds.xy + xonAtlasBounds.zw * 0.985) : (uv + abs(major) * 2.0);
     vec3 accum = base.rgb;
     float weight = 1.0;
-    vec4 s1 = texture(gtexture, clamp(uv + major * 0.45, minBound, maxBound));
-    vec4 s2 = texture(gtexture, clamp(uv - major * 0.45, minBound, maxBound));
+    vec4 s1 = textureGrad(gtexture, clamp(uv + major * 0.45, minBound, maxBound), du, dv);
+    vec4 s2 = textureGrad(gtexture, clamp(uv - major * 0.45, minBound, maxBound), du, dv);
     if (s1.a >= 0.99 && s2.a >= 0.99) {
         accum += s1.rgb + s2.rgb;
         weight += 2.0;
     }
 #if XON_ANISOTROPIC >= 4
-    vec4 s3 = texture(gtexture, clamp(uv + major * 0.95, minBound, maxBound));
-    vec4 s4 = texture(gtexture, clamp(uv - major * 0.95, minBound, maxBound));
+    vec4 s3 = textureGrad(gtexture, clamp(uv + major * 0.95, minBound, maxBound), du, dv);
+    vec4 s4 = textureGrad(gtexture, clamp(uv - major * 0.95, minBound, maxBound), du, dv);
     if (s3.a >= 0.99 && s4.a >= 0.99) {
         accum += (s3.rgb + s4.rgb) * 0.85;
         weight += 1.7;
     }
 #endif
 #if XON_ANISOTROPIC >= 6
-    vec4 s5 = texture(gtexture, clamp(uv + minor * 0.75, minBound, maxBound));
-    vec4 s6 = texture(gtexture, clamp(uv - minor * 0.75, minBound, maxBound));
+    vec4 s5 = textureGrad(gtexture, clamp(uv + minor * 0.75, minBound, maxBound), du, dv);
+    vec4 s6 = textureGrad(gtexture, clamp(uv - minor * 0.75, minBound, maxBound), du, dv);
     if (s5.a >= 0.99 && s6.a >= 0.99) {
         accum += (s5.rgb + s6.rgb) * 0.65;
         weight += 1.3;
@@ -208,7 +223,9 @@ void main() {
         color = xonLighting(color, normal, xonViewPosition, xonPlayerPosition, xonLightLevels, emission, foliage, sunVisibility);
 #ifdef XON_EMISSIVE_SAMPLING
         // Peak matches a strong but sub-torch block light; the voxel field supplies colour and falloff.
-        color += emissiveAlbedo * xonEmissiveLight(xonPlayerPosition, normal) * 1.45;
+        if (xonVoxelEmitterId(xonMaterial) == XON_VOXEL_EMPTY) {
+            color += emissiveAlbedo * xonEmissiveLight(xonPlayerPosition, normal) * 1.45;
+        }
 #endif
 #ifdef XON_TERRAIN
         if (emission < 0.5 && abs(xonMaterial - 10019.0) > 0.5 && !isCrossPlant) {

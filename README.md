@@ -1,11 +1,54 @@
-# XON Shader - 1.0.5
+# XON Shader - 1.0.7
 
 An original performance-first Iris shader pack with warm directional sunlight,
 5-stage time-of-day atmospheric moods (Early Morning, Noon, Warm Afternoon, Evening Sunset, Night),
-real cast shadows, Photon-inspired cool readable dark-area shadow fill, 20-block Voronoi moving ground cloud shadows,
+real cast shadows, Photon-inspired cool readable dark-area shadow fill, softly evolving ground cloud shadows,
 cylindrical chunk-border horizon fog, chiseled castle/surface micro-bevel lighting, waving foliage,
 Voronoi cellular lava, underwater caustics, cosmic End aurora sky, glowing ore & royal purple amethyst veins,
-Contrast-Adaptive Sharpening (CAS), 4-tap sub-pixel edge AA, and smooth camera motion blur.
+Contrast-Adaptive Sharpening (CAS), built-in adaptive edge smoothing, stable distant
+texture sampling, and smooth camera motion blur.
+
+## What changed in 1.0.7
+
+- Build edge smoothing into every preset, with no AA toggle or quality selector.
+  Reconstruct softened silhouette edges from a bounded 3x3 neighborhood, sharing
+  sharpening samples and replacing the old variable-length edge search.
+- Share the six existing motion-blur samples with subpixel coverage filtering.
+  Use symmetric shutter weights and a smooth AA handoff to reduce moving-edge
+  noise while protecting the first-person hand and preserving motion controls.
+- Gently favor coarser mip detail only on minified terrain, including distant
+  walls beyond the old local floor filter. Close textures and cutout coverage are
+  preserved. Reuse the game's mip chain without another render pass or buffer.
+- Correct filtered sun/moon shadow depth on receiving surfaces to remove false
+  camera-following shadow rings. Retain the existing shadow sample limits.
+- Extend colored ore illumination by three open blocks and use quintic easing
+  for a softer outer aura. The default four-block setting now reaches about seven
+  blocks along open paths, with smooth surface interpolation and preserved colors.
+- Brighten exposed moonlit cloud openings by up to 28%, retaining their cool blue
+  palette. Cloud-shadow drift now travels one block every two seconds; overlapping
+  layers evolve proportionally faster while retaining broad, soft transitions.
+- Keep the existing render passes, shadow resolution and local light volume.
+  A newly captured ore now takes about eight frames to reach the default extent.
+
+## What changed in 1.0.6
+
+- Rework ground cloud shadows into balanced, irregular patches, typically around
+  30-50 blocks across with smaller pockets and larger merged banks. Two slow wind
+  layers let shapes drift, join and separate, with broad eased edge transitions.
+  Clear gaps retain natural sun/moon color; covered areas reveal cool sky fill.
+  The pattern reaches toward the render horizon instead of fading at 96 blocks.
+- Reuse the existing noise texture with three lookups and no extra render pass
+  or buffer. Add GPU coverage, scale, edge, movement and long-session seam checks.
+- Repair colored ore lighting: register Iris custom images, keep nearby terrain
+  in the voxel capture pass, and include the capture/compute programs in every dimension.
+- Ores illuminate nearby walls and floors with smooth spatial interpolation and
+  eased falloff. Default reach is four blocks, adjustable from two to five.
+  Quartz casts soft violet light; source textures and existing ore glow are preserved.
+- Retain the compact 96x48x96 volume, six-neighbor propagation and one compute
+  dispatch per frame. Skip light sampling outside the volume and on source materials.
+  Speed disables this effect and its image allocations.
+- Add GPU tests that execute capture, propagation and the actual receiving terrain
+  shader, including solid walls, light removal, color blending and camera movement.
 
 ## What changed in 1.0.5
 
@@ -93,7 +136,7 @@ They do not establish an in-game FPS gain. See `VERIFICATION.md` in the source.
 
 1. Keep a working Fabric + Iris + matching Sodium installation. Initial target:
    Minecraft Java 26.3, Iris 1.11.7, Sodium 0.9.2.
-2. Put `XON-Shader-v1.0.5.zip` directly in that installation's `shaderpacks`
+2. Put `XON-Shader-v1.0.7.zip` (or the side-by-side `1.0.7-smooth` build) directly in its `shaderpacks`
    folder. Do not extract it and do not place it in `mods` or `resourcepacks`.
 3. Open Video Settings → Shader Packs, select XON, and Apply.
 4. Begin with the default Balanced preset and Native resolution. Select Speed if
@@ -109,12 +152,12 @@ They do not establish an in-game FPS gain. See `VERIFICATION.md` in the source.
   cross-foliage upward normals & self-shadow acne elimination, and entity shadows off by default.
 - Rich day/night/golden-hour/sunset lighting transitions with subtle warm sky bounce and foliage subsurface scattering.
 - Selective ore emission, 4-tap bloom, held light, an original 16-cube color LUT,
-  soft layered clouds, organic non-repeating water waves/refraction, and sharp edge AA ON.
+  soft layered clouds, organic non-repeating water waves/refraction, and built-in edge smoothing.
 - Air fog OFF. Clear-weather distance haze is removed; water/lava/powder-snow
   absorption and blindness/darkness remain. Rays use 4 outdoor / 12 underwater steps.
 - Water refraction, bloom and sunlight shafts use half-resolution
   buffers. Edge AA shares the final pass and rejects texture-only edges.
-- No voxel lighting, screen-space reflection tracing, temporal AA/history,
+- Compact local voxel lighting; no screen-space reflection tracing, temporal AA,
   external PBR textures, runtime downloads, or additional mod dependency.
 
 ## Performance controls
@@ -147,9 +190,13 @@ on a multiplayer server just for this test.
 
 ## Known beta limits
 
-Ore glow is emissive surface shading plus a small halo, rather than colored
-light propagation into neighboring blocks. Vanilla block light remains smooth
-and warm. Sun rays sample the shadow map; this is not global ray tracing.
+Colored emissive lighting propagates through a local block grid in all three
+dimensions. It takes about eight frames to settle at the default radius and is
+disabled in Speed. Its reach follows open block paths, so corners shorten the
+range; it is not a spherical ray tracer. Solid-layer blocks are conservative
+whole-voxel occluders, including partial shapes. Glass, mapped leaves and plants
+do not block it. The player-centred volume fades at its boundary. Vanilla torch
+lighting remains warm. Sun rays sample the shadow map; this is not global ray tracing.
 
 Cast shadows fade before 96 blocks by default. Translucent blocks do not cast
 colored shadows. The compact map can show fine-detail aliasing. Clouds use two
@@ -157,6 +204,8 @@ height layers rather than a volume simulation. Water reflects the sky/clouds
 rather than buildings or off-screen geometry; the half-resolution refraction
 copy can soften submerged texels. Edge AA handles visible geometric edges but
 cannot recover unseen subpixel detail or provide temporal stability like TAA.
+Texture stabilization uses the game's existing mipmaps; it cannot create a
+missing mip chain when game mipmapping is disabled.
 No independent moving-object blur. Unknown modded
 dimensions use the Overworld fallback. Distant Horizons, Voxy, VR, Vulkan,
 Bedrock, OptiFine, macOS, and older Minecraft versions are not certified.

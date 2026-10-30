@@ -1,4 +1,233 @@
-# XON Shader 1.0.5 underwater lighting & coherence - verification
+# XON Shader 1.0.7 - built-in anti-aliasing verification
+
+30 October 2026. Player requested unconditional low-cost smoothing while keeping
+version 1.0.7. The prior filter ran a variable span search and returned immediately
+above 0.45 pixels of blur motion. Additional texture filtering ended at 38 blocks
+and covered nearby horizontal surfaces, leaving distant wall textures unprotected.
+
+The new core reuses the 3x3 color neighborhood to reconstruct symmetric bilinear
+positions along the edge with arithmetic, without further filter/search fetches.
+The depth-curvature gate preserves texture detail on flat surfaces. Four cardinal
+colors still serve optional sharpening; four diagonal colors are read only after
+the contrast and geometry checks pass. There is no AA quality switch or off option.
+
+Moving AA shares the existing six shutter samples with small symmetric subpixel
+coverage offsets. Fixed cosine-window weights replace per-pixel randomized shutter
+positions and per-tap cosine evaluation. Filtering hands off continuously between
+0.35 and 0.45 pixels, staying within the old stationary/moving fetch limits. Blur
+exposure, radius, invalid-frame/teleport guards and first-person protection remain.
+
+Terrain sampling adds a 0-0.32 mip bias only when texels become smaller than pixels.
+It uses the existing game mip chain; Ziz has four mip levels enabled. Known plant,
+leaf and lichen materials keep their original footprint. Other sampled alpha below
+0.99 falls back to the unbiased gradient sample, retaining cutout silhouettes.
+That fallback can add one lookup on unmapped minified cutouts. Optional grazing
+samples use explicit gradients computed before divergent branches.
+
+tools/aa_gpu_checks.py executes the production shaders against the saved
+XON-Shader-v1.0.7-before-aa.zip. All 20 focused checks pass:
+
+- Six diagonal orientations, each at nine subpixel phases: mean display error
+  against analytic pixel coverage falls from 0.006484 to 0.005634 (13% lower).
+  Every tested orientation improves; the unfiltered error is 0.029589.
+- Seventeen moving frames against a pixel-area/shutter reference: residual temporal
+  error drops about 46%, with lower spatial error. The old AA cutoff jumps by
+  0.420 in display RGB; the new controlled handoff changes by only 0.0000032.
+- Tested minified wall patterns have about 54-95% less alias energy. Magnified
+  and 1:1 texture samples remain identical, and deeply minified patterns stay flat.
+- Known and unmapped cutout alpha, one-pixel geometry contrast and first-person
+  hand protection pass. Existing 12 final-pass and 22 lighting checks also pass.
+- 840 graphics configurations compile/link with zero shader warnings; the existing
+  water, ray, building, voxel, cloud and terrain-ring suites remain passing.
+
+Isolated RTX 5060 Ti GPU medians, 960x540, 48 queries with eight draws per query:
+
+| Workload | Before ms | Current ms |
+|---|---:|---:|
+| Stationary final pass, many geometric edges | 0.0594 | 0.0389 |
+| Moving final pass | 0.0414 | 0.0413 |
+| Gentle motion at half a pixel | 0.0414 | 0.0414 |
+| Opaque terrain mip sampler | 0.01569 | 0.01556 |
+
+Reports hold the latest timings, including p95 scheduling spikes during concurrent
+desktop/game activity. These are synthetic isolated workloads, not an in-game FPS
+guarantee. No pass, render target, history image, supersampling, CPU work or new
+dependency was added. Spatial filtering reduces shimmer but cannot recover missing
+temporal/subpixel information or guarantee that every distant thin edge is stable.
+
+Reports: validation-aa.json and validation-aa-comparison.png (synthetic diagnostic,
+not a Minecraft screenshot). Reproduce with python tools/aa_gpu_checks.py. Prior
+1.0.7 runtime/source ZIPs are preserved with the before-aa suffix. The canonical
+1.0.7 ZIP is rebuilt; the game-held earlier ZIP is left available. Install the
+identical new bytes as XON-Shader-v1.0.7-smooth.zip and select that pack, then Apply.
+Walk and rotate past distant roads, walls, stairs and fences; compare still/moving
+detail, nearby texture sharpness, hand edges and frame times at identical settings.
+Live Minecraft visual/FPS verification remains outstanding.
+
+# XON Shader 1.0.7 - terrain rings, aura fade and moonlight verification
+
+30 October 2026. The player confirmed that the camera-following ring disappears
+when only Sun & Moon Cast Shadows is disabled. Smooth Shadow Transitions reduced
+it but did not eliminate it. An actual rasterized one-block terrain grid reproduced
+false self-shadow with both filter modes, including under oblique sun and high cameras.
+
+Surface filtering now adjusts each tap's comparison depth to the receiving plane,
+accounting for nonlinear map distortion and the hardware-PCF texel footprint.
+The existing foliage bias, shadow resolution/range and 4/2/1 sample limits remain.
+No image lookup, render pass or history buffer was added; the correction adds math.
+
+Colored ore propagation extends three open blocks beyond the selected radius.
+Quintic falloff eases the interpolated field to darkness with zero endpoint slope
+and curvature. Default extent is about seven blocks along open paths, settling
+in about eight frames. The 96x48x96 volume, six-neighbor propagation, one dispatch
+per frame, source colors and solid-wall occlusion are retained. Corners and the
+player-centred volume boundary can shorten the visible reach.
+
+Exposed moonlit cloud openings receive up to 28% more of the existing cool blue
+illumination, before torch/held/ore light is added. The isolated bright-core test
+measured 25.4% more luminance; cloud-shadow patches and daylight were unchanged.
+Primary cloud drift is now 0.5 blocks/second, with shape evolution sped up by the
+same factor. The closed hourly path stays seamless, with the accepted coverage,
+patch scale and broad eased edges. Local contour motion varies as shapes merge.
+
+Offscreen GPU verification on the installed RTX 5060 Ti:
+
+- 840 graphics configurations compile/link with zero shader warnings.
+- tools/shadow_ring_checks.py records 578 comparisons/contact cases: 288 baseline
+  and 288 corrected flat/sloped terrain cases, plus two retained box-shadow cases.
+  Coverage includes four shadow resolutions, three sun elevations, three camera
+  heights, fractional translations and both smoothing modes. Baseline visibility
+  fell to 0.342 on unoccluded terrain; corrected terrain stayed fully lit (1.0).
+  Real box cast shadows remain dark, including the floor next to their contact.
+- 19 GPU voxel cases include the three-block tail and 65 sub-block fade samples
+  per tested radius, with monotonic light and a flat transition into darkness.
+- 16 cloud GPU cases include measured production drift across the hour, merging
+  silhouettes, normal-frame/hourly continuity, night boost and lighting exclusions.
+- Existing 22 lighting, 12 final-pass, 84 water, 27 rays/background and 12 building
+  cases pass. Package checks compare source, runtime ZIP and installed copy.
+
+Reports are validation-shadow-rings.json, validation-emissive-gpu.json,
+validation-cloud-shadows.json and the existing validation reports. Diagnostics
+are synthetic GPU scenes. No live Minecraft appearance or full-game FPS check
+was performed. Preserve the 1.0.6 before-ring-fix and before-cloud-polish ZIPs
+alongside the source to reproduce baseline comparisons.
+
+Select XON-Shader-v1.0.7.zip and Apply. Leave Sun & Moon Cast Shadows ON, walk
+and fly over the same flat field, and check that the ring stays absent. At night,
+watch openings drift for 20 seconds (about ten blocks of primary wind travel).
+Check an ore/quartz floor or mine wall through the new outer three-block fade,
+then break the ore and check that its light clears. Compare identical frame times.
+
+# Historical XON Shader 1.0.6 - cloud-shadow polish verification
+
+30 October 2026. Player feedback and the supplied screenshot showed that small
+cellular shadow centers left narrow bright ridges between them. The replacement
+uses signed, domain-warped noise rather than cell-distance borders. Following
+player feedback, the initial landscape-scale prototype was reduced to typical
+30-50 block patches. Smaller pockets and merged larger banks remain irregular;
+there is no fixed diameter or hard maximum for connected shapes.
+
+Three samples from the existing noise atlas supply broad coverage, distortion
+and softer detail. Different slow wind flows evolve their overlap continuously.
+The wind follows a closed hourly path because the installed Iris Timer resets
+frameTimeCounter to zero at 3600 seconds. A wide quintic edge transition has zero
+first and second derivatives at its light/shadow plateaus. Cloud cover removes
+sun/moon key light and a small amount of sky fill; clear gaps retain the existing
+celestial color. The effect fades near the render horizon instead of 96 blocks.
+
+GPU evidence is in validation-cloud-shadows.json and tools/cloud_shadow_checks.py:
+
+- Sampled coverage is 50.26% light / 49.74% shadow across four distant positive
+  and negative coordinate regions. About 25% of sampled area is intermediate
+  edge transition (absolute signal below 0.4), rather than a light/shadow core.
+- Median axis crossings are 45.9 blocks for openings and 43.7 for shadows;
+  the old bright ridges measured 10.7 blocks. These are sampled run lengths,
+  not promised dimensions of every patch. Connected banks can exceed 60 blocks.
+- Frame changes, evolution while following the main wind, camera anchoring,
+  hourly timer continuity, storm attenuation, above-cloud/off gates, day/moon
+  shading, caves, torches, underwater and backface protection are checked.
+- The synthetic shaded scene retains readable cool shadows and modest clear-gap
+  highlights. Camera movement does not displace the world-anchored pattern.
+- No pass, buffer, image asset, package or shadow geometry budget was added.
+  More distant visible outdoor terrain now evaluates the effect. The shader uses
+  three texture lookups plus shared wind math in place of the old cellular search.
+
+Initial focused timings at 960x540 on the RTX 5060 Ti measured about 0.0155 ms for
+the pattern, and 0.0290 ms for the complete synthetic receiving-light shader
+(old shader: 0.0258 ms). This is a small measured isolated increase, not an in-game
+FPS result. Desktop load and shader compilation can affect timings; the JSON
+report holds the latest run. No live Minecraft visual/FPS check was performed
+for this polish. The comparison PNG and accelerated GIF are synthetic diagnostics.
+
+Cloud coverage is an artistic approximation, not a traced projection of visible
+sky cloud geometry. It does not alter the sky cloud rendering, colored ore
+lighting, local light radius, world time/weather, Iris selection or saved options.
+The accepted pre-polish runtime/source ZIPs are preserved as
+XON-Shader-v1.0.6-before-cloud-polish[-source].zip.
+Minecraft holds the active runtime ZIP open, so the polished build is installed
+as XON-Shader-v1.0.6-cloud-polish.zip. Version stays 1.0.6. Its bytes match the
+rebuilt canonical XON-Shader-v1.0.6.zip; the active selection was not changed.
+
+Reproduce with python tools/cloud_shadow_checks.py and the existing shader,
+lighting, building, water, rays, final-pass and emissive checks. Reload the rebuilt
+1.0.6-cloud-polish pack, view the same outdoor field on foot and from above, and watch for at
+least a minute in daylight/moonlight. Compare frame time at identical settings.
+
+# XON Shader 1.0.6 - emissive illumination verification
+
+30 October 2026. The installed Ziz 1.0.5 runtime ZIP did not contain the voxel
+programs present in the latest source. The source also omitted Iris's required
+CUSTOM_IMAGES flag and left reverse-culling voxelDistance at its zero default.
+Those loader connections were not exercised by the old standalone shader tests.
+The old emissive suite compiled shaders, then tested a separate NumPy algorithm;
+it did not execute the GPU flood fill or demonstrate illumination in Minecraft.
+
+The fix registers CUSTOM_IMAGES/COMPUTE_SHADERS when colored lighting is enabled,
+explicitly enables shadow capture, sets voxelDistance to 48 blocks, and supplies
+shadow/compute wrappers for all three dimensions. The latter two dimensions run
+vertex voxel capture without rasterizing unused sun-shadow fragments. Quartz
+emits violet light onto receiving surfaces while its own surface stays unchanged.
+Mapped plants, leaves and lichen no longer act as full solid occluders.
+
+Verified on the installed NVIDIA RTX 5060 Ti driver:
+
+- 840 graphics program configurations compiled and linked; zero shader warnings.
+- 16 actual GPU checks in tools/voxel_gpu_checks.py passed. These execute real
+  shadow vertex image writes, the production compute shader and surface sampling,
+  plus the production terrain fragment shader with controlled input varyings.
+- Capture succeeded in all dimensions with a rotated shadow view, fractional
+  camera position and negative world coordinates. Materials/entities were filtered.
+- Radius 3/4/5 falloff, violet quartz illumination on stone, wall front/back
+  occlusion, emitter removal, redstone/lapis blending, block-boundary camera shifts
+  and teleport history rejection passed. Source materials received zero added tint.
+- Existing lighting, 12 final-pass, 84 water, 27 rays/background and 12 building
+  checks passed. Runtime/source ZIP parity and untouched reference archives passed.
+
+The three 96x48x96 images use 7.171875 MiB of texel storage. Six neighbor samples
+and one compute dispatch per frame are retained; surface interpolation uses up to
+eight fetches, skipped outside the local volume and on source materials. Speed
+disables the image allocations. Default radius is four, configurable from two
+to five; a newly captured source reaches the default extent in about five frames.
+The compact flood follows block paths rather than spherical ray distances.
+
+32 timer queries measured the isolated production compute dispatch at 0.01821 ms
+median / 0.01968 ms p95. This excludes extra shadow-world submissions, image clear,
+surface sampling and CPU/game work. It is not a full-game FPS measurement or a
+guarantee of negligible cost. Partial solid shapes conservatively occupy a full
+voxel. The preview PNG is a synthetic receiving floor, not a Minecraft screenshot.
+
+The new ZIP is installed alongside 1.0.5; active Iris selection was not changed.
+Computer Use was stopped by the user before live Iris load/visual verification.
+No server commands or world edits were performed. Select XON-Shader-v1.0.6.zip,
+Apply, and use Balanced with Colored Emissive Lighting ON. In a dark mine, check
+stone walls/floors within 1-5 blocks of exposed ore and quartz; turn away, walk
+across block boundaries, break an ore, and check a solid wall blocks the spill.
+Check Nether quartz and compare frame time with the same camera/settings.
+
+Reproduce the focused checks with python tools/validate.py,
+python tools/voxel_gpu_checks.py and python tools/package_checks.py.
+
+# Historical 1.0.5 notes - not a live emissive-lighting verification
 
 30 October 2026. The 1.0.4-water-stability build resolved time-animated noise but
 failed in-game: sunlight shafts from distant buildings were not visible, the

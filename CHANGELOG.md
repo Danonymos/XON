@@ -1,3 +1,63 @@
+# 1.0.7 - built-in AA, softer ore auras and moving moonlit cloud openings
+
+- Replace selectable FXAA/SMAA-style span walks with hard-coded bounded spatial
+  edge reconstruction. Reuse the cached 3x3 colors and existing depth silhouette
+  gate; retain flat-surface texture detail and optional sharpening.
+- Integrate subpixel coverage into the same six motion-blur reads, with symmetric
+  fixed shutter weights and a continuous 0.35-0.45 pixel handoff. Protect the hand
+  and retain blur exposure/radius controls, frame guards and viewport boundaries.
+- Add up to 0.32 mip levels of minification-only terrain stabilization, including
+  distant walls. Preserve close texture samples, known plant/leaf/lichen coverage
+  and unmapped cutout alpha through a conservative unbiased fallback.
+- Remove AA on/off and mode controls; every preset uses the same built-in core.
+  Keep optional nearby anisotropic surface filtering. No new pass, buffer, history,
+  runtime dependency or CPU frame work. Preserve the earlier 1.0.7 ZIPs before AA.
+- Add production GPU comparisons against pixel-area/shutter references, moving
+  error checks, mip/alpha tests, thin-line/hand protection and isolated GPU timings.
+
+- Correct each surface shadow-filter tap using the receiving plane and the
+  nonlinear shadow-map distortion; account for the hardware-PCF texel footprint.
+  Remove reproduced terrain self-shadow rings with smooth transitions ON or OFF.
+  Preserve the existing 4/2/1 lookup limits, shadow map size and draw distance.
+- Add three blocks of colored-light propagation beyond the selected ore radius,
+  with quintic surface falloff and trilinear interpolation. Preserve aura colors,
+  wall occlusion and source materials. Default settling time grows to eight frames;
+  the volume size, dispatch count and neighbor-sampling budget are unchanged.
+- Lift exposed moonlit cloud openings by up to 28% using their existing cool blue
+  illumination. Keep shaded patches and daylight unchanged; preserve cloud scale,
+  soft boundaries, local lights and underwater lighting. Set primary cloud-shadow
+  drift to 0.5 blocks/second and speed shape evolution proportionally, preserving
+  the seamless hourly wind cycle.
+- Add real rasterized terrain ring/contact-shadow regressions and extend GPU
+  checks for the new aura tail and isolated night-lighting response. Build 1.0.7.
+
+# 1.0.6 - emissive illumination and evolving cloud shadows
+
+- Replace dark cellular spots and thin bright borders with balanced, warped cloud
+  coverage. Typical light/shadow widths are around 30-50 blocks, with varied small
+  pockets and naturally joined larger banks. Preserve version 1.0.6.
+- Use broad quintic edge easing and slow, differing wind flows so patches drift,
+  merge and separate. Keep the wind path continuous through Iris's hourly timer reset.
+- Modulate actual sun/moon light instead of adding unrelated highlight colors;
+  keep cool sky fill, local lights and existing building shadows readable.
+- Carry cloud modulation toward the render horizon. Reuse the existing noise
+  atlas with three texture reads, no cellular search, new pass or buffer.
+- Add GPU tests for coverage balance, patch scale, smooth movement, evolving
+  silhouettes, hourly continuity, day/night response and lighting exclusions.
+
+- Register the required Iris custom-image feature and explicitly enable the voxel
+  capture pass, including when sun shadows are disabled. Set a bounded 48-block
+  reverse-culling distance so nearby emitters remain captured behind the camera.
+- Generate shadow and compute entrypoints for Overworld, Nether and End. Keep
+  voxel-only passes from rasterizing unused sun shadows.
+- Quartz ore and building blocks cast violet light onto nearby surfaces without
+  recoloring themselves. Preserve existing ore surface glow and texture colors.
+- Default light reach to four blocks, with options up to five. Retain eased,
+  trilinearly blended six-neighbor propagation; exclude mapped foliage/lichen
+  from solid occupancy and reject stale light after startup or teleports.
+- Avoid distant surface sampling; disable image allocations with colored lighting.
+- Add actual GPU capture/compute/terrain regression checks and build 1.0.6.
+
 # 1.0.5 - underwater stability & colored emissive lighting
 
 - Underwater sunlight stability & world coordinate anchoring:

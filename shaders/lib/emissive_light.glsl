@@ -10,8 +10,9 @@ const uint XON_VOXEL_EMPTY = 0u;
 const uint XON_VOXEL_SOLID = 1u;
 const uint XON_VOXEL_FIRST_EMITTER = 2u;
 
-// Light level lost per voxel step; reaches zero one block beyond the configured radius.
-const float XON_EMISSIVE_STEP = 1.0 / (XON_EMISSIVE_RADIUS + 1.0);
+// Reserve three additional open blocks for the outer aura to ease into darkness.
+const float XON_EMISSIVE_REACH = XON_EMISSIVE_RADIUS + 3.0;
+const float XON_EMISSIVE_STEP = 1.0 / (XON_EMISSIVE_REACH + 1.0);
 
 uint xonVoxelEmitterId(float material) {
     int id = int(material + 0.5);
@@ -38,10 +39,10 @@ vec3 xonVoxelEmitterColor(uint id) {
     if (id == 6u) return vec3(1.00, 0.74, 0.20) * 0.90;
     if (id == 7u) return vec3(0.95, 0.72, 0.58) * 0.45;
     if (id == 8u) return vec3(1.00, 0.52, 0.28) * 0.70;
-    if (id == 9u) return vec3(1.00, 0.94, 0.88) * 0.60;
+    if (id == 9u) return vec3(0.64, 0.32, 1.00) * 0.60;
     if (id == 10u) return vec3(0.72, 0.38, 1.00) * 0.90;
     if (id == 11u) return vec3(0.15, 0.75, 0.85) * 0.80;
-    if (id == 12u) return vec3(1.00, 0.95, 0.88) * 0.45;
+    if (id == 12u) return vec3(0.64, 0.32, 1.00) * 0.45;
     return vec3(0.0);
 }
 
@@ -66,6 +67,9 @@ vec4 xonFetchLight(ivec3 voxel) {
 // darken the light pooled on the floor beside them. Returns colour already scaled by falloff.
 vec3 xonEmissiveLight(vec3 playerPos, vec3 normal) {
     vec3 voxelPos = playerPos + fract(cameraPosition) + vec3(XON_VOXEL_HALF) + normal * 0.5 - 0.5;
+    vec3 edgeDistance = min(voxelPos, vec3(XON_VOXEL_SIZE) - 1.0 - voxelPos);
+    float volumeFade = smoothstep(0.0, 6.0, min(edgeDistance.x, min(edgeDistance.y, edgeDistance.z)));
+    if (volumeFade <= 0.0) return vec3(0.0);
     ivec3 base = ivec3(floor(voxelPos));
     vec3 blend = voxelPos - vec3(base);
     vec3 colorSum = vec3(0.0);
@@ -82,11 +86,8 @@ vec3 xonEmissiveLight(vec3 playerPos, vec3 normal) {
     }
     if (levelSum <= 0.0001) return vec3(0.0);
     float level = levelSum / weightSum;
-    // Equals 1 - smoothstep(0, radius + 1, distance) for distance = (1 - level) * (radius + 1),
-    // measured between voxel centres, so a face `radius` blocks away still receives a faint tail.
-    float falloff = level * level * (3.0 - 2.0 * level);
-    vec3 edgeDistance = min(voxelPos, vec3(XON_VOXEL_SIZE) - 1.0 - voxelPos);
-    float volumeFade = smoothstep(0.0, 6.0, min(edgeDistance.x, min(edgeDistance.y, edgeDistance.z)));
+    // Quintic easing has zero slope and curvature at the bright core and dark outer edge.
+    float falloff = level * level * level * (level * (level * 6.0 - 15.0) + 10.0);
     return (colorSum / levelSum) * falloff * volumeFade * XON_EMISSIVE_INTENSITY;
 }
 #endif

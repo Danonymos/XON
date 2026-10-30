@@ -1,4 +1,7 @@
 #include "/lib/settings.glsl"
+#ifdef XON_COLORED_EMISSIVE_LIGHTING
+#extension GL_ARB_shader_image_load_store : require
+#endif
 #include "/lib/uniforms.glsl"
 #include "/lib/shadows.glsl"
 
@@ -7,7 +10,6 @@ in vec4 mc_midTexCoord;
 out vec2 xonShadowUV;
 
 #ifdef XON_COLORED_EMISSIVE_LIGHTING
-#extension GL_ARB_shader_image_load_store : enable
 #include "/lib/emissive_light.glsl"
 in vec3 at_midBlock;
 layout(r8ui) writeonly uniform uimage3D xonVoxelImg;
@@ -18,6 +20,7 @@ void xonVoxelize(vec4 shadowView) {
                 || renderStage == MC_RENDER_STAGE_TERRAIN_CUTOUT
                 || renderStage == MC_RENDER_STAGE_TERRAIN_CUTOUT_MIPPED;
     if (!terrain) return;
+    if (mc_Entity.x == 10003.0 || mc_Entity.x == 10004.0 || mc_Entity.x == 10006.0) return;
     uint data = xonVoxelEmitterId(mc_Entity.x);
     // Only opaque full-layer blocks occlude; glass, leaves and plants let light through.
     if (data == XON_VOXEL_EMPTY && renderStage == MC_RENDER_STAGE_TERRAIN_SOLID) data = XON_VOXEL_SOLID;
@@ -33,6 +36,11 @@ void main() {
     vec4 shadowView = gl_ModelViewMatrix * gl_Vertex;
 #ifdef XON_COLORED_EMISSIVE_LIGHTING
     xonVoxelize(shadowView);
+#endif
+#if XON_DIMENSION != 0 || !defined XON_SHADOWS
+    // These passes only capture voxels; no sun-shadow fragments are needed.
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+    return;
 #endif
 #ifdef XON_WAVING_FOLIAGE
     bool isLeaves = abs(mc_Entity.x - 10003.0) < 0.5;

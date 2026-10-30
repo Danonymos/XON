@@ -229,7 +229,10 @@ def run():
         aa_options = {'XON_BLOOM': False, 'XON_LIGHT_SHAFTS': False, 'XON_COLOR_GRADE': False,
                       'XON_MOTION_BLUR': False}
         aa_on = actual('final', aa_options)
-        aa_off = actual('final', dict(aa_options, XON_EDGE_AA=False))
+        reference = variant_source(SHADERS / 'final.fsh', aa_options).replace(
+            'color = xonEdgeAA(color, depth, motionPixels, handMask);', '')
+        aa_off = compile_pair(variant_source(SHADERS / 'final.vsh', aa_options), reference,
+                              'test-only reference without built-in AA')
         yy, xx = np.indices((height, width), dtype=np.float32)
         edge = xx + .5 < .61 * (yy + .5) + 62.37
         dark, light = np.array([.025, .03, .045]), np.array([.9, .8, .65])
@@ -469,8 +472,8 @@ def run():
         max_ground = float(np.max(luma_t0))
         motion_diff = float(np.mean(np.abs(ground_t1 - ground_t0)))
         if max_ground < min_ground * 2.0 or motion_diff < 0.02:
-            raise AssertionError(f'Voronoi ground shadows/highlights too weak or static over 64-block view: min={min_ground}, max={max_ground}, motion={motion_diff}')
-        checks.append({'case': '20-block-radius Voronoi ground shadow and highlight field moves across local 64-block terrain',
+            raise AssertionError(f'Cloud shadow transition too weak or static over 64-block view: min={min_ground}, max={max_ground}, motion={motion_diff}')
+        checks.append({'case': 'large cloud-shadow transition remains smooth and moving over a local 64-block terrain slice',
                        'min_luma': min_ground, 'max_luma': max_ground, 'motion_delta': motion_diff})
 
         dark_canopy = fragment('''void main() {

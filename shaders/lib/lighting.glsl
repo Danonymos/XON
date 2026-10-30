@@ -63,23 +63,24 @@ vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPositio
     // Subtle bounce into shaded faces only ((1.0 - direct) keeps sunlit surfaces untouched).
     float archUpfill = max(-normal.y, 0.0) * 0.10 + (1.0 - abs(normal.y)) * 0.035;
     vec3 bounce = (key * (0.035 + archUpfill * 0.5) + ambient * 0.08) * (sky * (1.0 - direct) * day * (1.0 - rainStrength * 0.5));
-    vec3 illumination = sky * ambient + bounce + (direct + sss + edgeRim) * key * (1.80 * XON_SUN_STRENGTH);
+    vec3 celestialLight = (direct + sss + edgeRim) * key * (1.80 * XON_SUN_STRENGTH);
+    vec3 illumination = sky * ambient + bounce + celestialLight;
 #if defined XON_CLOUD_LIBRARY && !defined XON_HAND
     float skyExposure = smoothstep(0.35, 0.92, lightLevels.y);
     float cloudDistSq = dot(playerPosition.xz, playerPosition.xz);
-    if (skyExposure > 0.001 && isEyeInWater == 0 && cloudDistSq < 9216.0 && XON_GROUND_SHADOW_STRENGTH > 0.001) {
-        // ~15-20 block radius moving Voronoi ground shadows, distance-culled beyond 96 blocks for faster chunk-TP recovery.
-        float distFade = 1.0 - smoothstep(4900.0, 9216.0, cloudDistSq);
+    float cloudRange = max(far, 128.0);
+    if (skyExposure > 0.001 && isEyeInWater == 0 && cloudDistSq < cloudRange * cloudRange && XON_GROUND_SHADOW_STRENGTH > 0.001) {
+        // Let landscape-scale patches reach the horizon instead of disappearing in a 96-block camera bubble.
+        float distFade = 1.0 - smoothstep(cloudRange * cloudRange * 0.64, cloudRange * cloudRange, cloudDistSq);
         float cloudSignal = xonCloudGroundLight(playerPosition.xz + cameraPosition.xz) * skyExposure * distFade;
-        float cloudShadow = max(-cloudSignal, 0.0);
+        float cloudShadow = min(max(-cloudSignal, 0.0), 1.35);
         float cloudBreak = max(cloudSignal, 0.0);
         float zenithFacing = mix(0.52 + 0.48 * max(normal.y, 0.0), 0.92, foliage);
-        float shadowMask = clamp(openSky * (0.40 + 0.60 * max(normal.y, 0.0)), 0.12, 1.0);
-        vec3 shadowTint = mix(vec3(1.0), vec3(0.46, 0.53, 0.66), clamp(cloudShadow * zenithFacing * shadowMask, 0.0, 0.85));
-        illumination *= shadowTint;
-        float nonOverexpose = 1.0 - direct * 0.82;
-        vec3 zenithLight = mix(vec3(0.10, 0.15, 0.26), vec3(0.95, 0.89, 0.78), day);
-        illumination += zenithLight * (cloudBreak * zenithFacing * nonOverexpose * (0.24 + 0.14 * openSky) * openSky * facing);
+        // Removing key light reveals the existing cool sky fill; clear gaps retain the sun/moon's own color.
+        illumination += celestialLight * (cloudBreak * 0.08 - cloudShadow * 0.64);
+        illumination -= sky * ambient * (cloudShadow * zenithFacing * 0.08);
+        float moonOpening = cloudBreak * (1.0 - day) * openSky * facing;
+        illumination *= 1.0 + moonOpening * 0.28;
     }
 #endif
     if (lightningBoltPosition.w > 0.001) {

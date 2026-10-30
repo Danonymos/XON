@@ -1,5 +1,6 @@
 #include "/lib/settings.glsl"
 
+#ifdef XON_COLORED_EMISSIVE_LIGHTING
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 const ivec3 workGroups = ivec3(12, 6, 12);
 
@@ -18,11 +19,13 @@ const ivec3 NEIGHBORS[6] = ivec3[6](ivec3(1, 0, 0), ivec3(-1, 0, 0), ivec3(0, 1,
                                     ivec3(0, -1, 0), ivec3(0, 0, 1), ivec3(0, 0, -1));
 
 vec4 xonPreviousLight(ivec3 voxel, bool readFirst) {
+    if (frameCounter == 0) return vec4(0.0);
+    if (any(greaterThan(abs(cameraPosition - previousCameraPosition), vec3(XON_EMISSIVE_REACH + 1.0)))) return vec4(0.0);
     if (!xonVoxelInBounds(voxel)) return vec4(0.0);
     return readFirst ? texelFetch(xonLightTex0, voxel, 0) : texelFetch(xonLightTex1, voxel, 0);
 }
 
-// One flood-fill step per frame: the volume converges within radius + 1 frames and
+// One flood-fill step per frame: the volume converges within reach + 1 frames and
 // re-converges at the same rate when blocks change. Solid blocks stop propagation.
 void main() {
     ivec3 voxel = ivec3(gl_GlobalInvocationID);
@@ -49,3 +52,8 @@ void main() {
     if ((frameCounter & 1) == 0) imageStore(xonLightImg0, voxel, light);
     else imageStore(xonLightImg1, voxel, light);
 }
+#else
+layout(local_size_x = 1) in;
+const ivec3 workGroups = ivec3(1);
+void main() {}
+#endif

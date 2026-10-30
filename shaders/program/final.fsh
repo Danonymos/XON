@@ -4,6 +4,11 @@
 #include "/lib/atmosphere.glsl"
 #include "/lib/grading.glsl"
 
+#ifdef XON_COLORED_EMISSIVE_LIGHTING
+// Keep nearby emitters in the shadow draw list even behind the camera or underground.
+const float voxelDistance = 48.0;
+#endif
+
 /*
 const int colortex0Format = RGBA16F;
 const int colortex4Format = R8;
@@ -64,29 +69,34 @@ vec2 xonCameraVelocity(float depth) {
 vec3 xonMotionBlur(vec3 center, float depth, float handMask, out float motionPixels) {
     motionPixels = 0.0;
 #ifdef XON_MOTION_BLUR
-    if (handMask > 0.01) return center;
+    float handBoundary = fwidth(handMask);
+    if (handMask > 0.01 || handBoundary > 0.01) return center;
     vec2 velocity = xonCameraVelocity(depth);
     motionPixels = length(velocity * vec2(viewWidth, viewHeight));
     if (motionPixels < 0.35) return center;
-    float jitter = (fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5) * 0.85;
+    float stability = smoothstep(0.35, 0.45, motionPixels);
+    vec2 pixel = 1.0 / (vec2(viewWidth, viewHeight) * XON_RENDER_SCALE);
+    // Symmetric subpixel coverage shares the six shutter reads instead of adding an AA pass.
+    const vec2 coverage[6] = vec2[6](vec2(-0.30, 0.0), vec2(-0.15, -0.2598),
+        vec2(0.15, -0.2598), vec2(-0.15, 0.2598), vec2(0.15, 0.2598), vec2(0.30, 0.0));
+    const float shutter[6] = float[6](0.7260, 0.8939, 0.9878, 0.9878, 0.8939, 0.7260);
     // Pre-check whether the motion vector endpoints touch the first-person hand so 98% of screen pixels skip per-tap colortex4 fetches.
     vec2 endPosUV = xonSourceUV(clamp(xonUV + velocity * 0.85, 0.0, 1.0));
     vec2 endNegUV = xonSourceUV(clamp(xonUV - velocity * 0.85, 0.0, 1.0));
     bool nearHand = (texture(colortex4, endPosUV).r + texture(colortex4, endNegUV).r) > 0.01;
-    // 6-tap hardware-bilinear cosine-windowed shutter spanning [-0.85 .. +0.85] * velocity: identical visual blur at 4x the memory bandwidth speed.
     vec3 result = center * 0.42;
     float totalWeight = 0.42;
     for (int tap = 0; tap < 6; ++tap) {
-        float offset = ((float(tap) + 0.5 + jitter) * (1.0 / 6.0) - 0.5) * 1.70;
-        vec2 tapUV = xonUV + velocity * offset;
+        float offset = (float(tap) - 2.5) * (1.70 / 6.0);
+        vec2 tapUV = xonUV + velocity * offset + coverage[tap] * pixel * stability;
         if (any(lessThan(tapUV, vec2(0.0))) || any(greaterThan(tapUV, vec2(1.0)))) continue;
         vec2 sourceUV = xonSourceUV(tapUV);
         if (nearHand && texture(colortex4, sourceUV).r > 0.01) continue;
-        float weight = 0.55 + 0.45 * cos(offset * 1.65);
+        float weight = shutter[tap];
         result += texture(colortex0, sourceUV).rgb * weight;
         totalWeight += weight;
     }
-    return result / totalWeight;
+    return mix(center, result / totalWeight, stability);
 #else
     return center;
 #endif

@@ -6,7 +6,7 @@ import zipfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '1.0.5'
+VERSION = '1.0.7'
 
 PROGRAMS = {
     'gbuffers_basic': ('geometry', ['XON_BASIC']),
@@ -45,8 +45,6 @@ def generate_programs():
         target = ROOT / 'shaders' / directory
         target.mkdir(parents=True, exist_ok=True)
         for name, (source, flags) in PROGRAMS.items():
-            if name == 'shadow' and dimension != 0:
-                continue
             for stage in ['vsh', 'fsh']:
                 header = '#version 330 compatibility\n'
                 header += f'#define XON_DIMENSION {dimension}\n'
@@ -57,8 +55,8 @@ def generate_programs():
                 stage_source = 'final' if stage == 'vsh' and name in ['deferred', 'composite', 'composite1'] else source
                 header += f'#include "/program/{stage_source}.{stage}"\n'
                 (target / f'{name}.{stage}').write_text(header, encoding='utf-8', newline='\n')
-    csh_header = '#version 430 compatibility\n#define XON_DIMENSION 0\n#include "/program/shadowcomp.csh"\n'
-    (ROOT / 'shaders' / 'shadowcomp.csh').write_text(csh_header, encoding='utf-8', newline='\n')
+        csh_header = f'#version 430 compatibility\n#define XON_DIMENSION {dimension}\n#include "/program/shadowcomp.csh"\n'
+        (target / 'shadowcomp.csh').write_text(csh_header, encoding='utf-8', newline='\n')
 
 
 def package(output):

@@ -15,12 +15,6 @@ vec2 xonHash22(vec2 p) {
     return fract((p3.xx + p3.yz) * p3.zy);
 }
 
-vec3 xonHash23(vec2 p) {
-    vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
-    p3 += dot(p3, p3.yxz + 33.33);
-    return fract((p3.xxy + p3.yzz) * p3.zyx);
-}
-
 // Fast 2x2 nearest-quadrant Worley cellular sphere field (4 ALU-only iterations + 1 sqrt, zero sin() stalls).
 float xonWorleyDomes(vec2 p) {
     vec2 i = floor(p);
@@ -96,51 +90,29 @@ float xonCloudCover(vec3 direction) {
          * (1.0 - smoothstep(1600.0, 3200.0, distanceToCloud));
 }
 
-// Evaluates a slow, gradually morphing ~15-20 block radius Voronoi shadow & highlight field moving over the terrain.
-// Uses a 2x2 nearest-quadrant ALU-only cellular evaluation (zero sin() or per-iteration sqrt() SFU stalls).
+// Signed cloud cover leaves broad openings instead of highlighting Voronoi cell borders.
+// Reuse the filtered noise atlas: three taps, no cellular search or extra render pass.
 float xonCloudGroundLight(vec2 worldXZ) {
     if (cameraPosition.y > 320.0 || XON_GROUND_SHADOW_STRENGTH <= 0.001) return 0.0;
-    vec2 drift = vec2(0.725, 0.29) * frameTimeCounter;
-    float morphTime = frameTimeCounter * 0.02;
-    vec2 warpedXZ = worldXZ + drift;
-    vec2 macroWarp = (texture(noisetex, warpedXZ * (1.0 / 1200.0)).rg - 0.5) * 11.0;
-
-    vec2 p = (warpedXZ + macroWarp) * (1.0 / 34.0);
-    vec2 cellBase = floor(p);
-    vec2 f = fract(p);
-    vec2 start = step(vec2(0.5), f) - vec2(1.0);
-
-    float d1Sq = 8.0;
-    float d2Sq = 8.0;
-    float cellWeight = 1.0;
-
-    for (int y = 0; y <= 1; ++y) {
-        for (int x = 0; x <= 1; ++x) {
-            vec2 neighbor = start + vec2(float(x), float(y));
-            vec3 rnd = xonHash23(cellBase + neighbor);
-            vec2 tri = abs(fract(morphTime + rnd.xy) * 2.0 - 1.0);
-            vec2 smoothWave = tri * tri * (3.0 - 2.0 * tri) * 2.0 - 1.0;
-            vec2 animOffset = 0.5 + 0.34 * smoothWave;
-            vec2 diff = neighbor + animOffset - f;
-            float radiusScale = mix(0.78, 1.24, rnd.z);
-            float distSq = dot(diff, diff) * (radiusScale * radiusScale);
-
-            if (distSq < d1Sq) {
-                d2Sq = d1Sq;
-                d1Sq = distSq;
-                cellWeight = rnd.z;
-            } else if (distSq < d2Sq) {
-                d2Sq = distSq;
-            }
-        }
-    }
-
-    float d1 = sqrt(d1Sq);
-    float d2 = sqrt(d2Sq);
-    float shadowCore = 1.0 - smoothstep(0.12, 0.68, d1);
-    float highlightZone = smoothstep(0.42, 0.92, d1) * (0.65 + 0.35 * (1.0 - smoothstep(0.0, 0.35, d2 - d1)));
-    float signal = highlightZone - shadowCore * (0.78 + 0.22 * cellWeight);
-    return clamp(signal * 1.25, -1.0, 1.0) * (1.0 - rainStrength * 0.78) * XON_GROUND_SHADOW_STRENGTH;
+    // Iris resets this timer hourly; a closed wind path keeps that boundary seamless.
+    const float windFrequency = 6.28318530718 / 3600.0;
+    const float windSpeed = 0.5;
+    const float windScale = windSpeed / length(vec2(0.32, 0.08));
+    float windPhase = frameTimeCounter * windFrequency;
+    vec2 windFlow = vec2(sin(windPhase), 1.0 - cos(windPhase)) * (windScale / windFrequency);
+    vec2 drift = mat2(0.32, 0.08, -0.08, 0.32) * windFlow;
+    vec2 advected = worldXZ + drift;
+    vec2 warp = (texture(noisetex, advected * (1.0 / 800.0) + vec2(0.17, 0.43)).rg - 0.5) * 36.0;
+    float broad = texture(noisetex, (advected + warp) * (1.0 / 420.0)).r;
+    // Gentle wind shear changes the silhouettes continuously, allowing banks to join and part.
+    vec2 detailDrift = mat2(0.12, -0.07, 0.07, 0.12) * windFlow;
+    vec2 detailUV = XON_CLOUD_ROT * ((worldXZ + detailDrift + warp) * (1.0 / 210.0));
+    float detail = texture(noisetex, detailUV + vec2(0.37, 0.61)).g;
+    float field = broad * 0.78 + detail * 0.22 + (XON_CLOUD_DENSITY - 1.0) * 0.06;
+    // A wide quintic penumbra reaches both plateaus with zero slope and curvature.
+    float edge = clamp((field - 0.28) * (1.0 / 0.44), 0.0, 1.0);
+    float cover = edge * edge * edge * (edge * (edge * 6.0 - 15.0) + 10.0);
+    return (1.0 - 2.0 * cover) * (1.0 - rainStrength * 0.78) * XON_GROUND_SHADOW_STRENGTH;
 }
 
 vec3 xonCloudSky(vec3 direction, bool detailed) {
