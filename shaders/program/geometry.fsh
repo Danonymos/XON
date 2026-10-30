@@ -411,10 +411,10 @@ void main() {
         if (isEyeInWater != 1) {
 #if defined XON_REFRACTION && defined XON_SHADOWS && !defined XON_HAND
             // Refractive water replaces diffuse lighting; only its glint needs the receiver shadow.
-            vec3 keyDirection = sunDir * (sunDir.y >= 0.0 ? 1.0 : -1.0);
+            vec3 keyDirection = xonKeyDirection();
             float nDotL = dot(normal, keyDirection);
             float keyFacing = max(nDotL, 0.0);
-            float grazing = xonSquare(clamp(nDotL * 0.45 + 0.30, 0.0, 1.0)) * (1.0 - keyFacing) * 0.16;
+            float grazing = xonSquare(clamp(nDotL * 0.45 + 0.30, 0.0, 1.0)) * (1.0 - keyFacing) * 0.16 * xonSaturate(nDotL * 6.25);
             float openSky = smoothstep(0.55, 0.97, xonLightLevels.y);
             if (keyFacing + grazing > 0.001 && openSky > 0.001) {
                 sunVisibility = xonShadowVisibility(xonPlayerPosition, normal, keyFacing, xonLightLevels.y, 0.0);

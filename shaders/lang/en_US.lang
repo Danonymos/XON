@@ -169,7 +169,7 @@ option.XON_CAUSTICS=Underwater Light Caustics
 option.XON_CAUSTICS.comment=Animated sunlight caustic patterns dancing across underwater terrain and submerged blocks.
 
 option.XON_UNDERWATER_RAYS=Underwater God Rays
-option.XON_UNDERWATER_RAYS.comment=Soft blue-green sunlight shafts underwater. Requires Localized Sun Rays and Shadows. Default: ON. Adds up to two shadow samples in the existing half-resolution pass when submerged.
+option.XON_UNDERWATER_RAYS.comment=Surface-shaped blue-green beams visible while swimming horizontally. Requires Localized Sun Rays and Shadows. Default: ON. Uses six shadow and six existing-noise samples in the half-resolution pass.
 option.XON_RAY_STRENGTH=God Ray Intensity
 option.XON_RAY_STRENGTH.comment=Strength of outdoor and underwater sun shafts. Default: 1.00. Set to zero to remove shafts.
 option.XON_SUN_STRENGTH=Direct Sunlight Strength

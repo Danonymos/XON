@@ -13,6 +13,7 @@ uniform mat4 shadowProjection;
 uniform vec3 cameraPosition;
 uniform vec3 previousCameraPosition;
 uniform vec3 sunPosition;
+uniform vec3 shadowLightPosition;
 uniform vec3 fogColor;
 uniform vec3 skyColor;
 uniform vec4 lightningBoltPosition;

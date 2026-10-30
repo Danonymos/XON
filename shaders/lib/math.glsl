@@ -21,6 +21,14 @@ vec3 xonSunDirection() {
     return xonSafeNormalize(mat3(gbufferModelViewInverse) * sunPosition);
 }
 
+vec3 xonKeyDirection() {
+    if (dot(shadowLightPosition, shadowLightPosition) > 1.0) {
+        return xonSafeNormalize(mat3(gbufferModelViewInverse) * shadowLightPosition);
+    }
+    vec3 sun = xonSunDirection();
+    return sun * (sun.y >= 0.0 ? 1.0 : -1.0);
+}
+
 float xonDaylight(float sunY) {
     return smoothstep(-0.12, 0.10, sunY);
 }

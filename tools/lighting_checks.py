@@ -453,10 +453,9 @@ def run():
                        'amethyst_rgb': [float(v) for v in amethyst_px]})
 
         cloud_ground = fragment('''void main() {
-            float visibility;
             vec3 pos = vec3((xonUV.x - 0.5) * 64.0, 0.0, (xonUV.y - 0.5) * 64.0);
-            vec3 color = xonLighting(vec3(0.5), vec3(0.0, 1.0, 0.0),
-                vec3(0.0, -2.0, -5.0), pos, vec2(0.0, 1.0), 0.0, 0.0, visibility);
+            // Test field contrast independently of surface lighting and shadow protection.
+            vec3 color = vec3(0.5 + 0.5 * xonCloudGroundLight(pos.xz + cameraPosition.xz));
             result = vec4(color, 1.0);
         }''', ['settings', 'uniforms', 'math', 'atmosphere', 'clouds', 'shadows', 'lighting'], {'XON_SHADOWS': False})
         renderer.setup(cloud_ground)

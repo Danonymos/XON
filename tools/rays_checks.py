@@ -5,6 +5,7 @@ import re
 import zipfile
 from pathlib import Path
 import numpy as np
+from PIL import Image
 from validate import Driver, SHADERS, variant_source, expand
 from render_checks import Renderer
 
@@ -45,10 +46,10 @@ def run():
 
     uniform2i = driver.function('glUniform2i', None, ct.c_int, ct.c_int, ct.c_int)
 
-    def draw(program, medium=0, sunlight=True, exposure=240, depth=.99999):
+    def draw(program, medium=0, sunlight=True, exposure=240, depth=.99999, sun=None):
         renderer.setup(program)
         renderer.uniform1i(renderer.location('isEyeInWater'), medium)
-        renderer.uniform3f(renderer.location('sunPosition'), 0, 14 if sunlight else -40, -99)
+        renderer.uniform3f(renderer.location('sunPosition'), *(sun or (0, 14 if sunlight else -40, -99)))
         uniform2i(renderer.location('eyeBrightnessSmooth'), 240, exposure)
         for name, value in [('shadowModelView', np.eye(4)),
                             ('shadowProjection', np.diag([.02, .02, .02, 1]))]:
@@ -58,6 +59,9 @@ def run():
         return renderer.draw(raw=True)[..., 3]
 
     try:
+        renderer.texture(5, np.asarray(Image.open(SHADERS / 'textures/xon-noise.png').convert('RGBA')) / 255)
+        renderer.active_texture(0x84C5)
+        for axis in [0x2802,0x2803]: renderer.tex_parameter(0x0DE1,axis,0x2901)
         shafts = actual({'XON_BLOOM': False})
         for medium in [0, 1]:
             shadow(1)
@@ -67,11 +71,13 @@ def run():
             dark = draw(shafts, medium, exposure=0)
             shadow(0)
             blocked = draw(shafts, medium)
-            if lit.max() < .01 or blocked.max() > .00001 or night.max() > .00001 or dark.max() > .00001:
+            if lit.max() < .01 or blocked.max() > .00001 or night.max() > .00001 or (medium == 0 and dark.max() > .00001):
                 raise AssertionError('Sunlight, darkness or shadow occlusion gate failed')
+            if medium == 1 and np.max(np.abs(dark-lit)) > .000001:
+                raise AssertionError('Open-water rays incorrectly depend on underwater eye skylight')
             if near.mean() >= lit.mean() * .1:
                 raise AssertionError('Shafts ignore foreground depth')
-            if lit.max() > (.12001 if medium == 1 else .20001):
+            if lit.max() > (.28001 if medium == 1 else .20001):
                 raise AssertionError('Shaft intensity cap exceeded')
             checks.append({'case': f'medium {medium}: bounded daylight shafts, depth clipping, night/darkness/occlusion suppression',
                            'peak': float(lit.max()), 'mean': float(lit.mean())})
@@ -83,6 +89,13 @@ def run():
                 raise AssertionError('An opaque edge did not shape the light shaft')
             checks.append({'case': f'medium {medium}: shadow-map opening shapes beam', 'standard_deviation':float(opening.std())})
         shadow(1)
+        for sun in [(0,95,-31),(0,95,31),(90,30,0)]:
+            water=draw(shafts,1,exposure=0,sun=sun)
+            center=water[renderer.height//3:renderer.height*2//3,renderer.width//3:renderer.width*2//3]
+            if center.mean()<.015 or water.std()<.015:
+                raise AssertionError(f'Horizontal underwater view lost distinct beams: {sun}')
+            checks.append({'case':'horizontal swimming view retains shaped beams at zero eye skylight',
+                           'sun':sun,'center_mean':float(center.mean()),'spatial_std':float(water.std())})
         for options, medium in [({'XON_UNDERWATER_RAYS': False}, 1),
                                 ({'XON_RAY_STRENGTH': '0.00'}, 0),
                                 ({'XON_RAY_STRENGTH': '0.00'}, 1),
@@ -132,12 +145,27 @@ def run():
                 text = archive.read('shaders/'+name).decode('utf-8')
                 return re.sub(r'^\s*#include\s+"([^"]+)"\s*$', lambda m: baseline(m[1].lstrip('/')), text, flags=re.M)
             old_shafts = compile_pair(baseline('composite.vsh'), baseline('composite.fsh').replace('#define XON_BLOOM\n', '#undef XON_BLOOM\n'))
+        with zipfile.ZipFile(ROOT.parent / 'XON-Shader-v1.0.4-original.zip') as archive:
+            original_shafts=compile_pair(baseline('composite.vsh'),baseline('composite.fsh').replace('#define XON_BLOOM\n','#undef XON_BLOOM\n'))
+        # Synthetic constant underwater backdrop, composed through the same filmic curve.
+        from PIL import ImageDraw
+        sheet=Image.new('RGB',(1920,570))
+        painter=ImageDraw.Draw(sheet)
+        for index,program in enumerate([original_shafts,shafts]):
+            shadow(1)
+            alpha=draw(program,1,exposure=0,sun=(0,95,-31))
+            rgb=np.array([.035,.075,.10])+alpha[...,None]*np.array([.38,.78,.92])
+            rgb*=1.05;rgb=rgb*(2.51*rgb+.03)/(rgb*(2.43*rgb+.59)+.14)
+            rgb=np.clip(rgb,0,1)**(1/2.2)
+            sheet.paste(Image.fromarray((np.flipud(rgb)*255).astype(np.uint8)),(index*960,30))
+            painter.text((index*960+12,8),('Original' if index==0 else 'Revised')+' 1.0.4 / horizontal underwater view',fill='white')
+        sheet.save(ROOT/'validation-underwater-comparison.png')
         gen = driver.function('glGenQueries', None, ct.c_int, ct.POINTER(ct.c_uint))
         begin = driver.function('glBeginQuery', None, ct.c_uint, ct.c_uint)
         end = driver.function('glEndQuery', None, ct.c_uint)
         get = driver.function('glGetQueryObjectui64v', None, ct.c_uint, ct.c_uint, ct.POINTER(ct.c_uint64))
         delete = driver.function('glDeleteQueries', None, ct.c_int, ct.POINTER(ct.c_uint))
-        for label, program, medium in [('1.0.3.3 outdoor',old_shafts,0),('1.0.4 outdoor',shafts,0),('1.0.4 underwater',shafts,1)]:
+        for label, program, medium in [('1.0.3.3 outdoor',old_shafts,0),('original 1.0.4 underwater',original_shafts,1),('1.0.4 outdoor',shafts,0),('1.0.4 underwater',shafts,1)]:
             shadow(1)
             draw(program,medium)
             def quad():

@@ -1,3 +1,13 @@
+# 1.0.4 - revised after in-game comparison
+
+- Fix absent horizontal-view underwater beams: remove the upward cone gate and eye-skylight suppression underwater; retain daytime, shadow occlusion, medium and user-option gates.
+- Add a coherent moving surface-transmission field from XON's original noise, projected along refracted sunlight. Six shadow plus six noise samples in the existing half-resolution pass, with low-amplitude jitter, 40-block range and a 0.28 intensity cap.
+- Use Iris's active shadowLightPosition for surface key lighting. Limit wrapped light to the lit hemisphere, restrict cloud highlights to visible sun-facing surfaces, and reduce excessive wall sky fill and simulated bounce.
+- Preserve readable cave/minimum shadow fill; replace night vision's bright minimum clamp with a visibility lift that retains directional contrast.
+- Correct shadow normal-bias distance growth from r^1.5 to r; delay distance fade within the existing 96-block map budget. No extra shadow draw distance or render pass.
+- Add a real caster/receiver building scene with front/behind-sun, camera-rotation, moving-cloud and night-vision checks. Add horizontal underwater tests at zero eye skylight and synthetic image comparisons. Keep the cloud field's original contrast/movement assertions while testing that field independently of surface illumination.
+- Package as 1.0.4-revised so the original 1.0.4 remains available for comparison.
+
 # 1.0.4
 
 - Add restrained blue-green underwater God rays in the existing half-resolution effects pass: refracted sun direction, six bounded shadow samples, 32-block range, distance attenuation, daylight/skylight gating, and foreground-depth clipping.

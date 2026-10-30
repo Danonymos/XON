@@ -27,8 +27,7 @@ float xonShadowVisibility(vec3 playerPosition, vec3 normal, float facing, float 
     if (edgeDist >= 0.98) return fallback;
     float dist = sqrt(distSq);
     float distortFactor = 0.32 + length(shadowNDC.xy) * 0.68;
-    float pDistSq = dot(playerPosition, playerPosition);
-    float distanceBias = pDistSq * inversesqrt(sqrt(max(pDistSq, 0.0001)));
+    float distanceBias = length(playerPosition);
     // Tight close-range normal bias (~0.048 blocks) + sun-axis foliage offset prevents backlit grass/crop self-shadow flicker.
     vec3 lightDir = shadowModelViewInverse[2].xyz;
     float normalBias = (0.048 + 0.00070 * distanceBias + distortFactor * 0.042) * (1.70 - 0.70 * facing) * mix(1.0, 1.35, foliage);
@@ -63,7 +62,7 @@ float xonShadowVisibility(vec3 playerPosition, vec3 normal, float facing, float 
         }
     }
     float boxFade = smoothstep(0.75, 0.97, edgeDist);
-    float rangeFade = max(boxFade, smoothstep(shadowDistance * 0.72, maxDist, dist));
+    float rangeFade = max(boxFade, smoothstep(shadowDistance * 0.88, maxDist, dist));
     return mix(visibility, fallback, rangeFade);
 }
 

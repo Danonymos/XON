@@ -25,12 +25,12 @@ vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPositio
     float day = smoothstep(-0.12, 0.10, sun.y);
     vec4 phases = xonTimePhases(sun);
     float golden = smoothstep(-0.04, 0.22, sun.y) * (1.0 - smoothstep(0.22, 0.58, sun.y));
-    vec3 keyDirection = sun * (sun.y >= 0.0 ? 1.0 : -1.0);
+    vec3 keyDirection = xonKeyDirection();
     float nDotL = dot(normal, keyDirection);
     float facing = max(nDotL, 0.0);
     facing = mix(facing, facing * 0.48 + 0.52, foliage);
     // Wrapped grazing light lets sunlight play softly across castle reliefs and side walls without flattening shadow contrast.
-    float grazing = xonSquare(clamp(nDotL * 0.45 + 0.30, 0.0, 1.0)) * (1.0 - facing) * (1.0 - foliage) * 0.16;
+    float grazing = xonSquare(clamp(nDotL * 0.45 + 0.30, 0.0, 1.0)) * (1.0 - facing) * (1.0 - foliage) * 0.16 * xonSaturate(nDotL * 6.25);
     float openSky = smoothstep(0.55, 0.97, lightLevels.y);
 #if defined XON_SHADOWS && !defined XON_HAND
     if ((facing + grazing) > 0.001 && openSky > 0.001) {
@@ -55,13 +55,14 @@ vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPositio
     ambientBase = mix(ambientBase, vec3(0.27, 0.36, 0.60), clamp(phases.z * 0.50, 0.0, 0.75));
     ambientBase = mix(ambientBase, vec3(0.35, 0.28, 0.54), clamp(phases.w * 0.65, 0.0, 0.80));
     vec3 hemisphereTint = mix(vec3(1.08, 1.00, 0.88), vec3(0.97, 1.00, 1.04), normal.y * 0.5 + 0.5);
-    vec3 ambientClear = ambientBase * hemisphere * hemisphereTint;
+    float skyHemisphere = 0.58 + 0.42 * max(normal.y, 0.0);
+    vec3 ambientClear = ambientBase * hemisphere * hemisphereTint * skyHemisphere;
     vec3 ambientRain = vec3(0.38, 0.46, 0.61) * hemisphere;
     vec3 ambient = mix(xonNightColor(), mix(ambientClear, ambientRain, rainStrength), day);
     vec3 key = mix(xonNightColor() * 0.68, xonSunlightColor(sun), day);
     // Subtle bounce into shaded faces only ((1.0 - direct) keeps sunlit surfaces untouched).
     float archUpfill = max(-normal.y, 0.0) * 0.10 + (1.0 - abs(normal.y)) * 0.035;
-    vec3 bounce = (key * (0.065 + archUpfill) + ambient * 0.10) * (sky * (1.0 - direct) * day * (1.0 - rainStrength * 0.5));
+    vec3 bounce = (key * (0.035 + archUpfill * 0.5) + ambient * 0.08) * (sky * (1.0 - direct) * day * (1.0 - rainStrength * 0.5));
     vec3 illumination = sky * ambient + bounce + (direct + sss + edgeRim) * key * (1.80 * XON_SUN_STRENGTH);
 #if defined XON_CLOUD_LIBRARY && !defined XON_HAND
     float skyExposure = smoothstep(0.35, 0.92, lightLevels.y);
@@ -78,7 +79,7 @@ vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPositio
         illumination *= shadowTint;
         float nonOverexpose = 1.0 - direct * 0.82;
         vec3 zenithLight = mix(vec3(0.10, 0.15, 0.26), vec3(0.95, 0.89, 0.78), day);
-        illumination += zenithLight * (cloudBreak * zenithFacing * nonOverexpose * (0.24 + 0.14 * openSky));
+        illumination += zenithLight * (cloudBreak * zenithFacing * nonOverexpose * (0.24 + 0.14 * openSky) * openSky * facing);
     }
 #endif
     if (lightningBoltPosition.w > 0.001) {
@@ -99,9 +100,9 @@ vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPositio
 #endif
     if (isEyeInWater == 1) {
         float waterDay = smoothstep(-0.15, 0.15, xonSunDirection().y);
-        vec3 underwaterFill = mix(vec3(0.06, 0.13, 0.20), vec3(0.22, 0.42, 0.52), waterDay);
+        vec3 underwaterFill = mix(vec3(0.06, 0.13, 0.20), vec3(0.14, 0.26, 0.34), waterDay);
         illumination = max(illumination, underwaterFill * hemisphere);
-        illumination += vec3(0.08, 0.18, 0.24) * sky * waterDay;
+        illumination += vec3(0.025, 0.06, 0.08) * sky * waterDay;
     }
     vec3 torchColor = mix(vec3(2.05, 1.82, 1.48), vec3(2.55, 1.50, 0.67), clamp(XON_BLOCKLIGHT_WARMTH, 0.0, 1.5));
     // Warm falloff and a restrained ivory core keep nearby pale blocks from turning orange.
@@ -115,7 +116,7 @@ vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPositio
         illumination += torchColor * (0.44 * XON_LOCAL_LIGHT_STRENGTH) * heldLight * handFalloff * handFalloff;
     }
 #endif
-    illumination = mix(illumination, max(illumination, vec3(0.78)), nightVision);
+    illumination = mix(illumination, illumination * 1.35 + vec3(0.08, 0.10, 0.14), nightVision);
     illumination = mix(illumination, max(illumination, vec3(3.20)), emission);
     // Dark-albedo toe lift activates ONLY inside dark shadows (isDarkArea -> 0 in sunlit or torchlit areas).
     float maxIllum = max(illumination.r, max(illumination.g, illumination.b));
