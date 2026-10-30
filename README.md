@@ -1,12 +1,4 @@
-# XON 1.0.3.3 - lichen and shallow-water fixes
-
-Includes stationary glow lichen and stronger blue tint for thin water sheets. Deep water and underwater clarity remain unchanged.
-
-# XON 1.0.3.2 - glow lichen fix
-
-Glow lichen now uses a stationary material rather than the waving cross-plant group. This prevents wind moving its thin faces into the supporting block and restores its face normals. Other plants retain wind. Includes the shallow-water fix.
-
-# XON Shader - 1.0.3.1
+# XON Shader - 1.0.4
 
 An original performance-first Iris shader pack with warm directional sunlight,
 5-stage time-of-day atmospheric moods (Early Morning, Noon, Warm Afternoon, Evening Sunset, Night),
@@ -14,6 +6,25 @@ real cast shadows, Photon-inspired cool readable dark-area shadow fill, 20-block
 cylindrical chunk-border horizon fog, chiseled castle/surface micro-bevel lighting, waving foliage,
 Voronoi cellular lava, underwater caustics, cosmic End aurora sky, glowing ore & royal purple amethyst veins,
 Contrast-Adaptive Sharpening (CAS), 4-tap sub-pixel edge AA, and smooth camera motion blur.
+
+## What changed in 1.0.4
+
+- Soft blue-green underwater God rays with refracted light direction, shadow
+  occlusion, foreground-depth clipping, daylight gating and a restrained cap.
+- Outdoor rays have a subtle wider shoulder and activate at lower skylight levels,
+  making sunbeams through building openings easier to see while keeping clear air.
+- Direct sun/moon and local/held light contributions default to 80% of 1.0.3.3.
+  Ambient shade and its subtle blue tint retain their previous values. This reduces
+  light intensity rather than lowering the overall exposure or darkening shadows.
+- New controls: Direct Sunlight Strength, Torch and Held Light Strength, God Ray
+  Intensity, and Underwater God Rays. Ray effects require Shadows and Localized
+  Sun Rays; Speed disables them. No additional render pass or history buffer.
+- Includes the glow-lichen stability and visible shallow-water fixes.
+
+The existing half-resolution ray pass uses four shadow samples outdoors and six
+underwater, with a 32-block underwater range cap. This adds a small GPU cost;
+see source `VERIFICATION.md` for measured synthetic pass timings. The underwater
+refraction assumes a flat surface and is an artistic approximation.
 
 ## Shallow-water fix in 1.0.3.1
 
@@ -61,7 +72,7 @@ They do not establish an in-game FPS gain. See `VERIFICATION.md` in the source.
 
 1. Keep a working Fabric + Iris + matching Sodium installation. Initial target:
    Minecraft Java 26.3, Iris 1.11.7, Sodium 0.9.2.
-2. Put `XON-Shader-v1.0.3.1.zip` directly in that installation's `shaderpacks`
+2. Put `XON-Shader-v1.0.4.zip` directly in that installation's `shaderpacks`
    folder. Do not extract it and do not place it in `mods` or `resourcepacks`.
 3. Open Video Settings → Shader Packs, select XON, and Apply.
 4. Begin with the default Balanced preset and Native resolution. Select Speed if
@@ -79,7 +90,7 @@ They do not establish an in-game FPS gain. See `VERIFICATION.md` in the source.
 - Selective ore emission, 4-tap bloom, held light, an original 16-cube color LUT,
   soft layered clouds, organic non-repeating water waves/refraction, and sharp edge AA ON.
 - Air fog OFF. Clear-weather distance haze is removed; water/lava/powder-snow
-  absorption and blindness/darkness remain. Rays are localized near the sun (4-step cone-culled).
+  absorption and blindness/darkness remain. Rays use 4 outdoor / 6 underwater steps with directional culling.
 - Water refraction, bloom and sunlight shafts use half-resolution
   buffers. Edge AA shares the final pass and rejects texture-only edges.
 - No voxel lighting, screen-space reflection tracing, temporal AA/history,

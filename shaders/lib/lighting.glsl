@@ -62,7 +62,7 @@ vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPositio
     // Subtle bounce into shaded faces only ((1.0 - direct) keeps sunlit surfaces untouched).
     float archUpfill = max(-normal.y, 0.0) * 0.10 + (1.0 - abs(normal.y)) * 0.035;
     vec3 bounce = (key * (0.065 + archUpfill) + ambient * 0.10) * (sky * (1.0 - direct) * day * (1.0 - rainStrength * 0.5));
-    vec3 illumination = sky * ambient + bounce + (direct + sss + edgeRim) * key * 1.80;
+    vec3 illumination = sky * ambient + bounce + (direct + sss + edgeRim) * key * (1.80 * XON_SUN_STRENGTH);
 #if defined XON_CLOUD_LIBRARY && !defined XON_HAND
     float skyExposure = smoothstep(0.35, 0.92, lightLevels.y);
     float cloudDistSq = dot(playerPosition.xz, playerPosition.xz);
@@ -106,13 +106,13 @@ vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPositio
     vec3 torchColor = mix(vec3(2.05, 1.82, 1.48), vec3(2.55, 1.50, 0.67), clamp(XON_BLOCKLIGHT_WARMTH, 0.0, 1.5));
     // Warm falloff and a restrained ivory core keep nearby pale blocks from turning orange.
     vec3 localLightColor = mix(torchColor, vec3(2.30, 1.72, 1.04), block * 0.35 * XON_BLOCKLIGHT_WARMTH);
-    illumination += block * localLightColor;
+    illumination += block * localLightColor * XON_LOCAL_LIGHT_STRENGTH;
 #ifdef XON_HAND_LIGHT
     int maxHeld = max(heldBlockLightValue, heldBlockLightValue2);
     if (maxHeld > 0) {
         float heldLight = float(maxHeld) * (1.0 / 15.0);
         float handFalloff = xonSaturate(1.0 - length(viewPosition) * (1.0 / 12.0));
-        illumination += torchColor * 0.44 * heldLight * handFalloff * handFalloff;
+        illumination += torchColor * (0.44 * XON_LOCAL_LIGHT_STRENGTH) * heldLight * handFalloff * handFalloff;
     }
 #endif
     illumination = mix(illumination, max(illumination, vec3(0.78)), nightVision);

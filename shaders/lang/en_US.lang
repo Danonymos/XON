@@ -167,3 +167,12 @@ option.XON_WAVING_FOLIAGE=Waving Plants & Leaves
 option.XON_WAVING_FOLIAGE.comment=Synchronized vertex-stage wind sway on leaves, grass, wheat, crops, and vines (and their cast shadows) within 40 blocks.
 option.XON_CAUSTICS=Underwater Light Caustics
 option.XON_CAUSTICS.comment=Animated sunlight caustic patterns dancing across underwater terrain and submerged blocks.
+
+option.XON_UNDERWATER_RAYS=Underwater God Rays
+option.XON_UNDERWATER_RAYS.comment=Soft blue-green sunlight shafts underwater. Requires Localized Sun Rays and Shadows. Default: ON. Adds up to two shadow samples in the existing half-resolution pass when submerged.
+option.XON_RAY_STRENGTH=God Ray Intensity
+option.XON_RAY_STRENGTH.comment=Strength of outdoor and underwater sun shafts. Default: 1.00. Set to zero to remove shafts.
+option.XON_SUN_STRENGTH=Direct Sunlight Strength
+option.XON_SUN_STRENGTH.comment=Direct sun/moon surface lighting. Default: 0.80, 20% lower than 1.0.3.3. Ambient shadow fill is preserved.
+option.XON_LOCAL_LIGHT_STRENGTH=Torch and Held Light Strength
+option.XON_LOCAL_LIGHT_STRENGTH.comment=Local block and held light intensity. Default: 0.80, 20% lower than 1.0.3.3. Preserves warm color and light falloff.

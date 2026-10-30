@@ -1,3 +1,12 @@
+# 1.0.4
+
+- Add restrained blue-green underwater God rays in the existing half-resolution effects pass: refracted sun direction, six bounded shadow samples, 32-block range, distance attenuation, daylight/skylight gating, and foreground-depth clipping.
+- Improve outdoor sun rays near building openings with lower skylight activation and a subtle wider scattering shoulder; retain four samples and bound the peak to avoid excessive glare.
+- Reduce direct sun/moon and local/held light contributions by 20% by default. Preserve ambient shadow fill, blue shade tint, LUT and saturation. The final image brightness reduction depends on material, ambient light and tone mapping.
+- Add Direct Sunlight Strength, Torch and Held Light Strength, God Ray Intensity sliders and Underwater God Rays toggle, with descriptions and existing master/shadow controls respected.
+- Retain Native resolution, shadow-map quality, motion blur ON/1.50, rainbow outline, visible shallow water and stationary glow lichen.
+- Add GPU tests for underwater/outdoor occlusion, beam shaping, foreground-depth clipping, darkness/night/medium/option gates and unchanged unlit shadow fill; record isolated ray-pass timings against 1.0.3.3.
+
 # XON 1.0.3.3 - lichen and shallow-water fixes
 
 Includes stationary glow lichen and stronger blue tint for thin water sheets. Deep water and underwater clarity remain unchanged.
