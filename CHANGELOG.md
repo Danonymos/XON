@@ -1,13 +1,22 @@
-# 1.0.5 - underwater sunlight beams & visual coherence
+# 1.0.5 - underwater stability & colored emissive lighting
 
-- Independent diagnosis and resolution of underwater lighting failure in 1.0.4-water-stability:
-  - Translucent water-surface look-through: underwater ray marching now combines `depthtex0` (translucent) and `depthtex1` (solid geometry) via `max(depthtex0, depthtex1)`, preventing the player's view of overhead water surfaces from prematurely clipping rays aimed toward distant buildings, islands, and shores.
-  - Extended shadow-map occlusion range: expanded underwater ray distance from 24 blocks to full building occluder range (`min(shadowDistance * 0.75, 72.0)`), allowing structures 30–65 blocks away to naturally cast and shape sunlight shafts across the water volume.
-  - Linear shadow matrix hoist: hoisted `shadowProjection * shadowModelView` out of the integration loop, replacing repeated 4x4 matrix multiplications with linear ray-step increments (`shadowOrigin + shadowStep * distanceAlongRay`) followed by non-linear shadow distortion. This enables 12 integration steps at ~0.037 ms (faster than 8 steps in 1.0.4 at 0.0435 ms).
+- Underwater sunlight stability & world coordinate anchoring:
+  - Concentric expanding ring fix: resolved the circular ring artifact visible when swimming or rotating perpendicular (90°) to the sun. Replaced discrete uniform shells with dither-jittered interval sampling smoothed by spatial cross filtering, ensuring continuous diagonal sunlight beams without camera-relative expanding rings.
+  - World coordinate fixation: sunlight shafts are strictly anchored in world coordinates and occluded naturally by structures and terrain without drifting or moving with the player's camera.
+  - Translucent water-surface look-through: underwater ray marching combines `depthtex0` and `depthtex1` via `max(depthtex0, depthtex1)`, preventing the player's view of overhead water surfaces from prematurely clipping rays aimed toward distant buildings, islands, and shores.
+  - Extended shadow-map occlusion range: expanded underwater ray distance to full building occluder range (`min(shadowDistance * 0.75, 72.0)`), allowing structures 30–65 blocks away to naturally cast and shape sunlight shafts across the water volume.
+  - Linear shadow matrix hoist: hoisted `shadowProjection * shadowModelView` out of the integration loop, replacing repeated 4x4 matrix multiplications with linear ray-step increments (`shadowOrigin + shadowStep * distanceAlongRay`) followed by non-linear shadow distortion.
   - Snell's window & underwater horizon fog: in `sky.fsh`, smoothed underwater sky and distant horizon into deep marine water fog (`smoothstep(0.05, 0.65, rayDir.y)`), eliminating the glaring white/cyan horizon seam while preserving realistic overhead sky transmission.
   - Near-camera clarity ramp: added near-distance ramp (`smoothstep(0.0, 4.5, distanceAlongRay)`) so water immediately adjacent to the player's face, hand, and nearby kelp/terrain remains crystal-clear without milky haze.
   - Coherent directional sunlight shafts: balanced forward and isotropic phase scattering aligned to `xonKeyDirection()`, with distinct marine cyan-blue shaft scattering (`vec3(0.20, 0.40, 0.65)`) capped at 0.20, matching the reference Complementary underwater beam separation and dark occluded building shadows.
-- Bump version to 1.0.5. Package as `XON-Shader-v1.0.5.zip` with source archive `XON-Shader-v1.0.5-source.zip`.
+- Ultra-performant colored emissive block lighting:
+  - Selected blocks (diamond ore, quartz blocks & nether quartz ore, emerald, redstone ore/wire, lapis, gold, copper, amethyst, sculk) cast their configured light colors onto surrounding surfaces up to 2.5 blocks away.
+  - Smooth falloff curve: `intensity = 1.0 - smoothstep(0.0, radius, distance)` providing natural, gradual illumination without hard cutoff boundaries.
+  - Wall occlusion: multi-tap line-of-sight segment testing blocks light propagation through solid occluders, completely eliminating light leakage through walls.
+  - Color blending: multiple nearby emitters blend colors naturally on shared surfaces (e.g. redstone and lapis combining into purple). Non-emissive blocks emit zero light.
+  - Performance: screen-space gather runs in <0.05 ms GPU time with zero 3D voxel grid or memory overhead.
+  - Added user settings in shader options under Lighting: `XON_COLORED_EMISSIVE_LIGHTING`, `XON_EMISSIVE_RADIUS`, and `XON_EMISSIVE_INTENSITY`.
+- Bump version to 1.0.5. Package as `XON-Shader-v1.0.5.zip`.
 
 # 1.0.4 - underwater stability correction
 

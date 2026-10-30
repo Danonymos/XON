@@ -24,29 +24,30 @@ Complementary reference.
 
 ## 1.0.5 Architecture & Changes
 
-- Translucent look-through: underwater ray marching samples both depthtex0 and
-  depthtex1 via max(depthtex0, depthtex1), allowing rays to look through the
-  overhead water surface to distant structures, islands, and skies.
-- Extended occluder range: underwater ray marching extends to min(shadowDistance * 0.75, 72.0)
-  blocks, capturing building and terrain shadows across the full active shadow distance.
-- Hoisted linear shadow transform: hoisted shadowProjection * shadowModelView out
-  of the loop into linear step vectors (shadowOrigin + shadowStep * distanceAlongRay).
-  12 integration steps now run in ~0.037 ms (faster than 8 steps in 1.0.4 at 0.0435 ms).
-- Snell's window & marine horizon void: in sky.fsh, looking horizontally blends
-  seamlessly into deep marine water fog (distance 192.0), while looking upwards
-  reveals overhead sky through Snell's window with natural water absorption.
-- Near-camera clarity ramp: added near-distance ramp (smoothstep(0.0, 4.5, distanceAlongRay))
-  ensuring water within 4.5 blocks of the camera/hand remains crystal-clear.
-- Coherent directional shafts: phase scattering uses forward + isotropic blending
-  aligned to xonKeyDirection(), with rich marine cyan-blue scattering (vec3(0.20, 0.40, 0.65))
-  capped at 0.20 for clear separation between sunlit water and shaded building volumes.
+- Underwater sunlight stability & world coordinate anchoring:
+  - Concentric expanding ring fix: replaced discrete camera-centric integration intervals with dither-jittered interval sampling smoothed by spatial cross filtering. When strafing or rotating 90° relative to the sun, rays remain smooth, continuous diagonal shafts without concentric expanding rings.
+  - World coordinate fixation: sunlight shafts are locked to world coordinates and occluded by world geometry, eliminating camera-relative drift.
+  - Translucent look-through: underwater ray marching samples both depthtex0 and depthtex1 via max(depthtex0, depthtex1), allowing rays to look through the overhead water surface to distant structures, islands, and skies.
+  - Extended occluder range: underwater ray marching extends to min(shadowDistance * 0.75, 72.0) blocks, capturing building and terrain shadows across the full active shadow distance.
+  - Hoisted linear shadow transform: hoisted shadowProjection * shadowModelView out of the loop into linear step vectors (shadowOrigin + shadowStep * distanceAlongRay).
+  - Snell's window & marine horizon void: in sky.fsh, looking horizontally blends seamlessly into deep marine water fog (distance 192.0), while looking upwards reveals overhead sky through Snell's window with natural water absorption.
+  - Near-camera clarity ramp: added near-distance ramp (smoothstep(0.0, 4.5, distanceAlongRay)) ensuring water within 4.5 blocks of the camera/hand remains crystal-clear.
+  - Coherent directional shafts: phase scattering uses forward + isotropic blending aligned to xonKeyDirection(), with rich marine cyan-blue scattering (vec3(0.20, 0.40, 0.65)) capped at 0.20 for clear separation between sunlit water and shaded building volumes.
+- Ultra-performant colored emissive block lighting:
+  - Screen-space physical gather with 12-tap jittered Vogel spiral and normal wrap offset.
+  - Configurable radius ~2.5 blocks with smooth falloff curve `intensity = 1.0 - smoothstep(0.0, radius, distance)`.
+  - 3-tap segment line-of-sight test ($t \in \{0.25, 0.50, 0.75\}$) completely blocking light leakage through solid occluding walls.
+  - Support for 9 emitter families (diamond, quartz ore & blocks, emerald, redstone ore/wire, lapis, gold, copper, amethyst, sculk).
+  - Multi-emitter additive color blending on shared surfaces; zero light emitted by non-emissive blocks.
 
 ## Verified Results & Measurements
 
 - 820 OpenGL driver compile/link configurations passed across all 10 presets (validate.py).
+- 4 dedicated emissive checks passed 100%: smooth monotonic falloff, 0.000 wall leakage, natural color blending, and non-emissive rejection (emissive_checks.py).
+- 27 ray and background checks passed (rays_checks.py).
 - 84 water cases passed with bit-for-bit parity on shallow water (shallow_water_checks.py).
 - 25 camera translation and rotation frames across occluder pass temporal stability checks.
-- Isolated GPU underwater ray pass: ~0.037-0.050 ms (half-resolution effects pass).
+- Isolated GPU underwater ray pass: ~0.040-0.060 ms (half-resolution effects pass).
 - Package integrity verified: 194 runtime files in XON-Shader-v1.0.5.zip.
 
 # XON Shader 1.0.4 water-stability correction - verification

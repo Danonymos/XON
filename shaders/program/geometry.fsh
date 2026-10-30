@@ -446,7 +446,15 @@ void main() {
     if (!composedWater || isEyeInWater == 0) color = xonFog(color, xonViewPosition, xonLightLevels.y);
 #endif
 #endif
+#ifdef XON_WATER
     xonScene = vec4(max(color, vec3(0.0)), surface.a);
+#else
+    float emissiveId = 0.0;
+#if (defined XON_TERRAIN || defined XON_ENTITY) && !defined XON_HAND
+    emissiveId = xonEmissiveId(xonMaterial, texel.rgb);
+#endif
+    xonScene = vec4(max(color, vec3(0.0)), emissiveId);
+#endif
 #ifdef XON_HAND
     xonHandMask = 1.0;
 #endif
