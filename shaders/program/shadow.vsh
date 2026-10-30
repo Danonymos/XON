@@ -6,9 +6,34 @@ in vec4 mc_Entity;
 in vec4 mc_midTexCoord;
 out vec2 xonShadowUV;
 
+#ifdef XON_COLORED_EMISSIVE_LIGHTING
+#extension GL_ARB_shader_image_load_store : enable
+#include "/lib/emissive_light.glsl"
+in vec3 at_midBlock;
+layout(r8ui) writeonly uniform uimage3D xonVoxelImg;
+
+void xonVoxelize(vec4 shadowView) {
+    if ((gl_VertexID & 3) != 0) return;
+    bool terrain = renderStage == MC_RENDER_STAGE_TERRAIN_SOLID
+                || renderStage == MC_RENDER_STAGE_TERRAIN_CUTOUT
+                || renderStage == MC_RENDER_STAGE_TERRAIN_CUTOUT_MIPPED;
+    if (!terrain) return;
+    uint data = xonVoxelEmitterId(mc_Entity.x);
+    // Only opaque full-layer blocks occlude; glass, leaves and plants let light through.
+    if (data == XON_VOXEL_EMPTY && renderStage == MC_RENDER_STAGE_TERRAIN_SOLID) data = XON_VOXEL_SOLID;
+    if (data == XON_VOXEL_EMPTY) return;
+    vec3 blockCenterView = shadowView.xyz + mat3(gl_ModelViewMatrix) * (at_midBlock / 64.0);
+    ivec3 voxel = xonWorldToVoxel((shadowModelViewInverse * vec4(blockCenterView, 1.0)).xyz);
+    if (xonVoxelInBounds(voxel)) imageStore(xonVoxelImg, voxel, uvec4(data, 0u, 0u, 0u));
+}
+#endif
+
 void main() {
     xonShadowUV = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
     vec4 shadowView = gl_ModelViewMatrix * gl_Vertex;
+#ifdef XON_COLORED_EMISSIVE_LIGHTING
+    xonVoxelize(shadowView);
+#endif
 #ifdef XON_WAVING_FOLIAGE
     bool isLeaves = abs(mc_Entity.x - 10003.0) < 0.5;
     bool isCrossPlant = abs(mc_Entity.x - 10004.0) < 0.5;

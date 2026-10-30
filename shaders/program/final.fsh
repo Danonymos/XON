@@ -22,7 +22,7 @@ const int noiseTextureResolution = 256;
 uniform sampler2D colortex0;
 uniform sampler2D colortex4;
 uniform sampler2D depthtex0;
-#if defined XON_BLOOM || defined XON_COLORED_EMISSIVE_LIGHTING || (defined XON_LIGHT_SHAFTS && defined XON_SHADOWS && XON_DIMENSION == 0)
+#if defined XON_BLOOM || (defined XON_LIGHT_SHAFTS && defined XON_SHADOWS && XON_DIMENSION == 0)
 uniform sampler2D colortex5;
 #endif
 in vec2 xonUV;
@@ -100,10 +100,10 @@ void main() {
     float motionPixels;
     color = xonMotionBlur(color, depth, handMask, motionPixels);
     color = xonEdgeAA(color, depth, motionPixels, handMask);
-#if defined XON_BLOOM || defined XON_COLORED_EMISSIVE_LIGHTING || (defined XON_LIGHT_SHAFTS && defined XON_SHADOWS && XON_DIMENSION == 0)
+#if defined XON_BLOOM || (defined XON_LIGHT_SHAFTS && defined XON_SHADOWS && XON_DIMENSION == 0)
     if (handMask < 0.01) {
         vec4 effects = texture(colortex5, xonUV);
-#if defined XON_BLOOM || defined XON_COLORED_EMISSIVE_LIGHTING
+#ifdef XON_BLOOM
         color += effects.rgb * (0.16 * XON_BLOOM_STRENGTH);
 #endif
 #if defined XON_LIGHT_SHAFTS && defined XON_SHADOWS && XON_DIMENSION == 0

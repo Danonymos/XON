@@ -41,4 +41,11 @@ uniform int heldBlockLightValue;
 uniform int heldBlockLightValue2;
 uniform int renderStage;
 
+#ifndef MC_RENDER_STAGE_TERRAIN_SOLID
+#define MC_RENDER_STAGE_TERRAIN_SOLID 1
+#define MC_RENDER_STAGE_TERRAIN_CUTOUT_MIPPED 2
+#define MC_RENDER_STAGE_TERRAIN_CUTOUT 3
+#define MC_RENDER_STAGE_TERRAIN_TRANSLUCENT 4
+#endif
+
 #endif

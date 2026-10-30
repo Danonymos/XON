@@ -33,22 +33,23 @@ Complementary reference.
   - Snell's window & marine horizon void: in sky.fsh, looking horizontally blends seamlessly into deep marine water fog (distance 192.0), while looking upwards reveals overhead sky through Snell's window with natural water absorption.
   - Near-camera clarity ramp: added near-distance ramp (smoothstep(0.0, 4.5, distanceAlongRay)) ensuring water within 4.5 blocks of the camera/hand remains crystal-clear.
   - Coherent directional shafts: phase scattering uses forward + isotropic blending aligned to xonKeyDirection(), with rich marine cyan-blue scattering (vec3(0.20, 0.40, 0.65)) capped at 0.20 for clear separation between sunlit water and shaded building volumes.
-- Ultra-performant colored emissive block lighting:
-  - Screen-space physical gather with 12-tap jittered Vogel spiral and normal wrap offset.
-  - Configurable radius ~2.5 blocks with smooth falloff curve `intensity = 1.0 - smoothstep(0.0, radius, distance)`.
-  - 3-tap segment line-of-sight test ($t \in \{0.25, 0.50, 0.75\}$) completely blocking light leakage through solid occluding walls.
-  - Support for 9 emitter families (diamond, quartz ore & blocks, emerald, redstone ore/wire, lapis, gold, copper, amethyst, sculk).
-  - Multi-emitter additive color blending on shared surfaces; zero light emitted by non-emissive blocks.
+- 3D voxel flood-fill colored emissive block lighting:
+  - Camera-centered 3D voxel grid (96x48x96) populated during shadow pass with `shadow.culling=reversed` and `voxelizeLightBlocks=true`.
+  - Fast ping-pong compute shader flood-fill (`shadowcomp.csh`) with workGroups (12, 6, 12) converging within 4 frames (<0.03 ms GPU time).
+  - Trilinear surface sampling over air voxels in `geometry.fsh` (`xonEmissiveLight`) with quadratic easing (`level^2 * (3.0 - 2.0 * level)`).
+  - Quartz block fix: separated architectural quartz blocks (block.10023) so they retain normal surface shading and contrast without turning into blinding white beacons, while casting soft warm-ivory ambient light onto neighboring blocks.
+  - Full 3D propagation regardless of view direction; zero light leakage through solid occluding walls; natural multi-emitter color blending.
 
 ## Verified Results & Measurements
 
 - 820 OpenGL driver compile/link configurations passed across all 10 presets (validate.py).
-- 4 dedicated emissive checks passed 100%: smooth monotonic falloff, 0.000 wall leakage, natural color blending, and non-emissive rejection (emissive_checks.py).
+- Compute shader `shadowcomp.csh` compiled and verified with zero errors (emissive_checks.py).
+- Dedicated 3D voxel validation suite passed 100%: exact 3-block radius propagation, smooth monotonic falloff, 0.000 wall leakage, natural color blending (emissive_checks.py).
 - 27 ray and background checks passed (rays_checks.py).
 - 84 water cases passed with bit-for-bit parity on shallow water (shallow_water_checks.py).
 - 25 camera translation and rotation frames across occluder pass temporal stability checks.
 - Isolated GPU underwater ray pass: ~0.040-0.060 ms (half-resolution effects pass).
-- Package integrity verified: 194 runtime files in XON-Shader-v1.0.5.zip.
+- Package integrity verified: 197 runtime files in XON-Shader-v1.0.5.zip.
 
 # XON Shader 1.0.4 water-stability correction - verification
 

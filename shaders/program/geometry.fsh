@@ -6,6 +6,10 @@
 #include "/lib/shadows.glsl"
 #include "/lib/lighting.glsl"
 #include "/lib/materials.glsl"
+#if defined XON_COLORED_EMISSIVE_LIGHTING && XON_DIMENSION == 0 && !defined XON_UNLIT && !defined XON_BASIC && !defined XON_CLOUD && !defined XON_WATER && !defined XON_HAND
+#define XON_EMISSIVE_SAMPLING
+#include "/lib/emissive_light.glsl"
+#endif
 
 uniform sampler2D gtexture;
 uniform sampler2D depthtex1;
@@ -179,6 +183,9 @@ void main() {
         color *= clamp(aoCurve, 0.36, 1.0) * aoTint;
     }
 #endif
+#ifdef XON_EMISSIVE_SAMPLING
+    vec3 emissiveAlbedo = color;
+#endif
 
 #if defined XON_CLOUD
 #ifdef XON_CLOUD_LIGHTING
@@ -199,6 +206,10 @@ void main() {
 #endif
     if (!independentMaterial) {
         color = xonLighting(color, normal, xonViewPosition, xonPlayerPosition, xonLightLevels, emission, foliage, sunVisibility);
+#ifdef XON_EMISSIVE_SAMPLING
+        // Peak matches a strong but sub-torch block light; the voxel field supplies colour and falloff.
+        color += emissiveAlbedo * xonEmissiveLight(xonPlayerPosition, normal) * 1.45;
+#endif
 #ifdef XON_TERRAIN
         if (emission < 0.5 && abs(xonMaterial - 10019.0) > 0.5 && !isCrossPlant) {
             float viewDistSq = dot(xonViewPosition, xonViewPosition);
@@ -446,15 +457,7 @@ void main() {
     if (!composedWater || isEyeInWater == 0) color = xonFog(color, xonViewPosition, xonLightLevels.y);
 #endif
 #endif
-#ifdef XON_WATER
     xonScene = vec4(max(color, vec3(0.0)), surface.a);
-#else
-    float emissiveId = 0.0;
-#if (defined XON_TERRAIN || defined XON_ENTITY) && !defined XON_HAND
-    emissiveId = xonEmissiveId(xonMaterial, texel.rgb);
-#endif
-    xonScene = vec4(max(color, vec3(0.0)), emissiveId);
-#endif
 #ifdef XON_HAND
     xonHandMask = 1.0;
 #endif

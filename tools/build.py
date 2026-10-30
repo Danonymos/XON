@@ -57,6 +57,8 @@ def generate_programs():
                 stage_source = 'final' if stage == 'vsh' and name in ['deferred', 'composite', 'composite1'] else source
                 header += f'#include "/program/{stage_source}.{stage}"\n'
                 (target / f'{name}.{stage}').write_text(header, encoding='utf-8', newline='\n')
+    csh_header = '#version 430 compatibility\n#define XON_DIMENSION 0\n#include "/program/shadowcomp.csh"\n'
+    (ROOT / 'shaders' / 'shadowcomp.csh').write_text(csh_header, encoding='utf-8', newline='\n')
 
 
 def package(output):

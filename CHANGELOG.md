@@ -9,13 +9,13 @@
   - Snell's window & underwater horizon fog: in `sky.fsh`, smoothed underwater sky and distant horizon into deep marine water fog (`smoothstep(0.05, 0.65, rayDir.y)`), eliminating the glaring white/cyan horizon seam while preserving realistic overhead sky transmission.
   - Near-camera clarity ramp: added near-distance ramp (`smoothstep(0.0, 4.5, distanceAlongRay)`) so water immediately adjacent to the player's face, hand, and nearby kelp/terrain remains crystal-clear without milky haze.
   - Coherent directional sunlight shafts: balanced forward and isotropic phase scattering aligned to `xonKeyDirection()`, with distinct marine cyan-blue shaft scattering (`vec3(0.20, 0.40, 0.65)`) capped at 0.20, matching the reference Complementary underwater beam separation and dark occluded building shadows.
-- Ultra-performant colored emissive block lighting:
-  - Selected blocks (diamond ore, quartz blocks & nether quartz ore, emerald, redstone ore/wire, lapis, gold, copper, amethyst, sculk) cast their configured light colors onto surrounding surfaces up to 2.5 blocks away.
-  - Smooth falloff curve: `intensity = 1.0 - smoothstep(0.0, radius, distance)` providing natural, gradual illumination without hard cutoff boundaries.
-  - Wall occlusion: multi-tap line-of-sight segment testing blocks light propagation through solid occluders, completely eliminating light leakage through walls.
-  - Color blending: multiple nearby emitters blend colors naturally on shared surfaces (e.g. redstone and lapis combining into purple). Non-emissive blocks emit zero light.
-  - Performance: screen-space gather runs in <0.05 ms GPU time with zero 3D voxel grid or memory overhead.
-  - Added user settings in shader options under Lighting: `XON_COLORED_EMISSIVE_LIGHTING`, `XON_EMISSIVE_RADIUS`, and `XON_EMISSIVE_INTENSITY`.
+- 3D voxel flood-fill colored emissive block lighting:
+  - 3D voxel volume & compute flood-fill: replaced screen-space sampling with a camera-centered 3D voxel volume (96x48x96) and ping-pong compute flood fill (`shadowcomp.csh`). Eliminates dither, snowflake artifacts, and screen-edge popping; emitters cast full continuous 3D light pools regardless of camera orientation.
+  - Quartz block architectural fix: separated quartz building blocks (block.10023) so they retain normal surface shading and contrast without turning into blinding white beacons, while casting soft warm-ivory ambient light onto neighboring blocks.
+  - Smooth spherical falloff: quadratic easing curve (`level^2 * (3.0 - 2.0 * level)`) creates seamless, beautiful light pools reaching across a 3-block radius (6-block diameter) with continuous zero-derivative boundaries.
+  - Physical wall occlusion: solid blocks occlude propagation in the voxel grid with `shadow.culling=reversed`, preventing any light from leaking through solid walls.
+  - Natural color blending: multiple nearby emitters blend colors smoothly across shared spaces (e.g. redstone + lapis combining into purple).
+  - Configurable options: added user controls for `XON_COLORED_EMISSIVE_LIGHTING`, `XON_EMISSIVE_RADIUS` (default 3.0 blocks), and `XON_EMISSIVE_INTENSITY`.
 - Bump version to 1.0.5. Package as `XON-Shader-v1.0.5.zip`.
 
 # 1.0.4 - underwater stability correction
