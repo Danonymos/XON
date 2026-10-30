@@ -4,6 +4,6 @@ in vec2 xonShadowUV;
 layout(location = 0) out vec4 xonShadowColor;
 
 void main() {
-    if (texture(gtexture, xonShadowUV).a < alphaTestRef) discard;
+    if (alphaTestRef > 0.001 && texture(gtexture, xonShadowUV).a < alphaTestRef) discard;
     xonShadowColor = vec4(1.0);
 }

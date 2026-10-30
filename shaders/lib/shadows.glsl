@@ -29,17 +29,39 @@ float xonShadowVisibility(vec3 playerPosition, vec3 normal, float facing, float 
     float distortFactor = 0.32 + length(shadowNDC.xy) * 0.68;
     float pDistSq = dot(playerPosition, playerPosition);
     float distanceBias = pDistSq * inversesqrt(sqrt(max(pDistSq, 0.0001)));
-    float normalBias = (0.095 + 0.00075 * distanceBias + distortFactor * 0.05) * (1.85 - 0.85 * facing) * mix(1.0, 1.35, foliage);
-    vec3 offsetPosition = playerPosition + normal * normalBias;
+    // Tight close-range normal bias (~0.048 blocks) + sun-axis foliage offset prevents backlit grass/crop self-shadow flicker.
+    vec3 lightDir = shadowModelViewInverse[2].xyz;
+    float normalBias = (0.048 + 0.00070 * distanceBias + distortFactor * 0.042) * (1.70 - 0.70 * facing) * mix(1.0, 1.35, foliage);
+    vec3 offsetPosition = playerPosition + normal * normalBias + lightDir * (0.022 + 0.115 * foliage);
     vec3 coordinate = xonShadowCoordinate(offsetPosition);
     if (any(lessThan(coordinate, vec3(0.005))) || any(greaterThan(coordinate, vec3(0.995)))) return fallback;
-    coordinate.z -= 0.000035 + 0.000075 * (1.0 - facing) + foliage * 0.00012;
-    float radius = 0.72 / float(shadowMapResolution);
-    // Rotated 2-tap hardware-PCF kernel for smooth penumbra edges at minimum bandwidth.
-    float angle = fract(52.9829189 * fract(dot(playerPosition.xz + playerPosition.y, vec2(7.13, 13.71)))) * 3.14159265;
-    vec2 rot = vec2(cos(angle), sin(angle)) * radius;
-    float visibility = (texture(shadowtex0, coordinate + vec3(rot, 0.0))
-                      + texture(shadowtex0, coordinate - vec3(rot, 0.0))) * 0.5;
+    coordinate.z -= 0.000032 + 0.000065 * (1.0 - facing) + foliage * 0.00024;
+    float radius = 0.75 / float(shadowMapResolution);
+    // 3-tier distance-LOD hardware-PCF: 4 taps within 20m, 2 taps within 42m, 1 bilinear hardware-PCF tap (4 texels) beyond 42m.
+    float visibility;
+    if (distSq >= 1764.0) {
+        visibility = texture(shadowtex0, coordinate);
+    } else {
+        vec2 o1 = vec2(radius, radius * 0.48);
+#ifdef XON_SMOOTH_SHADOW_LOD
+        // Collapse the two-tap kernel continuously into the distant hardware-PCF sample.
+        float kernelScale = 1.0 - smoothstep(1296.0, 1764.0, distSq);
+        o1 *= kernelScale;
+#endif
+        visibility = texture(shadowtex0, coordinate + vec3(o1, 0.0))
+                   + texture(shadowtex0, coordinate - vec3(o1, 0.0));
+        if (distSq < 400.0) {
+            vec2 o2 = vec2(-o1.y, o1.x);
+#ifdef XON_SMOOTH_SHADOW_LOD
+            o2 = mix(o2, o1, smoothstep(256.0, 400.0, distSq));
+#endif
+            visibility = (visibility
+                        + texture(shadowtex0, coordinate + vec3(o2, 0.0))
+                        + texture(shadowtex0, coordinate - vec3(o2, 0.0))) * 0.25;
+        } else {
+            visibility *= 0.5;
+        }
+    }
     float boxFade = smoothstep(0.75, 0.97, edgeDist);
     float rangeFade = max(boxFade, smoothstep(shadowDistance * 0.72, maxDist, dist));
     return mix(visibility, fallback, rangeFade);

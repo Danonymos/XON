@@ -8,18 +8,30 @@ uniform sampler2D noisetex;
 #if XON_CLOUD_STYLE == 1 && XON_DIMENSION == 0
 const mat2 XON_CLOUD_ROT = mat2(0.80, -0.60, 0.60, 0.80);
 
-// True 2D Worley cellular sphere field (1.0 at spherical puff center, 0.0 at cell crease) for genuine fluffy cumulus domes.
+// Pure ALU hashes (zero SFU sin() stalls and full precision at large server coordinates).
+vec2 xonHash22(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.xx + p3.yz) * p3.zy);
+}
+
+vec3 xonHash23(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+    p3 += dot(p3, p3.yxz + 33.33);
+    return fract((p3.xxy + p3.yzz) * p3.zyx);
+}
+
+// Fast 2x2 nearest-quadrant Worley cellular sphere field (4 ALU-only iterations + 1 sqrt, zero sin() stalls).
 float xonWorleyDomes(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
+    vec2 start = step(vec2(0.5), f) - vec2(1.0);
     float minDistSq = 4.0;
-    for (int y = -1; y <= 1; ++y) {
-        for (int x = -1; x <= 1; ++x) {
-            vec2 neighbor = vec2(float(x), float(y));
-            vec2 cell = i + neighbor;
-            vec2 rnd = fract(sin(vec2(dot(cell, vec2(127.1, 311.7)),
-                                      dot(cell, vec2(269.5, 183.3)))) * 43758.5453);
-            vec2 diff = neighbor + 0.15 + 0.70 * rnd - f;
+    for (int y = 0; y <= 1; ++y) {
+        for (int x = 0; x <= 1; ++x) {
+            vec2 neighbor = start + vec2(float(x), float(y));
+            vec2 rnd = xonHash22(i + neighbor);
+            vec2 diff = neighbor + 0.16 + 0.68 * rnd - f;
             minDistSq = min(minDistSq, dot(diff, diff));
         }
     }
@@ -43,18 +55,17 @@ vec2 xonCloudHeightfield(vec2 position, float distFadeDetail, bool detailed) {
     // True Perlin-Worley cellular spheres warped by wind flow for round, fluffy cauliflower cumulus domes.
     vec2 cellCoord = position * (1.0 / 240.0) + (n0.rg - 0.5) * 1.55 + (n1.gb - 0.5) * 0.70;
     float majorDomes = xonWorleyDomes(cellCoord);
-    float midPuffs = xonWorleyDomes(XON_CLOUD_ROT * cellCoord * 2.25 + (n2.rg - 0.5) * 0.75);
-    float fineCurls = detailed && distFadeDetail > 0.02
-                    ? xonWorleyDomes(XON_CLOUD_ROT * (cellCoord * 4.80) + (n2.gb - 0.5) * 0.65)
-                    : xonSaturate((n2.r * 0.55 + n2.g * 0.45 - 0.5) * 2.0 + 0.5);
+    float midPuffs = detailed ? xonWorleyDomes(XON_CLOUD_ROT * cellCoord * 2.25 + (n2.rg - 0.5) * 0.75)
+                              : (1.0 - abs(n1.g * 2.0 - 1.0));
+    float fineCurls = 1.0 - abs(n2.r * 1.2 + n2.g * 0.8 - 1.0);
 
-    float billows = majorDomes * 0.52 + midPuffs * 0.30 + mix(midPuffs, fineCurls, distFadeDetail) * 0.18;
+    float billows = majorDomes * 0.54 + midPuffs * 0.30 + mix(midPuffs, fineCurls, distFadeDetail) * 0.16;
 
     // Combine macro cloud islands with cellular Worley domes so edges have round puffy cumulus silhouettes.
     float macroMass = continent * 0.60 + subContinent * 0.40;
     float field = macroMass * 0.70 + billows * 0.30;
 
-    float threshold = mix(0.475, 0.305, rainStrength);
+    float threshold = clamp(mix(0.475, 0.305, rainStrength) - (XON_CLOUD_DENSITY - 1.0) * 0.11, 0.22, 0.65);
     float raw = smoothstep(threshold, threshold + 0.22, field);
     float density = raw * raw * (3.0 - 2.0 * raw);
 
@@ -86,52 +97,50 @@ float xonCloudCover(vec3 direction) {
 }
 
 // Evaluates a slow, gradually morphing ~15-20 block radius Voronoi shadow & highlight field moving over the terrain.
-// Returns [-1.0..+1.0]: negative inside dark Voronoi shadow cells, positive in bright Voronoi highlight zones.
+// Uses a 2x2 nearest-quadrant ALU-only cellular evaluation (zero sin() or per-iteration sqrt() SFU stalls).
 float xonCloudGroundLight(vec2 worldXZ) {
-    if (cameraPosition.y > 320.0) return 0.0;
+    if (cameraPosition.y > 320.0 || XON_GROUND_SHADOW_STRENGTH <= 0.001) return 0.0;
     vec2 drift = vec2(0.725, 0.29) * frameTimeCounter;
-    float morphTime = frameTimeCounter * 0.12;
+    float morphTime = frameTimeCounter * 0.02;
     vec2 warpedXZ = worldXZ + drift;
     vec2 macroWarp = (texture(noisetex, warpedXZ * (1.0 / 1200.0)).rg - 0.5) * 11.0;
 
-    // 34-block Voronoi grid with per-cell radius jitter (0.78..1.24) yields random ~14 to 22 block radius shadow cells.
     vec2 p = (warpedXZ + macroWarp) * (1.0 / 34.0);
     vec2 cellBase = floor(p);
     vec2 f = fract(p);
+    vec2 start = step(vec2(0.5), f) - vec2(1.0);
 
-    float d1 = 8.0;
-    float d2 = 8.0;
+    float d1Sq = 8.0;
+    float d2Sq = 8.0;
     float cellWeight = 1.0;
 
-    for (int y = -1; y <= 1; ++y) {
-        for (int x = -1; x <= 1; ++x) {
-            vec2 neighbor = vec2(float(x), float(y));
-            vec2 cell = cellBase + neighbor;
-            vec3 rnd = fract(sin(vec3(
-                dot(cell, vec2(127.1, 311.7)),
-                dot(cell, vec2(269.5, 183.3)),
-                dot(cell, vec2(419.2, 371.9))
-            )) * 43758.5453);
-
-            vec2 animOffset = 0.5 + 0.36 * sin(morphTime + 6.2831853 * rnd.xy);
+    for (int y = 0; y <= 1; ++y) {
+        for (int x = 0; x <= 1; ++x) {
+            vec2 neighbor = start + vec2(float(x), float(y));
+            vec3 rnd = xonHash23(cellBase + neighbor);
+            vec2 tri = abs(fract(morphTime + rnd.xy) * 2.0 - 1.0);
+            vec2 smoothWave = tri * tri * (3.0 - 2.0 * tri) * 2.0 - 1.0;
+            vec2 animOffset = 0.5 + 0.34 * smoothWave;
             vec2 diff = neighbor + animOffset - f;
             float radiusScale = mix(0.78, 1.24, rnd.z);
-            float dist = length(diff) * radiusScale;
+            float distSq = dot(diff, diff) * (radiusScale * radiusScale);
 
-            if (dist < d1) {
-                d2 = d1;
-                d1 = dist;
+            if (distSq < d1Sq) {
+                d2Sq = d1Sq;
+                d1Sq = distSq;
                 cellWeight = rnd.z;
-            } else if (dist < d2) {
-                d2 = dist;
+            } else if (distSq < d2Sq) {
+                d2Sq = distSq;
             }
         }
     }
 
+    float d1 = sqrt(d1Sq);
+    float d2 = sqrt(d2Sq);
     float shadowCore = 1.0 - smoothstep(0.12, 0.68, d1);
     float highlightZone = smoothstep(0.42, 0.92, d1) * (0.65 + 0.35 * (1.0 - smoothstep(0.0, 0.35, d2 - d1)));
     float signal = highlightZone - shadowCore * (0.78 + 0.22 * cellWeight);
-    return clamp(signal * 1.25, -1.0, 1.0) * (1.0 - rainStrength * 0.78);
+    return clamp(signal * 1.25, -1.0, 1.0) * (1.0 - rainStrength * 0.78) * XON_GROUND_SHADOW_STRENGTH;
 }
 
 vec3 xonCloudSky(vec3 direction, bool detailed) {
@@ -140,13 +149,14 @@ vec3 xonCloudSky(vec3 direction, bool detailed) {
 
     vec3 sun = xonSunDirection();
     float day = xonDaylight(sun.y);
+    vec4 phases = xonTimePhases(sun);
     float dusk = (1.0 - smoothstep(0.02, 0.48, abs(sun.y))) * day;
     float storm = xonSaturate(rainStrength * 0.78 + thunderStrength * 0.22);
     float cDot = max(dot(direction, sun), 0.0);
     float c2 = cDot * cDot;
     float c4 = c2 * c2;
     float hgPhase = c4 * c4 * 0.65 + c2 * 0.25;
-    vec3 sunColor = xonSunlightColor(sun.y);
+    vec3 sunColor = xonSunlightColor(sun);
     vec2 wind = vec2(2.2, 0.55) * frameTimeCounter;
     float horizonFade = smoothstep(0.012, 0.095, direction.y);
 
@@ -179,10 +189,10 @@ vec3 xonCloudSky(vec3 direction, bool detailed) {
     float density = center.x;
     if (density < 0.002) return sky;
 
-    // Evaluate directional 3D billow slope toward the sun and along the view ray for true sculptural lighting.
+    // Evaluate directional 3D billow slope toward the sun and along the view ray using fast macro probes.
     vec2 sunDir2D = xonSafeNormalize(vec3(sun.x, 0.0, sun.z)).xz;
     vec2 viewStep = direction.xz * min(18.0 / (direction.y + 0.18), 42.0);
-    vec2 sunNear = xonCloudHeightfield(pos + sunDir2D * 42.0, detailFade * 0.5, detailed);
+    vec2 sunNear = xonCloudHeightfield(pos + sunDir2D * 42.0, 0.0, false);
     vec2 upperProbe = detailed ? xonCloudHeightfield(pos + viewStep, 0.0, false) : center;
 
     // 3D normal-like illumination on each rounded Worley cumulus dome:
@@ -197,11 +207,15 @@ vec3 xonCloudSky(vec3 direction, bool detailed) {
                                   + center.y * 0.38 + sunSlope * 0.46);
     directLight = smoothstep(0.08, 0.92, directLight);
 
-    // Painterly fantasy-realistic palette: velvety cerulean-lavender undersides and warm ivory/golden crowns (HDR-balanced to preserve 3D puff detail).
+    // Painterly fantasy-realistic palette with distinct Early Morning, Noon, Warm Afternoon, Evening Sunset, and Night moods.
     vec3 dayShadow = mix(vec3(0.24, 0.39, 0.62), vec3(0.36, 0.24, 0.52), dusk * 0.75);
+    dayShadow = mix(dayShadow, vec3(0.32, 0.42, 0.66), clamp(phases.x * 0.60, 0.0, 0.75));
+    dayShadow = mix(dayShadow, vec3(0.28, 0.36, 0.58), clamp(phases.z * 0.55, 0.0, 0.75));
+    dayShadow = mix(dayShadow, vec3(0.38, 0.22, 0.50), clamp(phases.w * 0.70, 0.0, 0.80));
     vec3 undersideColor = mix(vec3(0.028, 0.046, 0.088), dayShadow, day);
     vec3 twilightCrown = mix(vec3(1.18, 0.54, 0.62), vec3(1.62, 0.86, 0.42), xonSaturate(cDot * 0.65 + 0.35));
-    vec3 dayHighlight = mix(sunColor * 1.18, twilightCrown, dusk * 0.62);
+    vec3 morningCrown = mix(vec3(1.15, 0.78, 0.90), vec3(1.52, 1.05, 0.78), xonSaturate(cDot * 0.60 + 0.40));
+    vec3 dayHighlight = mix(sunColor * 1.18, mix(twilightCrown, morningCrown, clamp(sun.x * 1.5 + 0.5, 0.0, 1.0)), dusk * 0.62);
     vec3 sunlitColor = mix(vec3(0.14, 0.21, 0.34), dayHighlight, day);
 
     vec3 cloud = mix(undersideColor, sunlitColor, directLight);

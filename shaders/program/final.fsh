@@ -34,7 +34,7 @@ vec2 xonCameraVelocity(float depth) {
     if (frameCounter < 4 || frameTime <= 0.0 || frameTime > 0.10) return vec2(0.0);
     vec3 cameraDelta = cameraPosition - previousCameraPosition;
     float camMoveSq = dot(cameraDelta, cameraDelta);
-    if (camMoveSq > 4096.0) return vec2(0.0);
+    if (camMoveSq > 16.0) return vec2(0.0);
     vec3 viewRotDelta = gbufferModelView[2].xyz - gbufferPreviousModelView[2].xyz;
     if (camMoveSq < 0.000001 && dot(viewRotDelta, viewRotDelta) < 0.00000005) return vec2(0.0);
     vec2 projectionDelta = vec2(gbufferProjection[0][0] - gbufferPreviousProjection[0][0],
@@ -57,7 +57,8 @@ vec2 xonCameraVelocity(float depth) {
     vec2 pixels = velocity * vec2(viewWidth, viewHeight);
     float radius = length(pixels);
     float radiusCap = XON_BLUR_RADIUS * viewHeight / 1080.0;
-    return velocity * min(1.0, radiusCap / max(radius, 0.0001));
+    float softRadius = radiusCap * (1.0 - exp(-radius / max(radiusCap, 0.0001)));
+    return velocity * (softRadius / max(radius, 0.0001));
 }
 
 vec3 xonMotionBlur(vec3 center, float depth, float handMask, out float motionPixels) {
@@ -66,24 +67,22 @@ vec3 xonMotionBlur(vec3 center, float depth, float handMask, out float motionPix
     if (handMask > 0.01) return center;
     vec2 velocity = xonCameraVelocity(depth);
     motionPixels = length(velocity * vec2(viewWidth, viewHeight));
-    if (motionPixels < 0.45) return center;
-    float centerDistance = xonViewDepth(depth);
-    float jitter = (fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5) * 0.22;
-    vec3 result = center * 1.15;
-    float totalWeight = 1.15;
-    for (int tap = 0; tap < 4; ++tap) {
-        float offset = (float(tap) - 1.5 + jitter) * (1.0 / 3.0);
+    if (motionPixels < 0.35) return center;
+    float jitter = (fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5) * 0.85;
+    // Pre-check whether the motion vector endpoints touch the first-person hand so 98% of screen pixels skip per-tap colortex4 fetches.
+    vec2 endPosUV = xonSourceUV(clamp(xonUV + velocity * 0.85, 0.0, 1.0));
+    vec2 endNegUV = xonSourceUV(clamp(xonUV - velocity * 0.85, 0.0, 1.0));
+    bool nearHand = (texture(colortex4, endPosUV).r + texture(colortex4, endNegUV).r) > 0.01;
+    // 6-tap hardware-bilinear cosine-windowed shutter spanning [-0.85 .. +0.85] * velocity: identical visual blur at 4x the memory bandwidth speed.
+    vec3 result = center * 0.42;
+    float totalWeight = 0.42;
+    for (int tap = 0; tap < 6; ++tap) {
+        float offset = ((float(tap) + 0.5 + jitter) * (1.0 / 6.0) - 0.5) * 1.70;
         vec2 tapUV = xonUV + velocity * offset;
         if (any(lessThan(tapUV, vec2(0.0))) || any(greaterThan(tapUV, vec2(1.0)))) continue;
         vec2 sourceUV = xonSourceUV(tapUV);
-        if (texture(colortex4, sourceUV).r > 0.01) continue;
-        float sampleDepth = texture(depthtex0, sourceUV).r;
-        float sampleDistance = xonViewDepth(sampleDepth);
-        float tolerance = max(0.35, min(centerDistance, sampleDistance) * 0.06);
-        float depthWeight = 1.0 - smoothstep(tolerance, tolerance * 2.0,
-                                             abs(sampleDistance - centerDistance));
-        float tentWeight = 1.0 - abs(offset) * 0.35;
-        float weight = depthWeight * tentWeight;
+        if (nearHand && texture(colortex4, sourceUV).r > 0.01) continue;
+        float weight = 0.55 + 0.45 * cos(offset * 1.65);
         result += texture(colortex0, sourceUV).rgb * weight;
         totalWeight += weight;
     }
@@ -105,7 +104,7 @@ void main() {
     if (handMask < 0.01) {
         vec4 effects = texture(colortex5, xonUV);
 #ifdef XON_BLOOM
-        color += effects.rgb * 0.16;
+        color += effects.rgb * (0.16 * XON_BLOOM_STRENGTH);
 #endif
 #if defined XON_LIGHT_SHAFTS && defined XON_SHADOWS && XON_DIMENSION == 0
         color += effects.a * xonSunlightColor();

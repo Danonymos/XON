@@ -1,86 +1,145 @@
-<div align="center">
+# XON 1.0.3.3 - lichen and shallow-water fixes
 
-<img src="docs/images/xon.jpg" alt="XON Shader" width="144" />
+Includes stationary glow lichen and stronger blue tint for thin water sheets. Deep water and underwater clarity remain unchanged.
 
-# XON Shader
+# XON 1.0.3.2 - glow lichen fix
 
-### Beautiful worlds. Performance by design.
+Glow lichen now uses a stationary material rather than the waving cross-plant group. This prevents wind moving its thin faces into the supporting block and restores its face normals. Other plants retain wind. Includes the shallow-water fix.
 
-**Minecraft Java 26.3 · Iris + Sodium required · Free for personal play**
+# XON Shader - 1.0.3.1
 
-[Download on Modrinth](https://modrinth.com/shader/xon-shader) · [Report an issue](https://github.com/Danonymos/XON/issues/new/choose) · [Contribute](CONTRIBUTING.md) · [License](LICENSE)
+An original performance-first Iris shader pack with warm directional sunlight,
+5-stage time-of-day atmospheric moods (Early Morning, Noon, Warm Afternoon, Evening Sunset, Night),
+real cast shadows, Photon-inspired cool readable dark-area shadow fill, 20-block Voronoi moving ground cloud shadows,
+cylindrical chunk-border horizon fog, chiseled castle/surface micro-bevel lighting, waving foliage,
+Voronoi cellular lava, underwater caustics, cosmic End aurora sky, glowing ore & royal purple amethyst veins,
+Contrast-Adaptive Sharpening (CAS), 4-tap sub-pixel edge AA, and smooth camera motion blur.
 
-</div>
+## Shallow-water fix in 1.0.3.1
 
-![A modern island surrounded by XON's rippling water and layered clouds](docs/images/island.jpg)
+Thin water sheets viewed from outside the water now retain a subtle blue-green
+surface tint, including indoor bucket spills. The extra tint fades smoothly to
+zero at 1.5 blocks of view-depth thickness. Deeper water and underwater viewing
+retain 1.0.3 shading. No new texture samples, passes or buffers are added.
 
-XON brings warm directional light, sculpted clouds, organic water, and expressive atmosphere to Minecraft with a rendering pipeline built to keep costs under control. Its goal is simple: **a world you want to look at, with a frame rate you want to play at.**
+## What changed in 1.0.3
 
-Lower-end hardware is a design priority. Balanced delivers the intended visual experience; Speed removes selected heavier effects for players who put responsiveness first. Actual FPS depends on hardware, resolution, scene, mods, and settings. No controlled comparative benchmark is published here, and zero FPS loss is not claimed.
+- Light-oriented diffuse shaping gives block faces more definition; matte blocks
+  no longer acquire camera-dependent rim shine.
+- Warm simulated ground bounce and cooler sky fill give ledges and walls more
+  depth. Night and cave fill remain readable.
+- Subtle blue shade tint fades toward warm sunlight with nearly neutral luminance.
+  Local warm lights are added afterward, keeping their warm color.
+- Smoother local-light falloff with a restrained ivory core. This reshapes vanilla
+  lightmap shading; it does not extend the world's light propagation radius.
+- Smooth Camera Motion ON and Motion Blur Smoothness **1.50** by default.
+- Rotating eight-color outline at half speed, 25% thicker selection lines, eased
+  transitions and more consistent brightness. Debug-line width remains unchanged.
 
-## The look
+The 1.0.2 water/material optimizations, LUT, saturation, sky, native resolution,
+shadow map size and sample budgets remain intact. No new render pass, texture
+lookup, history buffer or tracing was added. Smooth Shadow Transitions remains
+optional (OFF by default).
 
-- **Light with character:** warm sunlight, cool readable shade, sun/moon cast shadows, ambient occlusion, and held-item light.
-- **Living skies:** rounded procedural cumulus, high cirrus wisps, storm response, and changing golden-hour colors.
-- **Organic water:** multi-scale waves, sky/cloud reflections, sun/moon glints, depth color, optional refraction, and underwater caustics.
-- **Small details:** waving plants, selective ore/crystal emission, restrained bloom, authored color grading, and adjustable camera motion blur.
-- **Distinct dimensions:** animated cellular lava in the Nether and flowing violet auroras in the End.
+## Performance foundation from 1.0.2
 
-![Sunlight and shadows across a waterfront castle and golden fields](docs/images/fields.jpg)
+This release preserves the 1.0.1 LUT, saturation, time-of-day colors, brightness,
+water waves, cloud design, light radius, and quality defaults. It removes lighting
+work discarded by lava, portal, froglight and refractive-water shading, and avoids
+unused sky/reflection calculations underwater. No rendering resolution reduction
+or feature removal is used to achieve these savings.
 
-## Where the engineering goes
+Lighting, Color & Shadows now offers **Smooth Shadow Transitions**. It blends the
+filter shapes at 20 and 42 blocks to reduce moving shadow pops without increasing
+the maximum sample count. It is OFF by default because additional filtering math
+can cost GPU time; Cinematic enables it. Balanced/Speed/Vibrant leave it off.
 
-| Choice | Implementation |
-| --- | --- |
-| Bounded cast shadows | 1024-pixel map and 96-block range by default; two hardware-filtered receiver taps; entity/block-entity shadow rendering off. |
-| Smaller effect buffers | Half-resolution bloom, localized sun rays, and refraction scene copy. |
-| Focused sun shafts | Four shadow-map samples inside a cone near the sun. |
-| Shared edge filtering | Depth-guided spatial AA in the final pass, without temporal history buffers. |
-| Distance-aware detail | Water fine detail fades with distance; foliage motion runs in the vertex stage within a bounded range. |
-| Experimental Boost | 85%/75% world rendering with spatial reconstruction and restrained sharpening. |
-
-These are implementation choices, not measured speedup percentages. See [engineering notes](docs/ENGINEERING.md) for source pointers and tradeoffs.
-
-## Pick your preset
-
-| Preset | Purpose |
-| --- | --- |
-| **Balanced + Native** | Full default look, including shadows, procedural clouds, bloom, refraction, and caustics. |
-| **Speed + Native** | Disables those effects while retaining directional lighting, ore emission, color grading, and edge AA. |
-| **Boost Quality / Performance** | Experimental 85% / 75% rendering scale for GPU-limited situations, at a sharpness cost. |
-
-Boost does not accelerate chunk generation or game simulation. The HUD stays at display resolution. Shader settings expose brightness, warmth, saturation, AO, shadows, water effects, and blur. Camera blur is on by default and can be disabled.
+Synthetic GPU comparisons show the largest savings on water and emissive materials.
+They do not establish an in-game FPS gain. See `VERIFICATION.md` in the source.
 
 ## Install
 
-1. Use **Minecraft Java 26.3** with compatible **Fabric, Iris, and Sodium** versions. Both **Iris and Sodium are required**.
-2. Download the runtime ZIP from [Modrinth](https://modrinth.com/shader/xon-shader) when the project is published.
-3. Put it intact in your instance's `shaderpacks` folder.
-4. Open **Video Settings → Shader Packs**, select XON, and apply it.
-5. Start at **Balanced + Native**; try **Speed** on lower-end hardware.
+1. Keep a working Fabric + Iris + matching Sodium installation. Initial target:
+   Minecraft Java 26.3, Iris 1.11.7, Sodium 0.9.2.
+2. Put `XON-Shader-v1.0.3.1.zip` directly in that installation's `shaderpacks`
+   folder. Do not extract it and do not place it in `mods` or `resourcepacks`.
+3. Open Video Settings → Shader Packs, select XON, and Apply.
+4. Begin with the default Balanced preset and Native resolution. Select Speed if
+   maximum frame rate is preferred over cast shadows and post effects.
 
-The archive README names Iris 1.11.7 and Sodium 0.9.2 as the initial target setup. The author confirms Minecraft 26.3 with Iris + Sodium. Other Minecraft versions and OptiFine are unverified. This is a client shader; no server installation or extra PBR texture pack is required.
+## Defaults
 
-## Know the tradeoffs
+- Native resolution; brightness 1.05; sunlight warmth 0.65; color saturation 70% (0.70).
+- Subtle camera motion blur ON with adjustable Motion Blur Smoothness slider (default 1.50);
+  blur radius is capped and held items use a dedicated exclusion mask.
+- Block Selection Outline ON (default Rainbow Outline, switchable to Black Outline).
+- Directional sun/moon shadows ON: 1024 map, 96-block distance, distance-adaptive 4/2/1-tap hardware-PCF,
+  cross-foliage upward normals & self-shadow acne elimination, and entity shadows off by default.
+- Rich day/night/golden-hour/sunset lighting transitions with subtle warm sky bounce and foliage subsurface scattering.
+- Selective ore emission, 4-tap bloom, held light, an original 16-cube color LUT,
+  soft layered clouds, organic non-repeating water waves/refraction, and sharp edge AA ON.
+- Air fog OFF. Clear-weather distance haze is removed; water/lava/powder-snow
+  absorption and blindness/darkness remain. Rays are localized near the sun (4-step cone-culled).
+- Water refraction, bloom and sunlight shafts use half-resolution
+  buffers. Edge AA shares the final pass and rejects texture-only edges.
+- No voxel lighting, screen-space reflection tracing, temporal AA/history,
+  external PBR textures, runtime downloads, or additional mod dependency.
 
-Water reflects sky/clouds rather than buildings. Ore emission does not propagate colored light to nearby blocks. Clouds use layered heightfields rather than volumetric ray marching, and sunlight shafts use the shadow map rather than global ray tracing. Motion blur follows the camera, not independent moving objects.
+## Performance controls
 
-Distant Horizons, Voxy, VR, Vulkan renderers, macOS, and modded dimensions are not certified. Bedrock Edition is not supported.
+Balanced is the default visual upgrade. Speed removes shadow rendering, rays,
+bloom, water refraction and procedural clouds while retaining richer directional
+lighting, ore emission, the LUT and edge AA. Individual effects can also be
+disabled in Shader Pack Settings. Shadow resolution and distance are deliberately
+limited; higher settings spend more GPU time. Features cannot guarantee the same
+FPS on every machine or make CPU simulation faster.
 
-## Build from this source
+## Experimental Boost
 
-The repository contains the complete packaged shader sources and bundled textures. To make a development pack, create a ZIP with `shaders/` and `LICENSE` at its root, then place that ZIP in `shaderpacks`. Alternatively, use a development folder containing those same root entries.
+Shader Options → Performance → Render Mode offers 85% and 75% world rendering.
+The shader draws into a smaller region and spatially reconstructs at display
+resolution, with restrained sharpening. Game UI stays at display resolution.
+Native remains the default. Boost can look softer, especially in foliage and
+thin geometry; it is not temporal super resolution and does not accelerate CPU
+simulation or chunk generation. FPS gains are hardware/workload dependent and
+are not promised.
 
-The original build tools and external verification reports mentioned in the archived pack README were not included in the supplied release ZIP. No shader compilation or in-game benchmark has been performed as part of this repository setup. File integrity has been checked against the supplied archive.
+## Test the beta
 
-## Help improve XON
+Compare the same position, resolution, render distance, weather, and camera
+movement with shaders disabled, XON Native, and optionally XON Boost. Check a
+daytime landscape, white blocks, indoors with a torch, sunset, night, an ocean,
+underwater, rain, the Nether, and the End. Rotate the camera to check subtle blur
+and confirm held items and crosshair remain clear. Do not change time/weather
+on a multiplayer server just for this test.
 
-Found a problem or have a focused improvement? [Open an issue](https://github.com/Danonymos/XON/issues/new/choose) or read [CONTRIBUTING.md](CONTRIBUTING.md) before preparing a pull request. Include your setup and reproducible steps; performance reports should compare the same scene and settings.
+## Known beta limits
 
-## License
+Ore glow is emissive surface shading plus a small halo, rather than colored
+light propagation into neighboring blocks. Vanilla block light remains smooth
+and warm. Sun rays sample the shadow map; this is not global ray tracing.
 
-**Source available; all rights reserved except the explicit permissions in [LICENSE](LICENSE).**
+Cast shadows fade before 96 blocks by default. Translucent blocks do not cast
+colored shadows. The compact map can show fine-detail aliasing. Clouds use two
+height layers rather than a volume simulation. Water reflects the sky/clouds
+rather than buildings or off-screen geometry; the half-resolution refraction
+copy can soften submerged texels. Edge AA handles visible geometric edges but
+cannot recover unseen subpixel detail or provide temporal stability like TAA.
+No independent moving-object blur. Unknown modded
+dimensions use the Overworld fallback. Distant Horizons, Voxy, VR, Vulkan,
+Bedrock, OptiFine, macOS, and older Minecraft versions are not certified.
 
-Personal, non-commercial Minecraft gameplay and normal shader-setting adjustments are free. A narrow contribution exception permits GitHub forks and code changes solely to submit improvements to this official project. Standalone redistribution, competing packs, ports, asset/code reuse, and commercial use require prior written permission. Public source access is not an open-source license.
+Check `VERIFICATION.md` in the source folder for the checks actually performed.
+A successful driver compile does not by itself prove an Iris/game load or an
+FPS improvement. Send the XON-specific error from your instance's
+`logs/latest.log` if loading fails.
 
-Screenshots show a customized Minecraft world. Builds and unrelated resource-pack/model assets shown are not included in XON.
+## Source and build
+
+All shader source in this pack was authored for XON. The four supplied shader
+archives were used as study references; none of their code or textures is
+included. No additional runtime dependency is required beyond the shader loader.
+
+Run `python tools/build.py` from this source folder to generate the thin program
+wrappers and produce the ZIP one directory above. Developer checks and reports
+are excluded from the runtime pack.

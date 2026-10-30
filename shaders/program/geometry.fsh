@@ -14,6 +14,7 @@ uniform sampler2D colortex7;
 #endif
 
 in vec2 xonTexCoord;
+in vec4 xonAtlasBounds;
 in vec2 xonLightLevels;
 in vec4 xonVertexColor;
 in vec3 xonViewPosition;
@@ -26,6 +27,89 @@ layout(location = 0) out vec4 xonScene;
 layout(location = 1) out float xonHandMask;
 #endif
 
+#if defined XON_TERRAIN || defined XON_WATER
+vec2 xonPortalHash(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.xx + p3.yz) * p3.zy);
+}
+
+// Smooth borderless 2x2 Voronoi light field (0.0 = dark shadow pocket, 1.0 = bright highlight/exposure pocket) with zero cell web lines.
+float xonPortalLightField(vec2 x, float time) {
+    vec2 n = floor(x);
+    vec2 f = fract(x);
+    vec2 start = step(vec2(0.5), f) - 1.0;
+    float d1 = 8.0;
+    for (int j = 0; j < 2; ++j) {
+        for (int i = 0; i < 2; ++i) {
+            vec2 g = start + vec2(float(i), float(j));
+            vec2 rnd = xonPortalHash(n + g);
+            vec2 anim = abs(fract(rnd + time * (0.14 + 0.10 * rnd.yx)) * 2.0 - 1.0);
+            anim = anim * anim * (3.0 - 2.0 * anim);
+            vec2 d = g + 0.14 + 0.72 * anim - f;
+            d1 = min(d1, dot(d, d));
+        }
+    }
+    return 1.0 - smoothstep(0.04, 0.78, sqrt(max(d1, 0.0001)));
+}
+#endif
+
+vec4 xonSampleAnisotropic(vec2 uv) {
+    vec4 base = texture(gtexture, uv);
+#if XON_ANISOTROPIC > 0 && (defined XON_TERRAIN || defined XON_WATER) && !defined XON_HAND
+    if (base.a < 0.99 || abs(xonMaterial - 10004.0) < 0.5) return base;
+    float viewDistSq = dot(xonViewPosition, xonViewPosition);
+    if (viewDistSq < 4.0 || viewDistSq > 1444.0) return base;
+    vec3 surfNormal = xonSafeNormalize(xonWorldNormal);
+    if (abs(surfNormal.y) < 0.72) return base;
+    vec3 viewDir = xonSafeNormalize(xonPlayerPosition);
+    float NoV = abs(dot(viewDir, surfNormal));
+    // Target flat floors/ceilings viewed at shallow angles within 38m; distant floors are handled by 0-overdraw FXAA/SMAA in final.fsh.
+    float anisoStrength = (1.0 - smoothstep(0.08, 0.76, NoV))
+                        * smoothstep(4.0, 25.0, viewDistSq)
+                        * (1.0 - smoothstep(900.0, 1444.0, viewDistSq));
+    if (anisoStrength <= 0.01) return base;
+    vec2 du = dFdx(uv);
+    vec2 dv = dFdy(uv);
+    float lenU = dot(du, du);
+    float lenV = dot(dv, dv);
+    if (max(lenU, lenV) < min(lenU, lenV) * 1.75) return base;
+    vec2 major = (lenV >= lenU ? dv : du) * 0.46;
+    vec2 minor = (lenV >= lenU ? du : dv) * 0.34;
+    bool hasBounds = xonAtlasBounds.z > 0.00001 && xonAtlasBounds.w > 0.00001;
+    vec2 minBound = hasBounds ? (xonAtlasBounds.xy - xonAtlasBounds.zw * 0.985) : (uv - abs(major) * 2.0);
+    vec2 maxBound = hasBounds ? (xonAtlasBounds.xy + xonAtlasBounds.zw * 0.985) : (uv + abs(major) * 2.0);
+    vec3 accum = base.rgb;
+    float weight = 1.0;
+    vec4 s1 = texture(gtexture, clamp(uv + major * 0.45, minBound, maxBound));
+    vec4 s2 = texture(gtexture, clamp(uv - major * 0.45, minBound, maxBound));
+    if (s1.a >= 0.99 && s2.a >= 0.99) {
+        accum += s1.rgb + s2.rgb;
+        weight += 2.0;
+    }
+#if XON_ANISOTROPIC >= 4
+    vec4 s3 = texture(gtexture, clamp(uv + major * 0.95, minBound, maxBound));
+    vec4 s4 = texture(gtexture, clamp(uv - major * 0.95, minBound, maxBound));
+    if (s3.a >= 0.99 && s4.a >= 0.99) {
+        accum += (s3.rgb + s4.rgb) * 0.85;
+        weight += 1.7;
+    }
+#endif
+#if XON_ANISOTROPIC >= 6
+    vec4 s5 = texture(gtexture, clamp(uv + minor * 0.75, minBound, maxBound));
+    vec4 s6 = texture(gtexture, clamp(uv - minor * 0.75, minBound, maxBound));
+    if (s5.a >= 0.99 && s6.a >= 0.99) {
+        accum += (s5.rgb + s6.rgb) * 0.65;
+        weight += 1.3;
+    }
+#endif
+    float tapStrength = XON_ANISOTROPIC == 2 ? 0.82 : (XON_ANISOTROPIC == 4 ? 0.90 : 0.96);
+    return vec4(mix(base.rgb, accum / weight, anisoStrength * tapStrength), base.a);
+#else
+    return base;
+#endif
+}
+
 void main() {
 #if XON_RENDER_MODE > 0
     if (any(greaterThanEqual(gl_FragCoord.xy, vec2(viewWidth, viewHeight) * XON_RENDER_SCALE))) discard;
@@ -36,9 +120,20 @@ void main() {
     bool isSelectionOutline = max(xonVertexColor.r, max(xonVertexColor.g, xonVertexColor.b)) < 0.15;
     if (isSelectionOutline) {
 #if XON_BLOCK_OUTLINE == 1
-        float phase = (worldPos.x + worldPos.y + worldPos.z) * 0.65 - frameTimeCounter * 1.35;
-        vec3 rainbow = 0.5 + 0.5 * cos(6.2831853 * (phase + vec3(0.0, 0.3333, 0.6667)));
-        vec3 lineColor = xonToLinear(mix(vec3(1.0), rainbow, 0.88)) * 2.1;
+        float phase = fract((worldPos.x + worldPos.y + worldPos.z) * 0.65 - frameTimeCounter * 0.675) * 8.0;
+        const vec3 colors[8] = vec3[8](
+            vec3(1.00, 0.16, 0.24), vec3(1.00, 0.50, 0.06),
+            vec3(1.00, 0.85, 0.14), vec3(0.16, 1.00, 0.44),
+            vec3(0.08, 0.86, 1.00), vec3(0.16, 0.32, 1.00),
+            vec3(0.62, 0.18, 1.00), vec3(1.00, 0.16, 0.68));
+        int stop = int(floor(phase));
+        float blend = fract(phase);
+        blend = blend * blend * (3.0 - 2.0 * blend);
+        vec3 rainbow = mix(colors[stop], colors[(stop + 1) % 8], blend);
+        vec3 lineColor = xonToLinear(mix(vec3(1.0), rainbow, 0.88));
+        // Equalize perceived brightness to tame flashing as yellow rotates into blue.
+        lineColor *= 0.55 / max(xonLuminance(lineColor), 0.08);
+        lineColor /= max(1.0, max(lineColor.r, max(lineColor.g, lineColor.b)) / 1.6);
         xonScene = vec4(lineColor, 0.95);
 #else
         xonScene = vec4(vec3(0.002), 0.88);
@@ -52,7 +147,7 @@ void main() {
     vec4 texel = vec4(1.0);
     vec4 surface = xonVertexColor;
 #else
-    vec4 texel = texture(gtexture, xonTexCoord);
+    vec4 texel = xonSampleAnisotropic(xonTexCoord);
     vec4 surface = vec4(texel.rgb * xonVertexColor.rgb, texel.a);
 #endif
 #ifndef XON_TERRAIN
@@ -75,10 +170,13 @@ void main() {
     float sunVisibility = 1.0;
     bool composedWater = false;
 #ifdef XON_TERRAIN
+    float rawAO = xonVertexColor.a < 0.05 ? 1.0 : clamp(xonVertexColor.a, 0.28, 1.0);
     if (emission < 0.5) {
-        float rawAO = xonVertexColor.a < 0.05 ? 1.0 : clamp(xonVertexColor.a, 0.20, 1.0);
-        float aoCurve = isCrossPlant ? mix(0.92, 1.0, rawAO) : pow(rawAO, 1.28 * XON_AO_STRENGTH);
-        color *= clamp(aoCurve, 0.20, 1.0);
+        // Architectural cavity shading: recessed castle blocks take cool shadow depth while flat/lit blocks never overexpose.
+        float aoCurve = isCrossPlant ? mix(0.92, 1.0, rawAO) : pow(rawAO, 1.18 * XON_AO_STRENGTH);
+        float cavity = xonSaturate((0.90 - rawAO) * 1.45) * (1.0 - float(isCrossPlant));
+        vec3 aoTint = mix(vec3(1.0), vec3(0.86, 0.92, 1.04), cavity);
+        color *= clamp(aoCurve, 0.36, 1.0) * aoTint;
     }
 #endif
 
@@ -91,7 +189,34 @@ void main() {
     color *= cloudTint;
 #endif
 #elif !defined XON_UNLIT && !defined XON_BASIC
-    color = xonLighting(color, normal, xonViewPosition, xonPlayerPosition, xonLightLevels, emission, foliage, sunVisibility);
+    // These materials replace surface lighting entirely below.
+    bool independentMaterial = false;
+#if defined XON_TERRAIN || defined XON_WATER
+    independentMaterial = isLava || abs(xonMaterial - 10021.0) < 0.5 || abs(xonMaterial - 10022.0) < 0.5;
+#endif
+#if defined XON_WATER && defined XON_REFRACTION && !defined XON_HAND
+    independentMaterial = independentMaterial || abs(xonMaterial - 10001.0) < 0.5;
+#endif
+    if (!independentMaterial) {
+        color = xonLighting(color, normal, xonViewPosition, xonPlayerPosition, xonLightLevels, emission, foliage, sunVisibility);
+#ifdef XON_TERRAIN
+        if (emission < 0.5 && abs(xonMaterial - 10019.0) > 0.5 && !isCrossPlant) {
+            float viewDistSq = dot(xonViewPosition, xonViewPosition);
+            if (viewDistSq < 625.0) {
+                // Zero-mean derivative micro-bevel relief within 25m so light plays across castle stone bricks without distant overdraw cost.
+                float closeFade = 1.0 - smoothstep(100.0, 625.0, viewDistSq);
+                float texLuma = dot(texel.rgb, vec3(0.30, 0.59, 0.11));
+                vec2 texGrad = vec2(dFdx(texLuma), dFdy(texLuma));
+                vec3 sunWorld = xonSunDirection();
+                vec3 keyWorld = xonSafeNormalize(vec3(sunWorld.x, max(abs(sunWorld.y), 0.35), sunWorld.z));
+                vec2 lightScreen = (mat3(gbufferModelView) * keyWorld).xy;
+                float bevel = clamp(dot(texGrad, lightScreen) * 2.4, -0.14, 0.14) * closeFade * (0.30 + 0.70 * sunVisibility);
+                float wallRelief = (rawAO - 0.85) * 0.22 * closeFade * sunVisibility * (1.0 - abs(normal.y) * 0.65);
+                color *= 1.0 + bevel + wallRelief;
+            }
+        }
+#endif
+    }
 #endif
 
 #if defined XON_TERRAIN || defined XON_WATER
@@ -116,15 +241,47 @@ void main() {
         color = mix(mix(darkCrust, moltenOrange, smoothstep(0.0, 0.58, heat)),
                     brightCore, smoothstep(0.55, 1.0, heat));
     } else if (abs(xonMaterial - 10019.0) < 0.5) {
-        // Amethyst & purple crystals/portals: transform pale whitish crystal tips into rich royal amethyst purple and prevent white washout.
+        // Amethyst & crystal clusters: preserve exact vanilla pale lilac-white tips and lavender base without orange torch tint or solid purple override.
         float crystalGlow = xonOreEmission(xonMaterial, texel.rgb);
         vec3 baseLinear = clamp(xonToLinear(texel.rgb), 0.001, 1.0);
-        float luma = dot(baseLinear, vec3(0.2126, 0.7152, 0.0722));
-        vec3 royalAmethyst = vec3(0.56, 0.16, 0.92) * (0.35 + 0.75 * luma);
-        vec3 tintedCrystal = mix(baseLinear * vec3(0.85, 0.36, 1.15), royalAmethyst, smoothstep(0.35, 0.85, baseLinear.g));
-        float lightScale = min(max(max(color.r, color.g), color.b) / max(luma, 0.08), 1.15);
-        color = tintedCrystal * lightScale + royalAmethyst * crystalGlow * 0.55;
-        color = min(color, vec3(0.78, 0.34, 1.02));
+        float baseLuma = max(dot(baseLinear, vec3(0.2126, 0.7152, 0.0722)), 0.05);
+        float litIntensity = clamp(dot(color, vec3(0.2126, 0.7152, 0.0722)) / baseLuma, 0.72, 1.12);
+        color = baseLinear * (litIntensity + crystalGlow * 0.28);
+    } else if (abs(xonMaterial - 10021.0) < 0.5) {
+        // Nether Portal (block.10021): keep 100% vanilla portal texture/swirl, while driving its lighting, contrast, and exposure with a smooth 3D Voronoi light field.
+        vec3 worldPos = xonPlayerPosition + cameraPosition;
+        vec3 viewDir = xonSafeNormalize(xonPlayerPosition);
+        float NoV = max(abs(dot(viewDir, normal)), 0.28);
+        vec3 p0 = worldPos;
+        vec3 p1 = worldPos + viewDir * (0.48 / NoV);
+        vec2 uv0 = abs(normal.x) > 0.5 ? p0.zy : (abs(normal.z) > 0.5 ? p0.xy : p0.xz);
+        vec2 uv1 = abs(normal.x) > 0.5 ? p1.zy : (abs(normal.z) > 0.5 ? p1.xy : p1.xz);
+        float pTime = frameTimeCounter * 0.36;
+        vec2 warp = (texture(noisetex, uv0 * 0.035 + vec2(pTime * 0.02, -pTime * 0.015)).rg - 0.5) * 0.65;
+        vec2 rotUV1 = vec2(uv1.x * 0.866 - uv1.y * 0.500, uv1.x * 0.500 + uv1.y * 0.866);
+        // Smooth borderless Voronoi lighting pools (~2.5-block radius, zero cell web lines).
+        float vFront = xonPortalLightField(uv0 * 0.42 + warp + vec2(0.0, -pTime * 0.18), pTime);
+        float vDeep  = xonPortalLightField(rotUV1 * 0.58 - warp * 0.6 + vec2(pTime * 0.14, pTime * 0.11), pTime * 0.85);
+        float lightWave = clamp(vFront * 0.58 + vDeep * 0.52, 0.0, 1.0);
+        float shadowZone = 1.0 - smoothstep(0.10, 0.48, lightWave);
+        float highlightZone = smoothstep(0.45, 0.92, lightWave);
+        // Pure vanilla portal texture: modulate ONLY its brightness, contrast, and highlight exposure.
+        vec3 vanillaLinear = max(xonToLinear(texel.rgb), vec3(0.001));
+        vec3 contrastedVanilla = pow(vanillaLinear, vec3(mix(1.38, 0.86, lightWave)));
+        float exposure = mix(0.28, 2.05, lightWave * lightWave) * (0.82 + 0.22 * NoV);
+        vec3 highlightBoost = pow(vanillaLinear, vec3(1.55)) * (highlightZone * highlightZone * 1.75);
+        vec3 deepShadowTint = mix(vec3(1.0), vec3(0.72, 0.42, 1.08), shadowZone * 0.65);
+        color = contrastedVanilla * exposure * deepShadowTint + highlightBoost;
+    } else if (abs(xonMaterial - 10022.0) < 0.5) {
+        // Froglights (Ochre, Verdant, Pearlescent): preserve aged colored borders and soft pastel centers without white HDR/bloom blowout.
+        vec3 srgb = clamp(texel.rgb, 0.001, 1.0);
+        float texLuma = dot(srgb, vec3(0.299, 0.587, 0.114));
+        float borderMask = 1.0 - smoothstep(0.68, 0.94, texLuma);
+        vec3 shaped = pow(srgb, vec3(mix(2.45, 3.15, borderMask)));
+        float shapedLuma = dot(shaped, vec3(0.2126, 0.7152, 0.0722));
+        vec3 richFroglight = mix(vec3(shapedLuma), shaped, 1.0 + 0.38 * borderMask);
+        float faceShade = 0.88 + 0.12 * abs(normal.y);
+        color = max(richFroglight, vec3(0.01)) * (0.76 * faceShade);
     } else if (abs(xonMaterial - 10020.0) < 0.5) {
         float accentGlow = xonOreEmission(xonMaterial, texel.rgb);
         vec3 accentColor = pow(clamp(xonToLinear(texel.rgb), 0.001, 1.0), vec3(1.30));
@@ -192,10 +349,10 @@ void main() {
             vec2 capillarySlope = (n3.xy * 0.038 + vec2(n3.z - n3.y, n3.x - n3.z) * 0.024) * rippleFade;
 
             vec2 organicSlope = (swellSlope + waveletSlope + capillarySlope)
-                              * distanceFade * grazingFilter * (1.0 + rainStrength * 0.45) * abs(normal.y);
+                              * distanceFade * grazingFilter * (1.0 + rainStrength * 0.45) * abs(normal.y) * XON_WAVE_HEIGHT;
             waterNormal = xonSafeNormalize(normal + vec3(organicSlope.x, 0.0, organicSlope.y));
             crestHeight = xonSaturate((n1.z * 0.45 + n2.x * 0.40 + n3.z * 0.25 * rippleFade) * 1.45 + 0.18)
-                        * distanceFade * abs(normal.y);
+                        * distanceFade * abs(normal.y) * XON_WAVE_HEIGHT;
         }
 #endif
         float facing = xonSaturate(abs(dot(-worldView, waterNormal)));
@@ -235,19 +392,34 @@ void main() {
         if (xonViewDepth(refractedDepth) < abs(xonViewPosition.z) + 0.03) refractedUV = displayUV;
         vec3 absorbRate = isEyeInWater == 1 ? vec3(0.045, 0.016, 0.010) : vec3(0.125, 0.038, 0.024);
         vec3 transmission = exp(-absorbRate * waterDepth);
+        // Thin indoor sheets need a visible surface even without sky reflections.
+        float shallowFilm = isEyeInWater == 0 ? 1.0 - smoothstep(0.0, 1.5, waterDepth) : 0.0;
+        transmission *= vec3(1.0) - vec3(0.34, 0.16, 0.025) * shallowFilm;
         color = texture(colortex7, refractedUV).rgb * transmission + waterTint * (1.0 - transmission);
         if (isEyeInWater != 1) color += crestGlow * 0.55;
         composedWater = true;
 #endif
 #endif
-        vec3 reflDir = reflect(worldView, waterNormal);
-        reflDir.y = max(reflDir.y, abs(reflDir.y) * 0.35 + 0.022);
-        vec3 reflection = xonCloudSky(xonSafeNormalize(reflDir), false);
-        reflection *= smoothstep(0.20, 0.92, xonLightLevels.y);
-        reflection = xonFog(reflection, xonViewPosition, xonLightLevels.y);
-        if (isEyeInWater != 1) color = mix(color, reflection, min(fresnel, 0.90));
+        if (isEyeInWater != 1) {
+            vec3 reflDir = reflect(worldView, waterNormal);
+            reflDir.y = max(reflDir.y, abs(reflDir.y) * 0.35 + 0.022);
+            vec3 reflection = xonCloudSky(xonSafeNormalize(reflDir), false);
+            reflection *= smoothstep(0.20, 0.92, xonLightLevels.y);
+            color = mix(color, reflection, min(fresnel, 0.90));
+        }
 #if XON_DIMENSION == 0
         if (isEyeInWater != 1) {
+#if defined XON_REFRACTION && defined XON_SHADOWS && !defined XON_HAND
+            // Refractive water replaces diffuse lighting; only its glint needs the receiver shadow.
+            vec3 keyDirection = sunDir * (sunDir.y >= 0.0 ? 1.0 : -1.0);
+            float nDotL = dot(normal, keyDirection);
+            float keyFacing = max(nDotL, 0.0);
+            float grazing = xonSquare(clamp(nDotL * 0.45 + 0.30, 0.0, 1.0)) * (1.0 - keyFacing) * 0.16;
+            float openSky = smoothstep(0.55, 0.97, xonLightLevels.y);
+            if (keyFacing + grazing > 0.001 && openSky > 0.001) {
+                sunVisibility = xonShadowVisibility(xonPlayerPosition, normal, keyFacing, xonLightLevels.y, 0.0);
+            }
+#endif
             vec3 lightDir = sunDir.y >= -0.05 ? sunDir : -sunDir;
             vec3 halfVector = xonSafeNormalize(lightDir - worldView);
             float nh = max(dot(waterNormal, halfVector), 0.0);
@@ -259,7 +431,7 @@ void main() {
             // Dual-lobe water surface glitter: crisp sun/moon diamond glints + warm/silver shimmer path.
             float sunGlint = (nh64 * nh64 * nh64 * 3.4 + nh16 * nh8 * 0.42 + nh8 * 0.08 * crestHeight)
                            * (1.0 - rainStrength * 0.85) * smoothstep(0.50, 0.95, xonLightLevels.y);
-            vec3 glintColor = mix(xonNightColor() * 2.6, xonSunlightColor(sunDir.y) * sunVisibility, day);
+            vec3 glintColor = mix(xonNightColor() * 2.6, xonSunlightColor(sunDir) * sunVisibility, day);
             color += glintColor * sunGlint;
         }
 #endif
@@ -271,7 +443,7 @@ void main() {
 #ifdef XON_UNLIT
     color *= exp(-length(xonViewPosition) * max(blindness, darknessFactor) * 0.16);
 #else
-    if (!composedWater) color = xonFog(color, xonViewPosition, xonLightLevels.y);
+    if (!composedWater || isEyeInWater == 0) color = xonFog(color, xonViewPosition, xonLightLevels.y);
 #endif
 #endif
     xonScene = vec4(max(color, vec3(0.0)), surface.a);

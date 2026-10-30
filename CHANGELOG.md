@@ -1,3 +1,45 @@
+# XON 1.0.3.3 - lichen and shallow-water fixes
+
+Includes stationary glow lichen and stronger blue tint for thin water sheets. Deep water and underwater clarity remain unchanged.
+
+# XON 1.0.3.2 - glow lichen fix
+
+Glow lichen now uses a stationary material rather than the waving cross-plant group. This prevents wind moving its thin faces into the supporting block and restores its face normals. Other plants retain wind. Includes the shallow-water fix.
+
+# 1.0.3.1
+
+- Keep thin refractive water visible indoors using a restrained blue-green surface tint, smoothly fading out by 1.5 blocks of view-depth thickness.
+- Preserve deep-water shading, underwater clarity, lighting, rainbow outline and camera defaults from 1.0.3. No additional texture samples or render passes.
+
+# 1.0.3
+
+- Refine light-oriented diffuse shading and warm simulated ground bounce; replace camera-dependent matte rim shine with light-dependent form.
+- Add subtle luminance-balanced blue shade tint, applied before warm local lights. Modestly lift readable night/cave fill.
+- Reshape block-light falloff and soften orange highlights with a restrained ivory core; no change to light propagation radius.
+- Skip view-vector normalization on non-foliage surfaces after removing their camera-dependent rim term.
+- Set Smooth Camera Motion ON and Motion Blur Smoothness 1.50 by default.
+- Add eight smoothly interpolated outline colors, half-speed rotation, brightness equalization and 25% thicker selection lines. Preserve debug lines.
+- Retain 1.0.2 water/material optimizations, quality budgets, LUT and saturation. Add visual/exposure, nighttime readability and local-light monotonicity checks against 1.0.2.
+
+# 1.0.2
+
+- Preserve the accepted 1.0.1 color LUT, atmosphere palettes, saturation, exposure defaults, light radius, clouds, water waves, AA and motion blur.
+- Skip discarded diffuse lighting and architectural relief work for lava, Nether portals, and froglights. Refractive water evaluates only the receiver shadow needed for glints; non-refractive water retains its diffuse lighting.
+- Skip unused sky evaluation in water/lava/snow fog and unused water reflections when submerged. Simplify horizon-direction normalization with pixel parity checks.
+- Add optional Smooth Shadow Transitions (default OFF; ON in Cinematic), continuously morphing 4/2/1-tap filtering at 20/42 blocks with no extra shadow samples. Off preserves 1.0.1 filtering and avoids its measured extra GPU cost.
+- Replace reversed-edge portal smoothstep with its defined inverse form for portability.
+- Add reproducible 1.0.1/1.0.2 GPU pixel comparisons, timing queries and shadow continuity tests. Expand compilation to ten configurations; correctly override const shader options in the validator.
+
+# 1.0.1
+
+- Add 5-stage Time-of-Day Mood & Vibe system (`xonTimePhases` in `atmosphere.glsl`, `clouds.glsl`, `lighting.glsl`): distinguishes Early Morning / Dawn (pearlescent rose-gold sun, rose-azure horizon, dewy cyan shade), High Noon (crisp cobalt sky, balanced warm-white sun), Warm Afternoon (honey-gold grazing light, deep cobalt-indigo shadows), Evening Sunset / Dusk (copper-amber western glow, royal twilight violet sky/void/undersides), and Night (midnight sapphire sky with silver-blue lunar glow).
+- Add ~20-block-radius moving & gradually morphing 2D Voronoi ground cloud shadow and zenith highlight system (`xonCloudGroundLight`), distance-culled beyond 128 blocks and optimized with a 2x2 nearest-quadrant pure-ALU hash (zero `sin()`/`sqrt()` SFU stalls).
+- Add Photon-style Dark Area & Cave Visibility (`shadowDeficit` + `XON_DARK_LIFT` + `isDarkArea` dark-albedo toe lift) so zero-skylight overhangs, giant tree stems, and caves stay readable without overexposing bright/sunlit surfaces.
+- Add always-on cylindrical chunk-border horizon fog (`borderFog` in `atmosphere.glsl`) that smoothly blends the outer edge of the player's render distance (`far`) into the directional horizon sky across both terrain and water.
+- Add architectural castle/surface lighting polish: tighter close-range shadow normal bias (`0.048` blocks) with 4-tap rotated orthogonal hardware-PCF within 28 blocks, 6-axis directional face separation, wrapped grazing sunlight, arch upward ground-bounce, and zero-mean screen-space derivative (`dFdx`/`dFdy`) stone brick micro-bevels.
+- Anti-stutter & FPS optimization pass: replace `3x3` transcendental `sin()` Worley/Voronoi loops with `2x2` nearest-quadrant ALU-only hashes, increase `shadowIntervalSize` (`2.0` -> `4.0`) to halve Sodium shadow chunk re-culling spikes, distance-cull cross-plants (`block.10004`) in `shadow.vsh` beyond 44 blocks, discard unlit daytime star quads in `sky.fsh`, and skip cardinal neighbor fetches on sky/hand pixels in `antialiasing.glsl`.
+- Expand Shader Pack Settings with 10 intuitive customization sliders (`XON_CONTRAST`, `XON_SHARPNESS`, `XON_BLOOM_STRENGTH`, `XON_DARK_LIFT`, `XON_BLOCKLIGHT_WARMTH`, `XON_TIME_MOOD`, `XON_CLOUD_DENSITY`, `XON_GROUND_SHADOW_STRENGTH`, `XON_WAVE_HEIGHT`, `XON_END_AURORA`), 4 one-click Profiles (`Speed`, `Balanced`, `Vibrant Fantasy`, `Cinematic Ultra`), and detailed tooltips in `en_US.lang`.
+
 # 1.0.0
 
 - Fix End dimension sky (`world1/gbuffers_skytextured` + `blend.world1/gbuffers_skytextured=off`): replace Minecraft's pixelated `end_sky.png` quad dome with XON's smooth dark purplish-black void, animated cosmic aurora ribbons, and twinkling star specks.

@@ -28,7 +28,8 @@ void main() {
     xonScene = vec4(color, celestial.a);
 #else
     if (renderStage == MC_RENDER_STAGE_SUNSET) discard;
-    vec3 color = xonCloudSky(rayDir, true);
+    if (renderStage == MC_RENDER_STAGE_STARS && max(xonSkyVertexColor.r, max(xonSkyVertexColor.g, xonSkyVertexColor.b)) < 0.01) discard;
+    vec3 color = xonCloudSky(rayDir, renderStage != MC_RENDER_STAGE_STARS);
     if (renderStage == MC_RENDER_STAGE_STARS) {
         float visibility = (1.0 - rainStrength) * (1.0 - xonCloudCover(rayDir));
         color += xonToLinear(xonSkyVertexColor.rgb) * 1.55 * visibility;
