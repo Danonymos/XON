@@ -1,3 +1,54 @@
+# XON Shader 1.0.5 underwater lighting & coherence - verification
+
+30 October 2026. The 1.0.4-water-stability build resolved time-animated noise but
+failed in-game: sunlight shafts from distant buildings were not visible, the
+underwater horizon showed a bright cyan seam, and beams did not match the
+Complementary reference.
+
+## Independent Diagnosis of 1.0.4-water-stability Failure
+
+1. Water-surface ray clipping: in composite.fsh, ray marching clipped rayLength
+   against depthtex0 (post-translucent depth). When swimming 2-5 blocks beneath
+   the surface, any ray pitched even slightly upward hit the overhead water quad
+   at 4-25 blocks, terminating before reaching the building's shadow 30-60 blocks away.
+2. 24-block range cutoff: underwater rays were artificially clamped at 24 blocks.
+   In the player's screenshot, the building and island are 30-65 blocks away,
+   meaning the building never cast a shadow into the underwater sampling volume.
+3. Weak intensity & flat cap: underwater shafts were scaled by 0.006 and capped
+   at 0.085, adding less than 2% sRGB brightness and making shafts invisible.
+4. Glaring horizon sky seam: sky.fsh evaluated xonFog at a constant distance of
+   28 blocks for all directions when underwater, letting 76% of raw daytime sky
+   shine through at the horizon and washing out distant shafts.
+5. Per-step matrix transform: composite.fsh recomputed a full 4x4 matrix multiply
+   inside each ray-marching step.
+
+## 1.0.5 Architecture & Changes
+
+- Translucent look-through: underwater ray marching samples both depthtex0 and
+  depthtex1 via max(depthtex0, depthtex1), allowing rays to look through the
+  overhead water surface to distant structures, islands, and skies.
+- Extended occluder range: underwater ray marching extends to min(shadowDistance * 0.75, 72.0)
+  blocks, capturing building and terrain shadows across the full active shadow distance.
+- Hoisted linear shadow transform: hoisted shadowProjection * shadowModelView out
+  of the loop into linear step vectors (shadowOrigin + shadowStep * distanceAlongRay).
+  12 integration steps now run in ~0.037 ms (faster than 8 steps in 1.0.4 at 0.0435 ms).
+- Snell's window & marine horizon void: in sky.fsh, looking horizontally blends
+  seamlessly into deep marine water fog (distance 192.0), while looking upwards
+  reveals overhead sky through Snell's window with natural water absorption.
+- Near-camera clarity ramp: added near-distance ramp (smoothstep(0.0, 4.5, distanceAlongRay))
+  ensuring water within 4.5 blocks of the camera/hand remains crystal-clear.
+- Coherent directional shafts: phase scattering uses forward + isotropic blending
+  aligned to xonKeyDirection(), with rich marine cyan-blue scattering (vec3(0.20, 0.40, 0.65))
+  capped at 0.20 for clear separation between sunlit water and shaded building volumes.
+
+## Verified Results & Measurements
+
+- 820 OpenGL driver compile/link configurations passed across all 10 presets (validate.py).
+- 84 water cases passed with bit-for-bit parity on shallow water (shallow_water_checks.py).
+- 25 camera translation and rotation frames across occluder pass temporal stability checks.
+- Isolated GPU underwater ray pass: ~0.037-0.050 ms (half-resolution effects pass).
+- Package integrity verified: 194 runtime files in XON-Shader-v1.0.5.zip.
+
 # XON Shader 1.0.4 water-stability correction - verification
 
 30 October 2026. Player screenshots and motion reports showed that the previous

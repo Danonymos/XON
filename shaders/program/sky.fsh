@@ -46,7 +46,15 @@ void main() {
 #endif
     if (isEyeInWater != 0) {
         vec3 viewRay = mat3(gbufferModelView) * rayDir;
-        color = xonFog(color, viewRay * (isEyeInWater == 1 ? 28.0 : max(far, 128.0)), 1.0);
+        if (isEyeInWater == 1) {
+            float upFacing = xonSaturate(rayDir.y);
+            float snellWindow = smoothstep(0.05, 0.65, upFacing);
+            color = mix(vec3(0.0), color * (0.35 + 0.65 * snellWindow), snellWindow);
+            float fogDist = mix(192.0, 32.0, snellWindow);
+            color = xonFog(color, viewRay * fogDist, 0.85);
+        } else {
+            color = xonFog(color, viewRay * max(far, 128.0), 1.0);
+        }
     }
     color *= 1.0 - max(blindness, darknessFactor);
     xonScene = vec4(color, 1.0);

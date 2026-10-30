@@ -66,20 +66,28 @@ float xonShadowVisibility(vec3 playerPosition, vec3 normal, float facing, float 
     return mix(visibility, fallback, rangeFade);
 }
 
-float xonRayVisibility(vec3 playerPosition) {
-    vec3 coordinate = xonShadowCoordinate(playerPosition);
+float xonRayVisibilityClip(vec3 shadowClip) {
+    vec3 coordinate = xonDistortShadow(shadowClip) * 0.5 + 0.5;
     if (any(lessThan(coordinate, vec3(0.005))) || any(greaterThan(coordinate, vec3(0.995)))) return 0.0;
     coordinate.z -= 0.000025;
     return texture(shadowtex0, coordinate);
 }
 
-float xonWaterRayVisibility(vec3 playerPosition) {
-    vec3 coordinate = xonShadowCoordinate(playerPosition);
+float xonWaterRayVisibilityClip(vec3 shadowClip) {
+    vec3 coordinate = xonDistortShadow(shadowClip) * 0.5 + 0.5;
     if (any(lessThan(coordinate, vec3(0.005))) || any(greaterThan(coordinate, vec3(0.995)))) return 0.0;
     coordinate.z -= 0.000025;
     vec2 radius = vec2(1.25, 0.60) / float(shadowMapResolution);
     return 0.5 * (texture(shadowtex0, coordinate + vec3(radius, 0.0))
                 + texture(shadowtex0, coordinate - vec3(radius, 0.0)));
+}
+
+float xonRayVisibility(vec3 playerPosition) {
+    return xonRayVisibilityClip((shadowProjection * (shadowModelView * vec4(playerPosition, 1.0))).xyz);
+}
+
+float xonWaterRayVisibility(vec3 playerPosition) {
+    return xonWaterRayVisibilityClip((shadowProjection * (shadowModelView * vec4(playerPosition, 1.0))).xyz);
 }
 #endif
 #endif

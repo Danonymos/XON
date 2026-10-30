@@ -1,4 +1,4 @@
-# XON Shader - 1.0.4 (water stability fix)
+# XON Shader - 1.0.5
 
 An original performance-first Iris shader pack with warm directional sunlight,
 5-stage time-of-day atmospheric moods (Early Morning, Noon, Warm Afternoon, Evening Sunset, Night),
@@ -6,6 +6,15 @@ real cast shadows, Photon-inspired cool readable dark-area shadow fill, 20-block
 cylindrical chunk-border horizon fog, chiseled castle/surface micro-bevel lighting, waving foliage,
 Voronoi cellular lava, underwater caustics, cosmic End aurora sky, glowing ore & royal purple amethyst veins,
 Contrast-Adaptive Sharpening (CAS), 4-tap sub-pixel edge AA, and smooth camera motion blur.
+
+## What changed in 1.0.5
+
+- Coherent underwater sunlight shafts: resolved ray clipping against the overhead water surface quad by evaluating solid depth through max(depthtex0, depthtex1). Rays now trace through the water volume to distant occluders across the full shadow distance (up to 72 blocks) rather than stopping at 24 blocks.
+- Hoisted shadow transform performance: hoisted shadowProjection * shadowModelView outside the ray marching loop, eliminating per-step 4x4 matrix multiplications. 12 integration steps now execute in ~0.037 ms on the half-resolution effects pass (faster than 8 steps in 1.0.4 at 0.0435 ms).
+- Snell\'s window & seamless underwater horizon: smoothed underwater sky and distant horizon into deep marine water fog in sky.fsh, removing the glaring white/cyan horizon seam while preserving natural overhead sunlight and water surface transmission.
+- Near-camera clarity ramp: added near-distance ramp (smoothstep(0.0, 4.5, distanceAlongRay)) so nearby terrain, kelp, hands, and blocks remain clear and readable without milky fog.
+- Marine blue scattering: balanced forward and isotropic phase scattering aligned to xonKeyDirection() with luminescent blue-cyan shafts (vec3(0.20, 0.40, 0.65)) capped at 0.20, matching the visual target with crisp beam separation and occluded building shadows.
+
 
 ## What changed in 1.0.4
 
@@ -84,7 +93,7 @@ They do not establish an in-game FPS gain. See `VERIFICATION.md` in the source.
 
 1. Keep a working Fabric + Iris + matching Sodium installation. Initial target:
    Minecraft Java 26.3, Iris 1.11.7, Sodium 0.9.2.
-2. Put `XON-Shader-v1.0.4-water-stability.zip` directly in that installation's `shaderpacks`
+2. Put `XON-Shader-v1.0.5.zip` directly in that installation's `shaderpacks`
    folder. Do not extract it and do not place it in `mods` or `resourcepacks`.
 3. Open Video Settings → Shader Packs, select XON, and Apply.
 4. Begin with the default Balanced preset and Native resolution. Select Speed if
@@ -102,7 +111,7 @@ They do not establish an in-game FPS gain. See `VERIFICATION.md` in the source.
 - Selective ore emission, 4-tap bloom, held light, an original 16-cube color LUT,
   soft layered clouds, organic non-repeating water waves/refraction, and sharp edge AA ON.
 - Air fog OFF. Clear-weather distance haze is removed; water/lava/powder-snow
-  absorption and blindness/darkness remain. Rays use 4 outdoor / 8 underwater steps.
+  absorption and blindness/darkness remain. Rays use 4 outdoor / 12 underwater steps.
 - Water refraction, bloom and sunlight shafts use half-resolution
   buffers. Edge AA shares the final pass and rejects texture-only edges.
 - No voxel lighting, screen-space reflection tracing, temporal AA/history,

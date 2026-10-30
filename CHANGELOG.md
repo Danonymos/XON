@@ -1,3 +1,14 @@
+# 1.0.5 - underwater sunlight beams & visual coherence
+
+- Independent diagnosis and resolution of underwater lighting failure in 1.0.4-water-stability:
+  - Translucent water-surface look-through: underwater ray marching now combines `depthtex0` (translucent) and `depthtex1` (solid geometry) via `max(depthtex0, depthtex1)`, preventing the player's view of overhead water surfaces from prematurely clipping rays aimed toward distant buildings, islands, and shores.
+  - Extended shadow-map occlusion range: expanded underwater ray distance from 24 blocks to full building occluder range (`min(shadowDistance * 0.75, 72.0)`), allowing structures 30–65 blocks away to naturally cast and shape sunlight shafts across the water volume.
+  - Linear shadow matrix hoist: hoisted `shadowProjection * shadowModelView` out of the integration loop, replacing repeated 4x4 matrix multiplications with linear ray-step increments (`shadowOrigin + shadowStep * distanceAlongRay`) followed by non-linear shadow distortion. This enables 12 integration steps at ~0.037 ms (faster than 8 steps in 1.0.4 at 0.0435 ms).
+  - Snell's window & underwater horizon fog: in `sky.fsh`, smoothed underwater sky and distant horizon into deep marine water fog (`smoothstep(0.05, 0.65, rayDir.y)`), eliminating the glaring white/cyan horizon seam while preserving realistic overhead sky transmission.
+  - Near-camera clarity ramp: added near-distance ramp (`smoothstep(0.0, 4.5, distanceAlongRay)`) so water immediately adjacent to the player's face, hand, and nearby kelp/terrain remains crystal-clear without milky haze.
+  - Coherent directional sunlight shafts: balanced forward and isotropic phase scattering aligned to `xonKeyDirection()`, with distinct marine cyan-blue shaft scattering (`vec3(0.20, 0.40, 0.65)`) capped at 0.20, matching the reference Complementary underwater beam separation and dark occluded building shadows.
+- Bump version to 1.0.5. Package as `XON-Shader-v1.0.5.zip` with source archive `XON-Shader-v1.0.5-source.zip`.
+
 # 1.0.4 - underwater stability correction
 
 - Remove the animated surface-noise field that produced broad white smoke underwater. Beam structure now comes from actual sunlight and shadow-map occluders, using the same sun direction as the shadow map.

@@ -5,6 +5,7 @@
 
 uniform sampler2D colortex0;
 uniform sampler2D depthtex0;
+uniform sampler2D depthtex1;
 in vec2 xonUV;
 layout(location = 0) out vec4 xonEffects;
 
@@ -41,46 +42,58 @@ void main() {
     if (exposure > 0.001 && daylight > 0.001 && XON_RAY_STRENGTH > 0.0 && (isEyeInWater == 0 || underwater)) {
         vec4 view = gbufferProjectionInverse * vec4(xonUV * 2.0 - 1.0, 1.0, 1.0);
         vec3 playerRay = mat3(gbufferModelViewInverse) * xonSafeNormalize(view.xyz);
-        vec3 sun = xonSunDirection();
+        vec3 sun = underwater ? xonKeyDirection() : xonSunDirection();
         if (underwater) {
-            // Use the same sun direction as the occluder shadow map.
-            daylight *= smoothstep(0.0, 0.16, sun.y);
+            // Use the same key light direction as the occluder shadow map.
+            daylight *= smoothstep(0.0, 0.14, sun.y);
         }
         float sunDot = dot(playerRay, sun);
         if (underwater || sunDot > 0.55) {
-            sunDot = max(sunDot, 0.0);
-            float s2 = sunDot * sunDot;
+            float posDot = max(sunDot, 0.0);
+            float s2 = posDot * posDot;
             float s4 = s2 * s2;
             float s8 = s4 * s4;
-            float phase = underwater ? (0.25 + 0.75 * s4)
-                                     : (s8 * 0.08 + s8 * s8 * s8 * 0.92) * smoothstep(0.55, 0.75, sunDot);
-            float depth = texture(depthtex0, xonSourceUV(xonUV)).r;
+            float sunAlign = xonSaturate(sunDot * 0.5 + 0.5);
+            // Linear forward-isotropic phase without radial powers, ensuring diagonal beams follow shadow occluders rather than forming circular halos.
+            float phase = underwater ? (0.65 + 0.35 * sunAlign)
+                                     : (s8 * 0.08 + s8 * s8 * s8 * 0.92) * smoothstep(0.55, 0.75, posDot);
+            vec2 srcUV = xonSourceUV(xonUV);
+            float depth = texture(depthtex0, srcUV).r;
+            if (underwater) {
+                float solidDepth = texture(depthtex1, srcUV).r;
+                if (solidDepth > depth) depth = solidDepth;
+            }
             vec4 depthView = gbufferProjectionInverse * vec4(xonUV * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
             depthView.xyz /= max(abs(depthView.w), 0.000001);
-            float rayLength = min(length(depthView.xyz), shadowDistance * 0.76);
-            if (underwater) rayLength = min(rayLength, 24.0);
+            float maxRayDist = underwater ? min(shadowDistance * 0.75, 72.0) : shadowDistance * 0.76;
+            float rayLength = min(length(depthView.xyz), maxRayDist);
             float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-            int sampleCount = underwater ? 8 : 4;
-            float stepLength = underwater ? 3.0 : rayLength * 0.25;
+            int sampleCount = underwater ? 12 : 4;
+            float stepLength = underwater ? (maxRayDist / 12.0) : rayLength * 0.25;
             vec3 rayOrigin = gbufferModelViewInverse[3].xyz;
-            for (int stepIndex = 0; stepIndex < 8; ++stepIndex) {
+            mat4 shadowMVP = shadowProjection * shadowModelView;
+            vec3 shadowOrigin = (shadowMVP * vec4(rayOrigin, 1.0)).xyz;
+            vec3 shadowStep = mat3(shadowMVP) * playerRay;
+            for (int stepIndex = 0; stepIndex < 12; ++stepIndex) {
                 if (stepIndex >= sampleCount) break;
                 float distanceAlongRay = (float(stepIndex) + 0.35 + jitter * 0.65) * stepLength;
                 float weight = 1.0;
                 if (underwater) {
-                    // A changing foreground depth cannot rescale the entire sampling grid.
                     float start = float(stepIndex) * stepLength;
-                    float end = min(float(stepIndex + 1) * stepLength, rayLength);
+                    float end = min(start + stepLength, rayLength);
                     if (end <= start) break;
                     distanceAlongRay = (start + end) * 0.5;
-                    weight = end - start;
+                    float nearRamp = smoothstep(0.0, 4.5, distanceAlongRay);
+                    weight = (end - start) * nearRamp * exp(-distanceAlongRay * 0.020);
+                } else {
+                    weight = exp(-distanceAlongRay * 0.018);
                 }
-                vec3 samplePosition = rayOrigin + playerRay * distanceAlongRay;
-                float visibility = underwater ? xonWaterRayVisibility(samplePosition) : xonRayVisibility(samplePosition);
-                shafts += visibility * weight * exp(-distanceAlongRay * (underwater ? 0.08 : 0.018));
+                vec3 shadowClip = shadowOrigin + shadowStep * distanceAlongRay;
+                float visibility = underwater ? xonWaterRayVisibilityClip(shadowClip) : xonRayVisibilityClip(shadowClip);
+                shafts += visibility * weight;
             }
-            shafts *= (underwater ? 0.006 : stepLength * 0.007) * phase * exposure * daylight * XON_RAY_STRENGTH;
-            shafts = min(shafts, underwater ? 0.085 : 0.20);
+            shafts *= (underwater ? 0.0052 : stepLength * 0.007) * phase * exposure * daylight * XON_RAY_STRENGTH;
+            shafts = min(shafts, 0.20);
         }
     }
 #endif
