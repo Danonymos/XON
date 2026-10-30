@@ -8,6 +8,26 @@ Use the issue templates. Include Minecraft, Iris and Sodium versions; GPU and dr
 
 For performance issues, use the same position, weather, time, resolution, and render distance. Compare shaders off, Balanced + Native, and Speed + Native after warm-up. Include average FPS and frame-time information if measured. Label estimates as estimates.
 
+## Build and check locally
+
+Packaging requires Python 3.10+ and its standard library:
+
+```sh
+python tools/build.py
+python tools/release_checks.py
+```
+
+The ZIP appears one directory above the checkout. GitHub Actions runs these pack,
+entrypoint, include, Python syntax and documentation checks. It does not run Minecraft
+or certify GPU performance. See [the engineering notes](docs/ENGINEERING.md).
+
+The local driver/GPU suites require Windows, a compatible OpenGL driver, NumPy and
+Pillow. Comparison suites also need preserved historical packs in the checkout's
+parent directory. Use the relevant scripts in `tools/`; report precisely which
+checks were available. Keep generated reports, captures and local instance settings
+out of commits. Shader installation parity can be checked with
+`python tools/package_checks.py --installed-dir "path/to/shaderpacks"`.
+
 ## Prepare a pull request
 
 1. Discuss larger visual or architectural changes in an issue first.

@@ -11,11 +11,13 @@ from build import VERSION
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run(installed_name=None):
+def run(installed_name=None, installed_dir=None):
     package = ROOT.parent / f'XON-Shader-v{VERSION}.zip'
     runtime = sorted(path for path in (ROOT / 'shaders').rglob('*') if path.is_file())
     expected = {path.relative_to(ROOT).as_posix(): path.read_bytes() for path in runtime}
-    expected.update({name: (ROOT / name).read_bytes() for name in ['README.md', 'CHANGELOG.md']})
+    expected.update({'README.md': (ROOT / 'docs/PACK-README.md').read_bytes(),
+                     'CHANGELOG.md': (ROOT / 'CHANGELOG.md').read_bytes(),
+                     'LICENSE': (ROOT / 'LICENSE').read_bytes()})
     with zipfile.ZipFile(package) as archive:
         if archive.testzip() is not None or set(archive.namelist()) != set(expected):
             raise AssertionError('ZIP integrity or runtime file inventory mismatch')
@@ -58,7 +60,8 @@ def run(installed_name=None):
     for index, digest in enumerate(references, 1):
         if hashlib.sha256((ROOT.parent / f'{index}.zip').read_bytes()).hexdigest() != digest:
             raise AssertionError(f'Reference archive {index} changed')
-    installed = Path('C:/Users/crypt/AppData/Roaming/ModrinthApp/profiles/Ziz/shaderpacks') / (installed_name or package.name)
+    installation = Path(installed_dir) if installed_dir else Path.home() / 'AppData/Roaming/ModrinthApp/profiles/Ziz/shaderpacks'
+    installed = installation / (installed_name or package.name)
     if installed.read_bytes() != package.read_bytes():
         raise AssertionError('Installed ZIP differs from the reviewed build')
     report = {'passed': True, 'runtime_files': len(expected), 'menu_options': sorted(menu_options),
@@ -72,4 +75,6 @@ def run(installed_name=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--installed-name', help='Alternate installed ZIP name when the active pack is locked')
-    run(parser.parse_args().installed_name)
+    parser.add_argument('--installed-dir', type=Path, help='Shaderpacks folder to compare; defaults to the local Ziz profile')
+    args = parser.parse_args()
+    run(args.installed_name, args.installed_dir)

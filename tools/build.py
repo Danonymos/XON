@@ -61,12 +61,13 @@ def generate_programs():
 
 def package(output):
     generate_programs()
-    files = sorted(p for p in (ROOT / 'shaders').rglob('*') if p.is_file())
-    files += [p for p in [ROOT / 'README.md', ROOT / 'CHANGELOG.md'] if p.exists()]
+    files = [(p.relative_to(ROOT).as_posix(), p) for p in sorted((ROOT / 'shaders').rglob('*')) if p.is_file()]
+    files += [('README.md', ROOT / 'docs/PACK-README.md'),
+              ('CHANGELOG.md', ROOT / 'CHANGELOG.md'), ('LICENSE', ROOT / 'LICENSE')]
     temporary = output.with_suffix('.zip.tmp')
     with zipfile.ZipFile(temporary, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
-        for path in files:
-            info = zipfile.ZipInfo(path.relative_to(ROOT).as_posix(), (2026, 10, 28, 0, 0, 0))
+        for name, path in files:
+            info = zipfile.ZipInfo(name, (2026, 10, 28, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o100644 << 16
             archive.writestr(info, path.read_bytes())

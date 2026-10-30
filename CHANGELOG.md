@@ -1,202 +1,171 @@
-# 1.0.7 - built-in AA, softer ore auras and moving moonlit cloud openings
+# Changelog
 
-- Replace selectable FXAA/SMAA-style span walks with hard-coded bounded spatial
-  edge reconstruction. Reuse the cached 3x3 colors and existing depth silhouette
-  gate; retain flat-surface texture detail and optional sharpening.
-- Integrate subpixel coverage into the same six motion-blur reads, with symmetric
-  fixed shutter weights and a continuous 0.35-0.45 pixel handoff. Protect the hand
-  and retain blur exposure/radius controls, frame guards and viewport boundaries.
-- Add up to 0.32 mip levels of minification-only terrain stabilization, including
-  distant walls. Preserve close texture samples, known plant/leaf/lichen coverage
-  and unmapped cutout alpha through a conservative unbiased fallback.
-- Remove AA on/off and mode controls; every preset uses the same built-in core.
-  Keep optional nearby anisotropic surface filtering. No new pass, buffer, history,
-  runtime dependency or CPU frame work. Preserve the earlier 1.0.7 ZIPs before AA.
-- Add production GPU comparisons against pixel-area/shutter references, moving
-  error checks, mip/alpha tests, thin-line/hand protection and isolated GPU timings.
+Player-facing changes from the first XON beta to the current **1.0.7** build.
+Versions describe the final behavior of each build; experimental implementations
+that were later corrected are identified below. Validation details and measured
+limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
 
-- Correct each surface shadow-filter tap using the receiving plane and the
-  nonlinear shadow-map distortion; account for the hardware-PCF texel footprint.
-  Remove reproduced terrain self-shadow rings with smooth transitions ON or OFF.
-  Preserve the existing 4/2/1 lookup limits, shadow map size and draw distance.
-- Add three blocks of colored-light propagation beyond the selected ore radius,
-  with quintic surface falloff and trilinear interpolation. Preserve aura colors,
-  wall occlusion and source materials. Default settling time grows to eight frames;
-  the volume size, dispatch count and neighbor-sampling budget are unchanged.
-- Lift exposed moonlit cloud openings by up to 28% using their existing cool blue
-  illumination. Keep shaded patches and daylight unchanged; preserve cloud scale,
-  soft boundaries, local lights and underwater lighting. Set primary cloud-shadow
-  drift to 0.5 blocks/second and speed shape evolution proportionally, preserving
-  the seamless hourly wind cycle.
-- Add real rasterized terrain ring/contact-shadow regressions and extend GPU
-  checks for the new aura tail and isolated night-lighting response. Build 1.0.7.
+## 1.0.7 — Smoother edges, softer light, moving moonlit landscapes
 
-# 1.0.6 - emissive illumination and evolving cloud shadows
+### Added and improved
 
-- Replace dark cellular spots and thin bright borders with balanced, warped cloud
-  coverage. Typical light/shadow widths are around 30-50 blocks, with varied small
-  pockets and naturally joined larger banks. Preserve version 1.0.6.
-- Use broad quintic edge easing and slow, differing wind flows so patches drift,
-  merge and separate. Keep the wind path continuous through Iris's hourly timer reset.
-- Modulate actual sun/moon light instead of adding unrelated highlight colors;
-  keep cool sky fill, local lights and existing building shadows readable.
-- Carry cloud modulation toward the render horizon. Reuse the existing noise
-  atlas with three texture reads, no cellular search, new pass or buffer.
-- Add GPU tests for coverage balance, patch scale, smooth movement, evolving
-  silhouettes, hourly continuity, day/night response and lighting exclusions.
+- Built-in adaptive spatial anti-aliasing in every preset, replacing the selectable
+  FXAA/SMAA-style span searches with bounded edge reconstruction.
+- Subpixel coverage filtering shared with the existing six motion-blur samples,
+  symmetric shutter weights and a smooth transition between static and moving AA.
+- Minification-only terrain mip stabilization, including distant walls. Preserve
+  close texture detail, known foliage coverage and unmapped cutout alpha.
+- Three extra open blocks of softly eased colored ore light. Quintic falloff and
+  spatial interpolation let the aura blend into darkness; the default setting now
+  reaches about seven blocks along open paths.
+- Cloud-shadow drift at **one block every two seconds**, with proportionally faster
+  merging and separation, broad eased edges and a seamless hourly animation cycle.
+- Up to **28% brighter cool blue moonlight** in exposed cloud openings, while
+  retaining shaded patches, local lights and the accepted daytime palette.
 
-- Register the required Iris custom-image feature and explicitly enable the voxel
-  capture pass, including when sun shadows are disabled. Set a bounded 48-block
-  reverse-culling distance so nearby emitters remain captured behind the camera.
-- Generate shadow and compute entrypoints for Overworld, Nether and End. Keep
-  voxel-only passes from rasterizing unused sun shadows.
-- Quartz ore and building blocks cast violet light onto nearby surfaces without
-  recoloring themselves. Preserve existing ore surface glow and texture colors.
-- Default light reach to four blocks, with options up to five. Retain eased,
-  trilinearly blended six-neighbor propagation; exclude mapped foliage/lichen
-  from solid occupancy and reject stale light after startup or teleports.
-- Avoid distant surface sampling; disable image allocations with colored lighting.
-- Add actual GPU capture/compute/terrain regression checks and build 1.0.6.
+### Fixed
 
-# 1.0.5 - underwater stability & colored emissive lighting
+- Reproduced camera-following terrain shadow rings caused by incorrect filtered
+  surface-depth comparisons. Surface-plane correction accounts for nonlinear
+  shadow-map distortion and the hardware filtering footprint.
+- Abrupt ore-light cutoff and the hard AA handoff during gentle camera movement.
+- First-person hand boundaries remain protected from camera/filter smearing.
 
-- Underwater sunlight stability & world coordinate anchoring:
-  - Concentric expanding ring fix: resolved the circular ring artifact visible when swimming or rotating perpendicular (90°) to the sun. Replaced discrete uniform shells with dither-jittered interval sampling smoothed by spatial cross filtering, ensuring continuous diagonal sunlight beams without camera-relative expanding rings.
-  - World coordinate fixation: sunlight shafts are strictly anchored in world coordinates and occluded naturally by structures and terrain without drifting or moving with the player's camera.
-  - Translucent water-surface look-through: underwater ray marching combines `depthtex0` and `depthtex1` via `max(depthtex0, depthtex1)`, preventing the player's view of overhead water surfaces from prematurely clipping rays aimed toward distant buildings, islands, and shores.
-  - Extended shadow-map occlusion range: expanded underwater ray distance to full building occluder range (`min(shadowDistance * 0.75, 72.0)`), allowing structures 30–65 blocks away to naturally cast and shape sunlight shafts across the water volume.
-  - Linear shadow matrix hoist: hoisted `shadowProjection * shadowModelView` out of the integration loop, replacing repeated 4x4 matrix multiplications with linear ray-step increments (`shadowOrigin + shadowStep * distanceAlongRay`) followed by non-linear shadow distortion.
-  - Snell's window & underwater horizon fog: in `sky.fsh`, smoothed underwater sky and distant horizon into deep marine water fog (`smoothstep(0.05, 0.65, rayDir.y)`), eliminating the glaring white/cyan horizon seam while preserving realistic overhead sky transmission.
-  - Near-camera clarity ramp: added near-distance ramp (`smoothstep(0.0, 4.5, distanceAlongRay)`) so water immediately adjacent to the player's face, hand, and nearby kelp/terrain remains crystal-clear without milky haze.
-  - Coherent directional sunlight shafts: balanced forward and isotropic phase scattering aligned to `xonKeyDirection()`, with distinct marine cyan-blue shaft scattering (`vec3(0.20, 0.40, 0.65)`) capped at 0.20, matching the reference Complementary underwater beam separation and dark occluded building shadows.
-- 3D voxel flood-fill colored emissive block lighting:
-  - 3D voxel volume & compute flood-fill: replaced screen-space sampling with a camera-centered 3D voxel volume (96x48x96) and ping-pong compute flood fill (`shadowcomp.csh`). Eliminates dither, snowflake artifacts, and screen-edge popping; emitters cast full continuous 3D light pools regardless of camera orientation.
-  - Quartz block architectural fix: separated quartz building blocks (block.10023) so they retain normal surface shading and contrast without turning into blinding white beacons, while casting soft warm-ivory ambient light onto neighboring blocks.
-  - Smooth spherical falloff: quadratic easing curve (`level^2 * (3.0 - 2.0 * level)`) creates seamless, beautiful light pools reaching across a 3-block radius (6-block diameter) with continuous zero-derivative boundaries.
-  - Physical wall occlusion: solid blocks occlude propagation in the voxel grid with `shadow.culling=reversed`, preventing any light from leaking through solid walls.
-  - Natural color blending: multiple nearby emitters blend colors smoothly across shared spaces (e.g. redstone + lapis combining into purple).
-  - Configurable options: added user controls for `XON_COLORED_EMISSIVE_LIGHTING`, `XON_EMISSIVE_RADIUS` (default 3.0 blocks), and `XON_EMISSIVE_INTENSITY`.
-- Bump version to 1.0.5. Package as `XON-Shader-v1.0.5.zip`.
+### Performance and checks
 
-# 1.0.4 - underwater stability correction
+- Keep existing shadow resolution/range, render passes and light-volume storage.
+  Reuse filtering samples and the game's mip chain; add no temporal-history buffer.
+- Retain camera blur controls and optional nearby surface filtering. AA itself is
+  now built in, with no player-facing on/off or quality selector.
+- Add actual GPU coverage, movement, alpha, hand, thin-line, shadow-ring and aura
+  regression tests. The current source passes 840 graphics configurations and
+  790 GPU cases/comparisons; live Minecraft/FPS verification is still separate.
 
-- Remove the animated surface-noise field that produced broad white smoke underwater. Beam structure now comes from actual sunlight and shadow-map occluders, using the same sun direction as the shadow map.
-- Replace depth-scaled, screen-jittered underwater sampling with fixed-length integration intervals and partial foreground intervals. Foreground depth changes no longer stretch every sample across the whole water volume; sampling does not depend on large absolute world coordinates.
-- Use eight softly filtered underwater steps, a 24-block range, stronger distance attenuation, a 0.085 peak cap and a restrained blue scattering color. Keep the existing half-resolution effects and softening passes; no history buffer or extra shadow-world draw range.
-- Lower pale underwater background scattering and apply wavelength-dependent distance absorption beyond the existing six-block clear near zone. Preserve outdoor lighting, building contrast, shallow-water surface tint, LUT and camera defaults.
-- Add stationary-time, depth-sweep and 25-frame translating/rotating-camera regression checks against a 128-step reference. Replace the old test's requirement for procedural beams in fully open water with checks for real occluder-shaped scattering.
-- Package separately as 1.0.4-water-stability so the previous pack and settings remain available. In-game appearance and frame rate require player verification.
+## 1.0.6 — Working colored ore light and evolving cloud shade
 
-# 1.0.4 - revised after in-game comparison
+### Fixed
 
-- Fix absent horizontal-view underwater beams: remove the upward cone gate and eye-skylight suppression underwater; retain daytime, shadow occlusion, medium and user-option gates.
-- Add a coherent moving surface-transmission field from XON's original noise, projected along refracted sunlight. Six shadow plus six noise samples in the existing half-resolution pass, with low-amplitude jitter, 40-block range and a 0.28 intensity cap.
-- Use Iris's active shadowLightPosition for surface key lighting. Limit wrapped light to the lit hemisphere, restrict cloud highlights to visible sun-facing surfaces, and reduce excessive wall sky fill and simulated bounce.
-- Preserve readable cave/minimum shadow fill; replace night vision's bright minimum clamp with a visibility lift that retains directional contrast.
-- Correct shadow normal-bias distance growth from r^1.5 to r; delay distance fade within the existing 96-block map budget. No extra shadow draw distance or render pass.
-- Add a real caster/receiver building scene with front/behind-sun, camera-rotation, moving-cloud and night-vision checks. Add horizontal underwater tests at zero eye skylight and synthetic image comparisons. Keep the cloud field's original contrast/movement assertions while testing that field independently of surface illumination.
-- Package as 1.0.4-revised so the original 1.0.4 remains available for comparison.
+- Connect the voxel-lighting implementation to Iris's required custom-image and
+  compute features, enable capture and keep nearby emitters in the shadow draw list.
+- Add shadow/capture and compute entrypoints for the Overworld, Nether and End.
+- Preserve source textures while quartz ore and architectural quartz cast violet
+  light onto neighboring surfaces.
+- Keep mapped plants, leaves and lichen from becoming solid light blockers.
 
-# 1.0.4
+### Improved
 
-- Add restrained blue-green underwater God rays in the existing half-resolution effects pass: refracted sun direction, six bounded shadow samples, 32-block range, distance attenuation, daylight/skylight gating, and foreground-depth clipping.
-- Improve outdoor sun rays near building openings with lower skylight activation and a subtle wider scattering shoulder; retain four samples and bound the peak to avoid excessive glare.
-- Reduce direct sun/moon and local/held light contributions by 20% by default. Preserve ambient shadow fill, blue shade tint, LUT and saturation. The final image brightness reduction depends on material, ambient light and tone mapping.
-- Add Direct Sunlight Strength, Torch and Held Light Strength, God Ray Intensity sliders and Underwater God Rays toggle, with descriptions and existing master/shadow controls respected.
-- Retain Native resolution, shadow-map quality, motion blur ON/1.50, rainbow outline, visible shallow water and stationary glow lichen.
-- Add GPU tests for underwater/outdoor occlusion, beam shaping, foreground-depth clipping, darkness/night/medium/option gates and unchanged unlit shadow fill; record isolated ray-pass timings against 1.0.3.3.
+- Replace dark cellular spots and thin bright ridges with balanced, irregular
+  cloud-light and shadow patches, typically 30–50 blocks across.
+- Add broad quintic edge transitions and independently moving layers so patches
+  drift, join and separate. Keep the hourly timer reset seamless.
+- Extend ground-cloud modulation toward the render horizon and use the existing
+  sun/moon palette instead of an unrelated additive highlight.
+- Retain the compact 96×48×96 light volume, six-neighbor propagation, interpolated
+  surface sampling, solid-wall blocking and stale-history rejection.
+- Add real GPU capture/compute/terrain tests, including light removal, mixed
+  colors, camera movement and all three dimensions.
 
-# XON 1.0.3.3 - lichen and shallow-water fixes
+## 1.0.5 — Underwater shafts and the initial voxel-lighting implementation
 
-Includes stationary glow lichen and stronger blue tint for thin water sheets. Deep water and underwater clarity remain unchanged.
+- Let underwater rays look through the water surface to solid scene depth, so
+  overhead water no longer truncates sunlight shafts close to the camera.
+- Extend underwater sampling toward distant shadow casters, within the existing
+  shadow-map range; use a bounded near-camera clarity ramp and marine scattering.
+- Hoist the shadow transform out of the ray loop and improve underwater background
+  and horizon blending while preserving surface transmission.
+- Introduce the camera-centered voxel capture, ping-pong flood fill and colored
+  surface sampling. This was the initial implementation; missing loader/capture
+  connections were repaired in **1.0.6** before working environmental spill was confirmed.
+- Separate architectural quartz from emissive surface shading to preserve building detail.
 
-# XON 1.0.3.2 - glow lichen fix
+## 1.0.4 — Readable building shadows and underwater lighting
 
-Glow lichen now uses a stationary material rather than the waving cross-plant group. This prevents wind moving its thin faces into the supporting block and restores its face normals. Other plants retain wind. Includes the shallow-water fix.
+Includes the revised and water-stability builds prepared during development.
 
-# 1.0.3.1
+- Add adjustable outdoor and underwater sunlight shafts, respecting shadow
+  occlusion, water/depth boundaries, medium and user settings.
+- Use Iris's active sun/moon direction for surface lighting. Keep opaque backfaces
+  dark, restrict wrapped lighting and reduce wall ambient fill that flattened form.
+- Improve readable shade and night-vision contrast; reduce default direct and
+  local-light intensity to 80% of the earlier setting.
+- Refine normal bias and range fading within the existing shadow-map budget.
+- Replace the rejected smoky underwater field with shadow-defined scattering;
+  improve depth stability, marine absorption and the clear near-camera region.
+- Add building, camera-motion, water and ray regression scenes. Later 1.0.5 work
+  further improves the underwater surface-depth look-through and distant reach.
 
-- Keep thin refractive water visible indoors using a restrained blue-green surface tint, smoothly fading out by 1.5 blocks of view-depth thickness.
-- Preserve deep-water shading, underwater clarity, lighting, rainbow outline and camera defaults from 1.0.3. No additional texture samples or render passes.
+## 1.0.3.3 — Combined lichen and shallow-water fixes
 
-# 1.0.3
+- Ship stationary glow lichen and visible thin-water tint together.
+- Preserve deep-water clarity, existing lighting and camera defaults.
 
-- Refine light-oriented diffuse shading and warm simulated ground bounce; replace camera-dependent matte rim shine with light-dependent form.
-- Add subtle luminance-balanced blue shade tint, applied before warm local lights. Modestly lift readable night/cave fill.
-- Reshape block-light falloff and soften orange highlights with a restrained ivory core; no change to light propagation radius.
-- Skip view-vector normalization on non-foliage surfaces after removing their camera-dependent rim term.
-- Set Smooth Camera Motion ON and Motion Blur Smoothness 1.50 by default.
-- Add eight smoothly interpolated outline colors, half-speed rotation, brightness equalization and 25% thicker selection lines. Preserve debug lines.
-- Retain 1.0.2 water/material optimizations, quality budgets, LUT and saturation. Add visual/exposure, nighttime readability and local-light monotonicity checks against 1.0.2.
+## 1.0.3.2 — Stationary glow lichen
 
-# 1.0.2
+- Remove glow lichen from waving cross-plants, preserving its face normals and
+  keeping thin faces from moving into the supporting block.
+- Retain wind animation for actual plants and foliage.
 
-- Preserve the accepted 1.0.1 color LUT, atmosphere palettes, saturation, exposure defaults, light radius, clouds, water waves, AA and motion blur.
-- Skip discarded diffuse lighting and architectural relief work for lava, Nether portals, and froglights. Refractive water evaluates only the receiver shadow needed for glints; non-refractive water retains its diffuse lighting.
-- Skip unused sky evaluation in water/lava/snow fog and unused water reflections when submerged. Simplify horizon-direction normalization with pixel parity checks.
-- Add optional Smooth Shadow Transitions (default OFF; ON in Cinematic), continuously morphing 4/2/1-tap filtering at 20/42 blocks with no extra shadow samples. Off preserves 1.0.1 filtering and avoids its measured extra GPU cost.
-- Replace reversed-edge portal smoothstep with its defined inverse form for portability.
-- Add reproducible 1.0.1/1.0.2 GPU pixel comparisons, timing queries and shadow continuity tests. Expand compilation to ten configurations; correctly override const shader options in the validator.
+## 1.0.3.1 — Visible shallow water
 
-# 1.0.1
+- Add restrained blue-green tint to thin water sheets, including indoor spills.
+- Fade the extra film tint out by 1.5 blocks of view-depth thickness, preserving
+  deeper water and underwater viewing without extra passes or texture samples.
 
-- Add 5-stage Time-of-Day Mood & Vibe system (`xonTimePhases` in `atmosphere.glsl`, `clouds.glsl`, `lighting.glsl`): distinguishes Early Morning / Dawn (pearlescent rose-gold sun, rose-azure horizon, dewy cyan shade), High Noon (crisp cobalt sky, balanced warm-white sun), Warm Afternoon (honey-gold grazing light, deep cobalt-indigo shadows), Evening Sunset / Dusk (copper-amber western glow, royal twilight violet sky/void/undersides), and Night (midnight sapphire sky with silver-blue lunar glow).
-- Add ~20-block-radius moving & gradually morphing 2D Voronoi ground cloud shadow and zenith highlight system (`xonCloudGroundLight`), distance-culled beyond 128 blocks and optimized with a 2x2 nearest-quadrant pure-ALU hash (zero `sin()`/`sqrt()` SFU stalls).
-- Add Photon-style Dark Area & Cave Visibility (`shadowDeficit` + `XON_DARK_LIFT` + `isDarkArea` dark-albedo toe lift) so zero-skylight overhangs, giant tree stems, and caves stay readable without overexposing bright/sunlit surfaces.
-- Add always-on cylindrical chunk-border horizon fog (`borderFog` in `atmosphere.glsl`) that smoothly blends the outer edge of the player's render distance (`far`) into the directional horizon sky across both terrain and water.
-- Add architectural castle/surface lighting polish: tighter close-range shadow normal bias (`0.048` blocks) with 4-tap rotated orthogonal hardware-PCF within 28 blocks, 6-axis directional face separation, wrapped grazing sunlight, arch upward ground-bounce, and zero-mean screen-space derivative (`dFdx`/`dFdy`) stone brick micro-bevels.
-- Anti-stutter & FPS optimization pass: replace `3x3` transcendental `sin()` Worley/Voronoi loops with `2x2` nearest-quadrant ALU-only hashes, increase `shadowIntervalSize` (`2.0` -> `4.0`) to halve Sodium shadow chunk re-culling spikes, distance-cull cross-plants (`block.10004`) in `shadow.vsh` beyond 44 blocks, discard unlit daytime star quads in `sky.fsh`, and skip cardinal neighbor fetches on sky/hand pixels in `antialiasing.glsl`.
-- Expand Shader Pack Settings with 10 intuitive customization sliders (`XON_CONTRAST`, `XON_SHARPNESS`, `XON_BLOOM_STRENGTH`, `XON_DARK_LIFT`, `XON_BLOCKLIGHT_WARMTH`, `XON_TIME_MOOD`, `XON_CLOUD_DENSITY`, `XON_GROUND_SHADOW_STRENGTH`, `XON_WAVE_HEIGHT`, `XON_END_AURORA`), 4 one-click Profiles (`Speed`, `Balanced`, `Vibrant Fantasy`, `Cinematic Ultra`), and detailed tooltips in `en_US.lang`.
+## 1.0.3 — Lighting shape and camera polish
 
-# 1.0.0
+- Refine light-oriented diffuse shading, warm bounce and cool directional sky fill.
+- Replace camera-dependent matte rim shine with light-dependent surface form.
+- Improve night/cave readability, local-light falloff and restrained ivory light cores.
+- Set smooth camera motion ON with default smoothness 1.50.
+- Add an eased eight-color rotating outline at half speed, with more consistent
+  brightness and 25% thicker selection lines; preserve debug-line width.
 
-- Fix End dimension sky (`world1/gbuffers_skytextured` + `blend.world1/gbuffers_skytextured=off`): replace Minecraft's pixelated `end_sky.png` quad dome with XON's smooth dark purplish-black void, animated cosmic aurora ribbons, and twinkling star specks.
-- Add Voronoi cellular lava shader (`block.10005` in `geometry.fsh`): multi-layered scrolling convection cells with dark cooling basalt crust, warm orange magma scatter, and white-hot glowing fissures.
-- Upgrade clouds (`clouds.glsl`) to a spherical-dome Perlin-Worley 3D cumulus + high-altitude cirrus system with rounded cellular cauliflower domes, cerulean-lavender shaded undersides, and golden-ivory sunlit crowns.
-- Upgrade water surface (`geometry.fsh`) with a 3-tier wave hierarchy (wind swell, trochoidal sharpened wavelets, and capillary surface ripples), turquoise wave-crest subsurface glow, bounce-stabilized cloud reflections, and dual sun/moon water glitter.
-- Fix Amethyst shards (`block.10019`): separate amethyst clusters/buds & purple portals from sculk/accent blocks (`block.10020`), remap pale whitish crystal tips into rich royal amethyst purple, and cap peak luminance below the white bloom threshold.
-- Keep opaque terrain blocks (carpets, wood, stone) naturally matte by restricting specular reflections to water.
-- Add Enhanced Ambient Occlusion (`separateAo=true` + `XON_AO_STRENGTH` slider), Vertex-Stage Waving Foliage (`XON_WAVING_FOLIAGE`) synchronized across both `geometry.vsh` and `shadow.vsh`, and Underwater Light Caustics (`XON_CAUSTICS`).
-- Fix unlit additive/multiplicative passes (`gbuffers_damagedblock`, `gbuffers_armor_glint`, `gbuffers_spidereyes`, `gbuffers_beaconbeam`) so fog color never corrupts their blend equations underwater or in the Nether.
-- Fix false-positive `isCrossPlant` normal/AO overrides on diagonal non-plant blocks.
-- Major FPS & AA optimization: eliminate redundant per-fragment `xonSunDirection()` matrix transforms, unify Boost reconstruction and 4-tap sub-pixel Edge AA cardinal neighbor fetches in `antialiasing.glsl`, and add a stationary camera fast-path in `xonCameraVelocity`.
+## 1.0.2 — Performance groundwork
 
-# 0.4.0 beta
+- Skip lighting and reflection work discarded by independent emissive materials,
+  refractive water and underwater composition.
+- Simplify horizon evaluation and avoid unused calculations with parity checks.
+- Add optional smooth shadow-filter transitions at 20 and 42 blocks without
+  increasing the maximum lookup count.
+- Correct the portal smoothstep expression and broaden shader/pixel validation.
 
-- Fix moving shadow band on wheat/crop fields and grass (`block.10004` + cross-quad detection): assign upward surface normals (`vec3(0,1,0)`), slope-scaled shadow normal bias, and shadow-frustum box fade (`edgeDist`) so crops no longer self-shadow within the camera-following shadow map.
-- Fix underwater visibility: add a 6-block clear near-zone, lower underwater fog density (`0.016`) and cap maximum opacity at `82%`, add cyan-teal underwater ambient fill in `lighting.glsl`, and prevent double-darkening when looking up at the water surface from underwater.
-- Fix Nether darkness and red-void cutoff: restore Nether distance fog (`XON_DIMENSION == -1`) so distant chunks blend seamlessly into the biome horizon, brighten Nether ambient and ceiling/wall shading (`netherVertical`), and add warm upward lava bounce fill.
-- Add dark purplish-black End aura sky (`XON_DIMENSION == 1`): deep void black-to-violet gradient with animated multi-layered cosmic purple/magenta aurora ribbons and twinkling star specks.
-- Enhance day/night cycle and golden-hour lighting: add multi-stage noon/afternoon/golden-hour/dusk/night sunlight and sky ambient transitions, subtle warm bounce light in open shade, and foliage subsurface scattering.
-- Upgrade shadow filtering to a rotated 2-tap hardware-PCF kernel, refine depth-curvature edge AA, and replace transcendental `pow()` calls with fast multiply chains across sky, clouds, water, lighting, and sun rays.
+## 1.0.1 — Time-of-day moods and architectural detail
 
-# 0.3.0 beta
+- Add distinct early-morning, noon, afternoon, sunset and night atmosphere palettes.
+- Introduce the original moving ground-cloud light field, later redesigned in 1.0.6.
+- Add cool readable dark-area fill, cylindrical render-border fog and surface relief.
+- Optimize cellular searches, foliage shadow capture and unnecessary post work.
+- Expand the shader controls and the Speed, Balanced, Vibrant and Cinematic presets.
 
-- Add Color Saturation slider (`XON_SATURATION`) defaulting to 70% (`0.70`), allowing users to desaturate to 0% or boost to 100%+ of the 0.2 baseline and up to 140%.
-- Add Motion Blur Smoothness slider (`XON_BLUR_STRENGTH`) to adjust camera motion blur intensity and radius.
-- Fix block selection outline visibility and geometry expansion (`gbuffers_line`), and add `XON_BLOCK_OUTLINE` option for Black Outline or animated Rainbow Outline.
-- Replace repetitive three-cosine water waves with non-repeating multi-scale organic domain-warped water waves.
-- Improve GPU/CPU performance: reduce default shadow distance to 64 blocks, disable entity shadow draw calls by default (`shadowEntities=false`), optimize shadow receiver to 2-tap diagonal hardware PCF with squared-distance early exit, cone-cull sun shafts and optimize to 4 jittered steps, reduce bloom prefilter to 4 bilinear taps, and cache hand mask & skip sky in final pass.
+## 1.0.0 — XON's visual foundation
 
-# 0.2.0 beta
+- Add a purple End aurora, layered cumulus/cirrus sky and cellular lava fissures.
+- Build layered organic water waves, crest color and sun/moon surface glints.
+- Improve crystal, portal and froglight material handling; keep solid terrain matte.
+- Add ambient-occlusion controls, synchronized foliage animation and water caustics.
+- Correct unlit/additive blending and non-plant cross-quad detection.
+- Share reconstruction samples and add a stationary-camera blur early exit.
 
-- Add real 1024-pixel directional sun/moon shadows with a bounded 80-block range.
-- Strengthen warm sunlight, cool shade and smooth warm block light; retain vanilla AO.
-- Add selectively emissive ore veins and restrained half-resolution bloom.
-- Add a highlight-preserving filmic curve and an original color LUT for richer color.
-- Add soft layered clouds, cloud occlusion of stars/sun/moon, and darker storm clouds.
-- Add three-wave water detail, cloud reflections, depth absorption and optional refraction.
-- Add lightweight depth-guided edge AA in the existing final pass, enabled by default.
-- Disable air haze by default; preserve underwater absorption and status effects.
-- Add localized shadow-map sunlight rays and Speed/Balanced presets.
-- Retain default subtle camera blur, Native resolution and optional spatial Boost.
+## 0.4.0 beta — Dimension and shadow fixes
 
-# 0.1.0 beta
+- Improve crop/grass shadow normals and self-shadow bias.
+- Add clearer nearby underwater visibility and brighter readable Nether lighting.
+- Introduce the End atmosphere, softer directional shadows and weather transitions.
 
-- Add original forward lighting with warm sun, cool sky fill, vanilla AO, and held light.
-- Add an analytic sky, relit vanilla clouds, rain/thunder response, and dimension palettes.
-- Add bounded analytic water waves, depth-sensitive color, and sky reflections.
-- Add default five-tap camera blur with hand exclusion and discontinuity guards.
-- Add experimental 85%/75% spatial Boost modes; default remains Native.
-- Keep the native pipeline to one HDR scene color attachment, one small hand mask,
-  and a single final post pass, with no temporal history or shadow maps.
+## 0.3.0 beta — Color and camera controls
+
+- Add saturation, blur smoothness and customizable black/rainbow block outlines.
+- Replace repetitive water waves with layered, warped motion.
+- Reduce shadow/post costs and share AA/reconstruction work.
+
+## 0.2.0 beta — Shadows, atmosphere and materials
+
+- Add directional sun/moon shadows, ore surface glow, local bloom and a color LUT.
+- Add layered clouds, weather response, water depth/refraction and localized rays.
+- Introduce the Speed/Balanced presets and lightweight spatial edge smoothing.
+
+## 0.1.0 beta — First shader pack
+
+- Add warm directional lighting, cool fill, vanilla AO and held light.
+- Add analytic skies, weather/dimension palettes and bounded water motion.
+- Add protected camera motion blur and experimental 85%/75% spatial Boost rendering.

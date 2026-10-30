@@ -1,3 +1,13 @@
+# Repository and release packaging
+
+The GitHub preparation retains the shader code validated below. The public README
+now uses the existing gallery, while runtime ZIPs receive docs/PACK-README.md as
+README.md and include the complete LICENSE. The runtime inventory is 204 files.
+The standard-library release checks validate ZIP/source parity, all 84 graphics
+and three compute entrypoints, shader includes, Python syntax and local document
+links. The read-only GitHub workflow runs those checks and produces an artifact;
+it does not execute the Windows GPU suite, publish a release or certify gameplay.
+
 # XON Shader 1.0.7 - built-in anti-aliasing verification
 
 30 October 2026. Player requested unconditional low-cost smoothing while keeping

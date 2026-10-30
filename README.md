@@ -1,226 +1,161 @@
-# XON Shader - 1.0.7
+<p align="center">
+  <img src="docs/images/xon.jpg" alt="XON Shader" width="136">
+</p>
+<h1 align="center">XON Shader</h1>
+<p align="center"><strong>Warm light. Clear water. A world in motion.</strong></p>
+<p align="center">An Iris shader pack for Minecraft: Java Edition.</p>
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="docs/releases/1.0.7.md">1.0.7 release notes</a> ·
+  <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
+</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/build-1.0.7-35b8b0?style=flat-square" alt="Current build: 1.0.7">
+  <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
+  <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
+</p>
 
-An original performance-first Iris shader pack with warm directional sunlight,
-5-stage time-of-day atmospheric moods (Early Morning, Noon, Warm Afternoon, Evening Sunset, Night),
-real cast shadows, Photon-inspired cool readable dark-area shadow fill, softly evolving ground cloud shadows,
-cylindrical chunk-border horizon fog, chiseled castle/surface micro-bevel lighting, waving foliage,
-Voronoi cellular lava, underwater caustics, cosmic End aurora sky, glowing ore & royal purple amethyst veins,
-Contrast-Adaptive Sharpening (CAS), built-in adaptive edge smoothing, stable distant
-texture sampling, and smooth camera motion blur.
+![Island builds, clear water and soft daylight in XON](docs/images/island.jpg)
 
-## What changed in 1.0.7
+XON brings warm sunlight, cool readable shade, moving cloud shadows and glowing
+ore light to your worlds. Water stays clear, the atmosphere changes throughout
+the day, and edges receive built-in smoothing. Native resolution is the default.
 
-- Build edge smoothing into every preset, with no AA toggle or quality selector.
-  Reconstruct softened silhouette edges from a bounded 3x3 neighborhood, sharing
-  sharpening samples and replacing the old variable-length edge search.
-- Share the six existing motion-blur samples with subpixel coverage filtering.
-  Use symmetric shutter weights and a smooth AA handoff to reduce moving-edge
-  noise while protecting the first-person hand and preserving motion controls.
-- Gently favor coarser mip detail only on minified terrain, including distant
-  walls beyond the old local floor filter. Close textures and cutout coverage are
-  preserved. Reuse the game's mip chain without another render pass or buffer.
-- Correct filtered sun/moon shadow depth on receiving surfaces to remove false
-  camera-following shadow rings. Retain the existing shadow sample limits.
-- Extend colored ore illumination by three open blocks and use quintic easing
-  for a softer outer aura. The default four-block setting now reaches about seven
-  blocks along open paths, with smooth surface interpolation and preserved colors.
-- Brighten exposed moonlit cloud openings by up to 28%, retaining their cool blue
-  palette. Cloud-shadow drift now travels one block every two seconds; overlapping
-  layers evolve proportionally faster while retaining broad, soft transitions.
-- Keep the existing render passes, shadow resolution and local light volume.
-  A newly captured ore now takes about eight frames to reach the default extent.
+The gallery uses existing XON gameplay captures. It illustrates the pack's visual
+direction; it is not a controlled comparison or proof of the latest fixes.
 
-## What changed in 1.0.6
+## What's new in 1.0.7
 
-- Rework ground cloud shadows into balanced, irregular patches, typically around
-  30-50 blocks across with smaller pockets and larger merged banks. Two slow wind
-  layers let shapes drift, join and separate, with broad eased edge transitions.
-  Clear gaps retain natural sun/moon color; covered areas reveal cool sky fill.
-  The pattern reaches toward the render horizon instead of fading at 96 blocks.
-- Reuse the existing noise texture with three lookups and no extra render pass
-  or buffer. Add GPU coverage, scale, edge, movement and long-session seam checks.
-- Repair colored ore lighting: register Iris custom images, keep nearby terrain
-  in the voxel capture pass, and include the capture/compute programs in every dimension.
-- Ores illuminate nearby walls and floors with smooth spatial interpolation and
-  eased falloff. Default reach is four blocks, adjustable from two to five.
-  Quartz casts soft violet light; source textures and existing ore glow are preserved.
-- Retain the compact 96x48x96 volume, six-neighbor propagation and one compute
-  dispatch per frame. Skip light sampling outside the volume and on source materials.
-  Speed disables this effect and its image allocations.
-- Add GPU tests that execute capture, propagation and the actual receiving terrain
-  shader, including solid walls, light removal, color blending and camera movement.
+- **Smoother edges by default.** Built-in spatial anti-aliasing and shared
+  motion-blur filtering reduce jaggies and moving noise. Distant terrain uses
+  gentler mip sampling; close texture detail and cutout coverage are preserved.
+- **Softer colored ore light.** Three extra open blocks ease the aura into
+  darkness. The default setting reaches about seven blocks along open paths;
+  quartz casts violet light onto neighboring surfaces.
+- **Cloud shadows with visible movement.** Balanced light and dark patches drift,
+  merge and separate at one block every two seconds. Typical widths are around
+  30–50 blocks, with smaller pockets and larger connected banks.
+- **Clearer moonlit openings.** Exposed cloud gaps receive up to 28% more cool
+  blue moonlight, retaining the dark patches and broad, eased boundaries.
+- **Terrain shadow correction.** Surface-aware filtering fixes the reproduced
+  camera-following sun/moon shadow rings while retaining real object shadows.
 
-## What changed in 1.0.5
+Read the [complete changelog](CHANGELOG.md) for every version from the first beta
+through 1.0.7, including the underwater, material and lighting improvements.
 
-- Coherent underwater sunlight shafts: resolved ray clipping against the overhead water surface quad by evaluating solid depth through max(depthtex0, depthtex1). Rays now trace through the water volume to distant occluders across the full shadow distance (up to 72 blocks) rather than stopping at 24 blocks.
-- Hoisted shadow transform performance: hoisted shadowProjection * shadowModelView outside the ray marching loop, eliminating per-step 4x4 matrix multiplications. 12 integration steps now execute in ~0.037 ms on the half-resolution effects pass (faster than 8 steps in 1.0.4 at 0.0435 ms).
-- Snell\'s window & seamless underwater horizon: smoothed underwater sky and distant horizon into deep marine water fog in sky.fsh, removing the glaring white/cyan horizon seam while preserving natural overhead sunlight and water surface transmission.
-- Near-camera clarity ramp: added near-distance ramp (smoothstep(0.0, 4.5, distanceAlongRay)) so nearby terrain, kelp, hands, and blocks remain clear and readable without milky fog.
-- Marine blue scattering: balanced forward and isotropic phase scattering aligned to xonKeyDirection() with luminescent blue-cyan shafts (vec3(0.20, 0.40, 0.65)) capped at 0.20, matching the visual target with crisp beam separation and occluded building shadows.
+## The XON look
 
+| Feature | In the world |
+| --- | --- |
+| Light and atmosphere | Directional sunlight and moonlight, warm bounce, cool readable shade and five time-of-day moods. |
+| Colored emissive light | Ore and crystal glow with local colored spill onto walls and floors in all three dimensions. |
+| Sky and terrain | Layered cumulus and cirrus clouds, evolving ground cloud shade and waving foliage. |
+| Water | Layered waves, refraction, depth absorption, caustics and shadow-shaped underwater sunlight shafts. |
+| Materials and dimensions | Moving lava fissures, natural pale amethyst tips, restrained froglights and a purple End aurora. |
+| Camera and clarity | Built-in edge smoothing, optional sharpening, protected held items and adjustable camera motion blur. |
 
-## What changed in 1.0.4
+<details>
+<summary><strong>More from the gallery</strong></summary>
 
-- Replace the smoky animated underwater field with restrained blue scattering
-  shaped by actual sun-shadow openings. Fixed-length integration intervals avoid
-  stretching the entire ray pattern when foreground depth changes. Lower intensity
-  and distance-based absorption give distant water a deeper blue, preserving the
-  clear six-block near zone. No invented moving transmission field remains.
-- Direct lighting uses Iris's active shadow light direction. Opaque backfaces no
-  longer receive wrapped sunlight; moving cloud highlights respect the receiving
-  face and shadow visibility. Reduced wall-sky fill and bounce reveal form while
-  retaining the readable minimum shadow fill. Night vision preserves contrast.
-- Shadow normal bias grows linearly with distance, and range fading starts later,
-  reducing detached/faded shadows within the existing 96-block budget.
-- Outdoor rays have a subtle wider shoulder and activate at lower skylight levels,
-  making sunbeams through building openings easier to see while keeping clear air.
-- Direct sun/moon and local/held light contributions default to 80% of 1.0.3.3.
-  Readable minimum shade and its subtle blue tint are retained. Directional ambient
-  fill on walls is lower so it no longer masks the cast shadows.
-- New controls: Direct Sunlight Strength, Torch and Held Light Strength, God Ray
-  Intensity, and Underwater God Rays. Ray effects require Shadows and Localized
-  Sun Rays; Speed disables them. No additional render pass or history buffer.
-- Includes the glow-lichen stability and visible shallow-water fixes.
+![Warm fields, a stone castle and water in XON](docs/images/fields.jpg)
 
-The existing half-resolution ray pass uses four shadow samples outdoors and eight
-underwater steps with two hardware-PCF lookups each. Underwater range is 24 blocks,
-with a 0.085 intensity cap and no noise lookups. See source `VERIFICATION.md` for
-measured timings. Shafts require contrasting sunlit and occluded water; uniform
-open water receives gentle scattering rather than procedural bright tubes. Solid
-cast shadows remain limited to the configured shadow distance; distant backfaces
-retain directional shading beyond that range, but distant occluders are not traced.
-
-## Shallow-water fix in 1.0.3.1
-
-Thin water sheets viewed from outside the water now retain a subtle blue-green
-surface tint, including indoor bucket spills. The extra tint fades smoothly to
-zero at 1.5 blocks of view-depth thickness. Deeper water and underwater viewing
-retain 1.0.3 shading. No new texture samples, passes or buffers are added.
-
-## What changed in 1.0.3
-
-- Light-oriented diffuse shaping gives block faces more definition; matte blocks
-  no longer acquire camera-dependent rim shine.
-- Warm simulated ground bounce and cooler sky fill give ledges and walls more
-  depth. Night and cave fill remain readable.
-- Subtle blue shade tint fades toward warm sunlight with nearly neutral luminance.
-  Local warm lights are added afterward, keeping their warm color.
-- Smoother local-light falloff with a restrained ivory core. This reshapes vanilla
-  lightmap shading; it does not extend the world's light propagation radius.
-- Smooth Camera Motion ON and Motion Blur Smoothness **1.50** by default.
-- Rotating eight-color outline at half speed, 25% thicker selection lines, eased
-  transitions and more consistent brightness. Debug-line width remains unchanged.
-
-The 1.0.2 water/material optimizations, LUT, saturation, sky, native resolution,
-shadow map size and sample budgets remain intact. No new render pass, texture
-lookup, history buffer or tracing was added. Smooth Shadow Transitions remains
-optional (OFF by default).
-
-## Performance foundation from 1.0.2
-
-This release preserves the 1.0.1 LUT, saturation, time-of-day colors, brightness,
-water waves, cloud design, light radius, and quality defaults. It removes lighting
-work discarded by lava, portal, froglight and refractive-water shading, and avoids
-unused sky/reflection calculations underwater. No rendering resolution reduction
-or feature removal is used to achieve these savings.
-
-Lighting, Color & Shadows now offers **Smooth Shadow Transitions**. It blends the
-filter shapes at 20 and 42 blocks to reduce moving shadow pops without increasing
-the maximum sample count. It is OFF by default because additional filtering math
-can cost GPU time; Cinematic enables it. Balanced/Speed/Vibrant leave it off.
-
-Synthetic GPU comparisons show the largest savings on water and emissive materials.
-They do not establish an in-game FPS gain. See `VERIFICATION.md` in the source.
+</details>
 
 ## Install
 
-1. Keep a working Fabric + Iris + matching Sodium installation. Initial target:
-   Minecraft Java 26.3, Iris 1.11.7, Sodium 0.9.2.
-2. Put `XON-Shader-v1.0.7.zip` (or the side-by-side `1.0.7-smooth` build) directly in its `shaderpacks`
-   folder. Do not extract it and do not place it in `mods` or `resourcepacks`.
-3. Open Video Settings → Shader Packs, select XON, and Apply.
-4. Begin with the default Balanced preset and Native resolution. Select Speed if
-   maximum frame rate is preferred over cast shadows and post effects.
+1. Use a compatible **Minecraft: Java Edition + Iris + Sodium** installation.
+2. Get a packaged `XON-Shader-v1.0.7.zip` from [official releases](https://github.com/Danonymos/XON/releases).
+   If a release has not been published yet, use the [source build](#build-from-source)
+   or a successful [pack-build artifact](https://github.com/Danonymos/XON/actions/workflows/build.yml).
+3. Place the **shader-pack ZIP** directly in your instance's `shaderpacks` folder.
+   Leave it zipped. GitHub's **Code → Download ZIP** is source code, not an installable pack.
+4. Open **Video Settings → Shader Packs**, select XON, then **Apply**.
+5. Start with **Balanced + Native**. Use **Speed** for a lighter effect budget.
 
-## Defaults
+The separately named `XON-Shader-v1.0.7-smooth.zip` is the same 1.0.7 smoothing
+build used for side-by-side installation. Select that filename if an earlier
+1.0.7 pack is already open in the game. When downloading an Actions artifact,
+extract the artifact container and install the shader ZIP inside it.
 
-- Native resolution; brightness 1.05; sunlight warmth 0.65; color saturation 70% (0.70).
-- Subtle camera motion blur ON with adjustable Motion Blur Smoothness slider (default 1.50);
-  blur radius is capped and held items use a dedicated exclusion mask.
-- Block Selection Outline ON (default Rainbow Outline, switchable to Black Outline).
-- Directional sun/moon shadows ON: 1024 map, 96-block distance, distance-adaptive 4/2/1-tap hardware-PCF,
-  cross-foliage upward normals & self-shadow acne elimination, and entity shadows off by default.
-- Rich day/night/golden-hour/sunset lighting transitions with subtle warm sky bounce and foliage subsurface scattering.
-- Selective ore emission, 4-tap bloom, held light, an original 16-cube color LUT,
-  soft layered clouds, organic non-repeating water waves/refraction, and built-in edge smoothing.
-- Air fog OFF. Clear-weather distance haze is removed; water/lava/powder-snow
-  absorption and blindness/darkness remain. Rays use 4 outdoor / 12 underwater steps.
-- Water refraction, bloom and sunlight shafts use half-resolution
-  buffers. Edge AA shares the final pass and rejects texture-only edges.
-- Compact local voxel lighting; no screen-space reflection tracing, temporal AA,
-  external PBR textures, runtime downloads, or additional mod dependency.
+### Compatibility
 
-## Performance controls
+| Area | Current scope |
+| --- | --- |
+| Development target | Minecraft Java 26.3, Iris 1.11.7 and Sodium 0.9.2. |
+| Dimensions | Overworld, Nether and End; unknown modded dimensions use the Overworld fallback. |
+| Colored ore lighting | Requires Iris custom images and compute-shader support; disabled by Speed. |
+| Distant texture stabilization | Uses the game's existing mip chain. |
+| Other environments | Older versions, OptiFine, Bedrock, macOS, VR, Vulkan, Distant Horizons and Voxy are not certified. |
 
-Balanced is the default visual upgrade. Speed removes shadow rendering, rays,
-bloom, water refraction and procedural clouds while retaining richer directional
-lighting, ore emission, the LUT and edge AA. Individual effects can also be
-disabled in Shader Pack Settings. Shadow resolution and distance are deliberately
-limited; higher settings spend more GPU time. Features cannot guarantee the same
-FPS on every machine or make CPU simulation faster.
+## Choose your balance
 
-## Experimental Boost
+| Preset | Intended use |
+| --- | --- |
+| **Balanced** | The default visual upgrade, with bounded shadows, colored ore light and half-resolution effects. |
+| **Speed** | Removes costly shadow, voxel-lighting and post-effect work while keeping directional lighting, ore surface glow, color grading and built-in edge smoothing. |
+| **Vibrant Fantasy** | Richer color, stronger bloom and more pronounced atmosphere. |
+| **Cinematic Ultra** | More expensive shadows and surface filtering for machines with headroom. |
 
-Shader Options → Performance → Render Mode offers 85% and 75% world rendering.
-The shader draws into a smaller region and spatially reconstructs at display
-resolution, with restrained sharpening. Game UI stays at display resolution.
-Native remains the default. Boost can look softer, especially in foliage and
-thin geometry; it is not temporal super resolution and does not accelerate CPU
-simulation or chunk generation. FPS gains are hardware/workload dependent and
-are not promised.
+Native renders the world at full resolution. Experimental **Boost 85% / 75%**
+reduces world shading resolution and reconstructs it; the game UI stays native.
+Boost can look softer and does not accelerate CPU simulation or chunk generation.
+AA is built in, with no on/off or quality selector. Camera blur and nearby
+anisotropic surface filtering remain separate controls.
 
-## Test the beta
+## Performance and verification
 
-Compare the same position, resolution, render distance, weather, and camera
-movement with shaders disabled, XON Native, and optionally XON Boost. Check a
-daytime landscape, white blocks, indoors with a torch, sunset, night, an ocean,
-underwater, rain, the Nether, and the End. Rotate the camera to check subtle blur
-and confirm held items and crosshair remain clear. Do not change time/weather
-on a multiplayer server just for this test.
+XON uses bounded shadow maps, a compact local light volume, shared filtering
+samples and half-resolution post effects. These choices control cost; they do
+not make shader rendering free or guarantee a particular frame rate.
 
-## Known beta limits
+The current shader source passed **840 OpenGL compile/link configurations** and
+**790 GPU regression cases/comparisons**, including terrain rings, ore propagation,
+cloud motion, AA, water, rays and hand protection. Those checks use controlled
+inputs on an RTX 5060 Ti. They do not certify every mod stack or replace live
+Minecraft visual and FPS testing. See [the verification record](VERIFICATION.md)
+for methodology, timings and remaining checks.
 
-Colored emissive lighting propagates through a local block grid in all three
-dimensions. It takes about eight frames to settle at the default radius and is
-disabled in Speed. Its reach follows open block paths, so corners shorten the
-range; it is not a spherical ray tracer. Solid-layer blocks are conservative
-whole-voxel occluders, including partial shapes. Glass, mapped leaves and plants
-do not block it. The player-centred volume fades at its boundary. Vanilla torch
-lighting remains warm. Sun rays sample the shadow map; this is not global ray tracing.
+Colored light follows open voxel paths rather than spherical ray tracing. The
+local volume and corners can shorten its reach. Cloud ground shade is an artistic
+approximation, not a traced projection of the visible sky clouds. Spatial AA
+reduces shimmer but cannot recover missing subpixel information like temporal AA.
 
-Cast shadows fade before 96 blocks by default. Translucent blocks do not cast
-colored shadows. The compact map can show fine-detail aliasing. Clouds use two
-height layers rather than a volume simulation. Water reflects the sky/clouds
-rather than buildings or off-screen geometry; the half-resolution refraction
-copy can soften submerged texels. Edge AA handles visible geometric edges but
-cannot recover unseen subpixel detail or provide temporal stability like TAA.
-Texture stabilization uses the game's existing mipmaps; it cannot create a
-missing mip chain when game mipmapping is disabled.
-No independent moving-object blur. Unknown modded
-dimensions use the Overworld fallback. Distant Horizons, Voxy, VR, Vulkan,
-Bedrock, OptiFine, macOS, and older Minecraft versions are not certified.
+## Build from source
 
-Check `VERIFICATION.md` in the source folder for the checks actually performed.
-A successful driver compile does not by itself prove an Iris/game load or an
-FPS improvement. Send the XON-specific error from your instance's
-`logs/latest.log` if loading fails.
+Python **3.10 or newer** is sufficient to package the shader; no Python packages
+are required for the build.
 
-## Source and build
+```sh
+git clone https://github.com/Danonymos/XON.git
+cd XON
+python tools/build.py
+python tools/release_checks.py
+```
 
-All shader source in this pack was authored for XON. The four supplied shader
-archives were used as study references; none of their code or textures is
-included. No additional runtime dependency is required beyond the shader loader.
+The installable ZIP is written **one directory above the checkout**. The build
+includes the shaders, a compact installation guide, the changelog and the license.
+Screenshots, test tools, local reports and source-only documentation stay outside
+the runtime ZIP. The GitHub workflow runs the same build and integrity checks;
+it does not run the local GPU suite.
 
-Run `python tools/build.py` from this source folder to generate the thin program
-wrappers and produce the ZIP one directory above. Developer checks and reports
-are excluded from the runtime pack.
+## Help improve XON
+
+[Report a rendering bug or performance regression](https://github.com/Danonymos/XON/issues/new/choose)
+with your versions, GPU/driver, settings and clear reproduction steps. Controlled
+before/after captures are especially useful.
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes. Technical details
+live in [engineering notes](docs/ENGINEERING.md); maintainers can follow the
+[release guide](docs/RELEASING.md).
+
+## License
+
+XON is **source available**, with free personal, non-commercial gameplay use under
+its [Personal Use and Contribution License](LICENSE). The license includes a
+specific exception for forks and pull requests that contribute to this official
+repository. It is not an unrestricted open-source license. Read the full terms
+before modifying, redistributing or reusing any part of the pack.
+
+Minecraft belongs to its respective owners. XON is an independent shader project.
