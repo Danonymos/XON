@@ -1,3 +1,12 @@
+# 1.0.4 - underwater stability correction
+
+- Remove the animated surface-noise field that produced broad white smoke underwater. Beam structure now comes from actual sunlight and shadow-map occluders, using the same sun direction as the shadow map.
+- Replace depth-scaled, screen-jittered underwater sampling with fixed-length integration intervals and partial foreground intervals. Foreground depth changes no longer stretch every sample across the whole water volume; sampling does not depend on large absolute world coordinates.
+- Use eight softly filtered underwater steps, a 24-block range, stronger distance attenuation, a 0.085 peak cap and a restrained blue scattering color. Keep the existing half-resolution effects and softening passes; no history buffer or extra shadow-world draw range.
+- Lower pale underwater background scattering and apply wavelength-dependent distance absorption beyond the existing six-block clear near zone. Preserve outdoor lighting, building contrast, shallow-water surface tint, LUT and camera defaults.
+- Add stationary-time, depth-sweep and 25-frame translating/rotating-camera regression checks against a 128-step reference. Replace the old test's requirement for procedural beams in fully open water with checks for real occluder-shaped scattering.
+- Package separately as 1.0.4-water-stability so the previous pack and settings remain available. In-game appearance and frame rate require player verification.
+
 # 1.0.4 - revised after in-game comparison
 
 - Fix absent horizontal-view underwater beams: remove the upward cone gate and eye-skylight suppression underwater; retain daytime, shadow occlusion, medium and user-option gates.

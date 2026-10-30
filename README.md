@@ -1,4 +1,4 @@
-# XON Shader - 1.0.4 (revised)
+# XON Shader - 1.0.4 (water stability fix)
 
 An original performance-first Iris shader pack with warm directional sunlight,
 5-stage time-of-day atmospheric moods (Early Morning, Noon, Warm Afternoon, Evening Sunset, Night),
@@ -9,9 +9,11 @@ Contrast-Adaptive Sharpening (CAS), 4-tap sub-pixel edge AA, and smooth camera m
 
 ## What changed in 1.0.4
 
-- Surface-shaped underwater God rays remain visible in horizontal swimming views,
-  including low eye skylight. Original XON noise provides a coherent moving light
-  transmission field; real shadow samples still block light beneath solid geometry.
+- Replace the smoky animated underwater field with restrained blue scattering
+  shaped by actual sun-shadow openings. Fixed-length integration intervals avoid
+  stretching the entire ray pattern when foreground depth changes. Lower intensity
+  and distance-based absorption give distant water a deeper blue, preserving the
+  clear six-block near zone. No invented moving transmission field remains.
 - Direct lighting uses Iris's active shadow light direction. Opaque backfaces no
   longer receive wrapped sunlight; moving cloud highlights respect the receiving
   face and shadow visibility. Reduced wall-sky fill and bounce reveal form while
@@ -28,10 +30,11 @@ Contrast-Adaptive Sharpening (CAS), 4-tap sub-pixel edge AA, and smooth camera m
   Sun Rays; Speed disables them. No additional render pass or history buffer.
 - Includes the glow-lichen stability and visible shallow-water fixes.
 
-The existing half-resolution ray pass uses four shadow samples outdoors and six
-underwater, with a 40-block underwater range cap and six existing-noise lookups.
-This adds a small GPU cost; see source `VERIFICATION.md` for measured timings.
-The underwater surface field and refraction are artistic approximations. Solid
+The existing half-resolution ray pass uses four shadow samples outdoors and eight
+underwater steps with two hardware-PCF lookups each. Underwater range is 24 blocks,
+with a 0.085 intensity cap and no noise lookups. See source `VERIFICATION.md` for
+measured timings. Shafts require contrasting sunlit and occluded water; uniform
+open water receives gentle scattering rather than procedural bright tubes. Solid
 cast shadows remain limited to the configured shadow distance; distant backfaces
 retain directional shading beyond that range, but distant occluders are not traced.
 
@@ -81,7 +84,7 @@ They do not establish an in-game FPS gain. See `VERIFICATION.md` in the source.
 
 1. Keep a working Fabric + Iris + matching Sodium installation. Initial target:
    Minecraft Java 26.3, Iris 1.11.7, Sodium 0.9.2.
-2. Put `XON-Shader-v1.0.4-revised.zip` directly in that installation's `shaderpacks`
+2. Put `XON-Shader-v1.0.4-water-stability.zip` directly in that installation's `shaderpacks`
    folder. Do not extract it and do not place it in `mods` or `resourcepacks`.
 3. Open Video Settings → Shader Packs, select XON, and Apply.
 4. Begin with the default Balanced preset and Native resolution. Select Speed if
@@ -99,7 +102,7 @@ They do not establish an in-game FPS gain. See `VERIFICATION.md` in the source.
 - Selective ore emission, 4-tap bloom, held light, an original 16-cube color LUT,
   soft layered clouds, organic non-repeating water waves/refraction, and sharp edge AA ON.
 - Air fog OFF. Clear-weather distance haze is removed; water/lava/powder-snow
-  absorption and blindness/darkness remain. Rays use 4 outdoor / 6 underwater steps with directional culling.
+  absorption and blindness/darkness remain. Rays use 4 outdoor / 8 underwater steps.
 - Water refraction, bloom and sunlight shafts use half-resolution
   buffers. Edge AA shares the final pass and rejects texture-only edges.
 - No voxel lighting, screen-space reflection tracing, temporal AA/history,

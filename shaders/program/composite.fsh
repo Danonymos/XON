@@ -5,9 +5,6 @@
 
 uniform sampler2D colortex0;
 uniform sampler2D depthtex0;
-#if XON_DIMENSION == 0 && defined XON_SHADOWS && defined XON_LIGHT_SHAFTS && defined XON_UNDERWATER_RAYS
-uniform sampler2D noisetex;
-#endif
 in vec2 xonUV;
 layout(location = 0) out vec4 xonEffects;
 
@@ -45,50 +42,45 @@ void main() {
         vec4 view = gbufferProjectionInverse * vec4(xonUV * 2.0 - 1.0, 1.0, 1.0);
         vec3 playerRay = mat3(gbufferModelViewInverse) * xonSafeNormalize(view.xyz);
         vec3 sun = xonSunDirection();
-        vec3 shaftDirection = sun;
         if (underwater) {
-            // Flat-interface refraction bends the visible sunlight toward the water normal.
-            shaftDirection.xz *= 0.75019;
-            shaftDirection.y = sqrt(max(1.0 - dot(shaftDirection.xz, shaftDirection.xz), 0.0));
+            // Use the same sun direction as the occluder shadow map.
             daylight *= smoothstep(0.0, 0.16, sun.y);
         }
-        float sunDot = dot(playerRay, shaftDirection);
+        float sunDot = dot(playerRay, sun);
         if (underwater || sunDot > 0.55) {
             sunDot = max(sunDot, 0.0);
             float s2 = sunDot * sunDot;
             float s4 = s2 * s2;
             float s8 = s4 * s4;
-            float phase = underwater ? (0.35 + 0.65 * s4)
+            float phase = underwater ? (0.25 + 0.75 * s4)
                                      : (s8 * 0.08 + s8 * s8 * s8 * 0.92) * smoothstep(0.55, 0.75, sunDot);
             float depth = texture(depthtex0, xonSourceUV(xonUV)).r;
             vec4 depthView = gbufferProjectionInverse * vec4(xonUV * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
             depthView.xyz /= max(abs(depthView.w), 0.000001);
             float rayLength = min(length(depthView.xyz), shadowDistance * 0.76);
-            if (underwater) rayLength = min(rayLength, 40.0);
+            if (underwater) rayLength = min(rayLength, 24.0);
             float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-            int sampleCount = underwater ? 6 : 4;
-            float stepLength = rayLength / float(sampleCount);
-            for (int stepIndex = 0; stepIndex < 6; ++stepIndex) {
+            int sampleCount = underwater ? 8 : 4;
+            float stepLength = underwater ? 3.0 : rayLength * 0.25;
+            vec3 rayOrigin = gbufferModelViewInverse[3].xyz;
+            for (int stepIndex = 0; stepIndex < 8; ++stepIndex) {
                 if (stepIndex >= sampleCount) break;
-                float sampleOffset = underwater ? 0.5 + (jitter - 0.5) * 0.18 : 0.35 + jitter * 0.65;
-                float distanceAlongRay = (float(stepIndex) + sampleOffset) * stepLength;
-                vec3 samplePosition = gbufferModelViewInverse[3].xyz + playerRay * distanceAlongRay;
-                float mediumLight = 1.0;
-#ifdef XON_UNDERWATER_RAYS
+                float distanceAlongRay = (float(stepIndex) + 0.35 + jitter * 0.65) * stepLength;
+                float weight = 1.0;
                 if (underwater) {
-                    vec3 worldSample = samplePosition + cameraPosition;
-                    // Project a moving surface-transmission field along the refracted sunlight.
-                    // One existing noise lookup per step gives coherent shafts in open water too.
-                    vec2 surfaceUV = (worldSample.xz - shaftDirection.xz * worldSample.y / shaftDirection.y) * 0.018;
-                    vec2 noise = texture(noisetex, surfaceUV + vec2(0.008, -0.005) * frameTimeCounter).rg;
-                    float beam = 1.0 - smoothstep(0.025, 0.14, abs(noise.r - noise.g));
-                    mediumLight = 0.015 + beam * beam * beam * 2.4;
+                    // A changing foreground depth cannot rescale the entire sampling grid.
+                    float start = float(stepIndex) * stepLength;
+                    float end = min(float(stepIndex + 1) * stepLength, rayLength);
+                    if (end <= start) break;
+                    distanceAlongRay = (start + end) * 0.5;
+                    weight = end - start;
                 }
-#endif
-                shafts += xonRayVisibility(samplePosition) * mediumLight * exp(-distanceAlongRay * (underwater ? 0.055 : 0.018));
+                vec3 samplePosition = rayOrigin + playerRay * distanceAlongRay;
+                float visibility = underwater ? xonWaterRayVisibility(samplePosition) : xonRayVisibility(samplePosition);
+                shafts += visibility * weight * exp(-distanceAlongRay * (underwater ? 0.08 : 0.018));
             }
-            shafts *= stepLength * (underwater ? 0.040 : 0.007) * phase * exposure * daylight * XON_RAY_STRENGTH;
-            shafts = min(shafts, underwater ? 0.28 : 0.20);
+            shafts *= (underwater ? 0.006 : stepLength * 0.007) * phase * exposure * daylight * XON_RAY_STRENGTH;
+            shafts = min(shafts, underwater ? 0.085 : 0.20);
         }
     }
 #endif

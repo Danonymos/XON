@@ -46,12 +46,20 @@ def run():
 
     uniform2i = driver.function('glUniform2i', None, ct.c_int, ct.c_int, ct.c_int)
 
-    def draw(program, medium=0, sunlight=True, exposure=240, depth=.99999, sun=None):
+    def draw(program, medium=0, sunlight=True, exposure=240, depth=.99999, sun=None,
+             camera=(0, 0, 0), rotation=None, time=0, map_origin=(0, 0, 0)):
         renderer.setup(program)
         renderer.uniform1i(renderer.location('isEyeInWater'), medium)
-        renderer.uniform3f(renderer.location('sunPosition'), *(sun or (0, 14 if sunlight else -40, -99)))
+        rotation = np.eye(4) if rotation is None else rotation
+        light = rotation[:3, :3] @ np.array(sun or (0, 14 if sunlight else -40, -99))
+        renderer.uniform3f(renderer.location('sunPosition'), *light)
+        renderer.uniform3f(renderer.location('cameraPosition'), *camera)
+        renderer.uniform1f(renderer.location('frameTimeCounter'), time)
         uniform2i(renderer.location('eyeBrightnessSmooth'), 240, exposure)
-        for name, value in [('shadowModelView', np.eye(4)),
+        shadow_view = np.eye(4)
+        shadow_view[:3, 3] = np.array(camera) - np.array(map_origin)
+        for name, value in [('gbufferModelViewInverse', np.linalg.inv(rotation)),
+                            ('shadowModelView', shadow_view),
                             ('shadowProjection', np.diag([.02, .02, .02, 1]))]:
             data = np.ascontiguousarray(value.T, dtype=np.float32)
             renderer.uniform_matrix(renderer.location(name), 1, 0, data.ctypes.data)
@@ -77,7 +85,7 @@ def run():
                 raise AssertionError('Open-water rays incorrectly depend on underwater eye skylight')
             if near.mean() >= lit.mean() * .1:
                 raise AssertionError('Shafts ignore foreground depth')
-            if lit.max() > (.28001 if medium == 1 else .20001):
+            if lit.max() > (.08501 if medium == 1 else .20001):
                 raise AssertionError('Shaft intensity cap exceeded')
             checks.append({'case': f'medium {medium}: bounded daylight shafts, depth clipping, night/darkness/occlusion suppression',
                            'peak': float(lit.max()), 'mean': float(lit.mean())})
@@ -88,14 +96,63 @@ def run():
             if not .0001 < opening.mean() < lit.mean() or opening.std() < .005:
                 raise AssertionError('An opaque edge did not shape the light shaft')
             checks.append({'case': f'medium {medium}: shadow-map opening shapes beam', 'standard_deviation':float(opening.std())})
-        shadow(1)
+        shadow(pattern)
         for sun in [(0,95,-31),(0,95,31),(90,30,0)]:
             water=draw(shafts,1,exposure=0,sun=sun)
             center=water[renderer.height//3:renderer.height*2//3,renderer.width//3:renderer.width*2//3]
-            if center.mean()<.015 or water.std()<.015:
-                raise AssertionError(f'Horizontal underwater view lost distinct beams: {sun}')
-            checks.append({'case':'horizontal swimming view retains shaped beams at zero eye skylight',
+            if center.mean()<.0005 or water.std()<.001:
+                raise AssertionError(f'Shadow-defined underwater scattering absent: {sun}')
+            checks.append({'case':'horizontal swimming: actual occluder shapes restrained scattering at zero eye skylight',
                            'sun':sun,'center_mean':float(center.mean()),'spatial_std':float(water.std())})
+        # Open water has no invented beams; compare its integrated energy to Beer-Lambert.
+        shadow(1)
+        reference_fragment = variant_source(SHADERS / 'composite.fsh', {'XON_BLOOM': False})
+        reference_fragment = reference_fragment.replace('underwater ? 8 : 4', 'underwater ? 128 : 4')
+        reference_fragment = reference_fragment.replace('stepIndex < 8', 'stepIndex < 128')
+        reference_fragment = reference_fragment.replace('underwater ? 3.0 :', 'underwater ? 0.1875 :')
+        dense = compile_pair(variant_source(SHADERS / 'composite.vsh', {}), reference_fragment)
+        base = draw(shafts, 1)
+        animated = draw(shafts, 1, time=172.5)
+        if np.max(np.abs(animated - base)) > 1e-7:
+            raise AssertionError('Stationary shaft source animates without a sun/occluder change')
+        checks.append({'case': 'stationary world has no time-animated underwater noise', 'passed': True})
+        relocated = draw(shafts, 1, camera=(2695, 59, 15970), map_origin=(2695, 59, 15970))
+        if np.max(np.abs(relocated - base)) > 1e-7:
+            raise AssertionError('Large world coordinates change the local scattering field')
+        checks.append({'case': 'scattering is invariant to world-origin relocation near player screenshot coordinates', 'passed': True})
+        errors = []
+        energies = []
+        for distance in [1, 3, 6, 9, 12, 18, 24, 32]:
+            # Renderer uses near=.05, far=1024; invert its perspective depth transform.
+            depth = ((1024 + .05) / (1024 - .05) - 2 * 1024 * .05 / ((1024 - .05) * distance) + 1) * .5
+            water = draw(shafts, 1, depth=depth)
+            reference = draw(dense, 1, depth=depth)
+            errors.append(float(np.max(np.abs(water - reference))))
+            energies.append(float(water.mean()))
+        if max(errors) > .0003 or np.min(np.diff(energies)) < -1e-7:
+            raise AssertionError(f'Depth changes stretch or reverse open-water scattering: {errors}, {energies}')
+        checks.append({'case': 'foreground depth sweep matches dense integration and adds energy monotonically',
+                       'maximum_absolute_error': max(errors), 'mean_energy_by_depth': energies})
+        # Sweep a fixed world-space opening with camera translation and rotation.
+        from scene_checks import look_at
+        shadow(pattern)
+        previous = previous_reference = None
+        motion_errors = []
+        integration_errors = []
+        for index in range(25):
+            offset = (index - 12) * .12
+            camera = (offset, .03 * index, -offset * 2)
+            rotation = look_at([0, 0, 0], [offset * .035, .04, -1])
+            water = draw(shafts, 1, camera=camera, rotation=rotation)
+            reference = draw(dense, 1, camera=camera, rotation=rotation)
+            integration_errors.append(float(np.quantile(np.abs(water-reference), .99)))
+            if previous is not None:
+                motion_errors.append(float(np.quantile(np.abs((water-previous)-(reference-previous_reference)), .99)))
+            previous, previous_reference = water, reference
+        if max(integration_errors) > .008 or max(motion_errors) > .008:
+            raise AssertionError(f'Camera movement exceeds the scattering error budget: {integration_errors}, {motion_errors}')
+        checks.append({'case': '25 translating/rotating camera frames across fixed occluder vs 128-step integration',
+                       'worst_frame_p99_error': max(integration_errors), 'worst_motion_p99_error': max(motion_errors)})
         for options, medium in [({'XON_UNDERWATER_RAYS': False}, 1),
                                 ({'XON_RAY_STRENGTH': '0.00'}, 0),
                                 ({'XON_RAY_STRENGTH': '0.00'}, 1),
@@ -147,25 +204,50 @@ def run():
             old_shafts = compile_pair(baseline('composite.vsh'), baseline('composite.fsh').replace('#define XON_BLOOM\n', '#undef XON_BLOOM\n'))
         with zipfile.ZipFile(ROOT.parent / 'XON-Shader-v1.0.4-original.zip') as archive:
             original_shafts=compile_pair(baseline('composite.vsh'),baseline('composite.fsh').replace('#define XON_BLOOM\n','#undef XON_BLOOM\n'))
+        with zipfile.ZipFile(ROOT.parent / 'XON-Shader-v1.0.4-revised.zip') as archive:
+            smoky_shafts=compile_pair(baseline('composite.vsh'),baseline('composite.fsh').replace('#define XON_BLOOM\n','#undef XON_BLOOM\n'))
+            fog_prefix = '#version 330 compatibility\n#define XON_DIMENSION 0\n'
+            fog_body = '\nuniform float testDistance; out vec4 result; void main(){result=vec4(xonFog(vec3(.12),vec3(0,0,-testDistance),1),1);}'
+            fog_programs = []
+            for historical in [True, False]:
+                libraries = ['lib/'+name+'.glsl' for name in ['settings','uniforms','math','atmosphere']]
+                text = '\n'.join(baseline(name) if historical else expand(SHADERS/name) for name in libraries)
+                fog_programs.append(compile_pair(variant_source(SHADERS/'final.vsh',{}),fog_prefix+text+fog_body))
+        for medium, distance in [(1,3),(1,6),(1,24),(1,64),(0,24),(2,24),(3,24)]:
+            values = []
+            for selected in fog_programs:
+                renderer.setup(selected)
+                renderer.uniform1i(renderer.location('isEyeInWater'),medium)
+                renderer.uniform1f(renderer.location('testDistance'),distance)
+                renderer.uniform3f(renderer.location('sunPosition'),0,100,0)
+                values.append(renderer.draw(raw=True)[0,0,:3])
+            delta = float(np.max(np.abs(values[1]-values[0])))
+            if medium != 1 or distance <= 6:
+                if delta > 1e-6: raise AssertionError('Clear near zone or non-water atmosphere changed')
+            elif not (.01 < values[1].mean() < values[0].mean() and values[1][2] > values[1][0]):
+                raise AssertionError('Distant water lost blue color, readability or absorption')
+            checks.append({'case':'water background absorption and other-medium parity',
+                           'medium':medium,'distance':distance,'old_rgb':values[0].tolist(),'new_rgb':values[1].tolist()})
         # Synthetic constant underwater backdrop, composed through the same filmic curve.
         from PIL import ImageDraw
         sheet=Image.new('RGB',(1920,570))
         painter=ImageDraw.Draw(sheet)
-        for index,program in enumerate([original_shafts,shafts]):
-            shadow(1)
+        for index,program in enumerate([smoky_shafts,shafts]):
+            shadow(pattern)
             alpha=draw(program,1,exposure=0,sun=(0,95,-31))
-            rgb=np.array([.035,.075,.10])+alpha[...,None]*np.array([.38,.78,.92])
+            tint = [.38,.78,.92] if index == 0 else [.20,.40,.65]
+            rgb=np.array([.035,.075,.10])+alpha[...,None]*np.array(tint)
             rgb*=1.05;rgb=rgb*(2.51*rgb+.03)/(rgb*(2.43*rgb+.59)+.14)
             rgb=np.clip(rgb,0,1)**(1/2.2)
             sheet.paste(Image.fromarray((np.flipud(rgb)*255).astype(np.uint8)),(index*960,30))
-            painter.text((index*960+12,8),('Original' if index==0 else 'Revised')+' 1.0.4 / horizontal underwater view',fill='white')
+            painter.text((index*960+12,8),('Previous smoke field' if index==0 else 'Occluder-defined scattering')+' / synthetic opening',fill='white')
         sheet.save(ROOT/'validation-underwater-comparison.png')
         gen = driver.function('glGenQueries', None, ct.c_int, ct.POINTER(ct.c_uint))
         begin = driver.function('glBeginQuery', None, ct.c_uint, ct.c_uint)
         end = driver.function('glEndQuery', None, ct.c_uint)
         get = driver.function('glGetQueryObjectui64v', None, ct.c_uint, ct.c_uint, ct.POINTER(ct.c_uint64))
         delete = driver.function('glDeleteQueries', None, ct.c_int, ct.POINTER(ct.c_uint))
-        for label, program, medium in [('1.0.3.3 outdoor',old_shafts,0),('original 1.0.4 underwater',original_shafts,1),('1.0.4 outdoor',shafts,0),('1.0.4 underwater',shafts,1)]:
+        for label, program, medium in [('1.0.3.3 outdoor',old_shafts,0),('original 1.0.4 underwater',original_shafts,1),('previous smoky underwater',smoky_shafts,1),('1.0.4 outdoor',shafts,0),('1.0.4 underwater',shafts,1)]:
             shadow(1)
             draw(program,medium)
             def quad():

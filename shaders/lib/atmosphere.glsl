@@ -146,9 +146,11 @@ vec3 xonFog(vec3 color, vec3 viewPosition, float skylight) {
         float day = xonDaylight();
         vec3 waterTint = mix(vec3(0.035, 0.22, 0.30),
                             max(xonToLinear(fogColor), vec3(0.025)), 0.40);
-        fog = waterTint * mix(0.28, 1.15, max(exposure, day * 0.65));
+        fog = waterTint * mix(0.28, 0.65, max(exposure, day * 0.65));
         float effectiveDist = max(distanceToEye - 6.0, 0.0);
-        amount = (1.0 - exp(-effectiveDist * 0.016 * XON_FOG_AMOUNT)) * 0.82;
+        float transmission = exp(-effectiveDist * 0.016 * XON_FOG_AMOUNT);
+        color *= vec3(transmission * transmission, transmission, sqrt(transmission));
+        amount = (1.0 - transmission) * 0.82;
     } else if (isEyeInWater == 2) {
         fog = vec3(0.63, 0.075, 0.008);
         amount = 1.0 - exp(-distanceToEye * 1.8);

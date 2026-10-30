@@ -1,4 +1,60 @@
-# XON Shader 1.0.4 revised - verification
+# XON Shader 1.0.4 water-stability correction - verification
+
+30 October 2026. Player screenshots and motion reports showed that the previous
+animated noise field looked like white smoke and morphed while swimming. The
+earlier stationary checks passed but did not establish acceptable moving visuals.
+
+## Current implementation and evidence
+
+- Remove the underwater noise field entirely. Scatter blue sunlight according to
+  actual shadow-map visibility, using the same source direction as those shadows.
+- Eight fixed three-block intervals, clipped at foreground depth and 24 blocks.
+  No underwater screen jitter, time animation or large-world-coordinate phase.
+  Changing depth affects the final interval rather than rescaling every sample.
+- Two hardware-PCF lookups per step soften visibility. Keep the existing
+  half-resolution integration and spatial-softening passes, 96-block shadow map
+  range and map resolution. Cap underwater alpha at 0.085 instead of 0.28.
+- Lower pale water-background scattering. Reuse the existing fog transmission
+  for approximate red/green/blue absorption, with multiplication and one square
+  root; no additional exponential evaluations. The six-block clear near zone,
+  shallow-water surface tint and outdoor color/lighting remain intact.
+- 820 driver-linked program configurations pass. Rendering checks: 22 lighting,
+  12 final-pass, 84 water-surface, 27 ray/background, and 12 building cases.
+- New checks cover stationary time, world-origin relocation near the supplied
+  screenshot coordinates, eight foreground depths, and 25 translating/rotating
+  camera frames against a 128-step integration reference with fixed occlusion.
+  Maximum open-water depth-sweep alpha error: 0.000147. Worst moving-frame p99
+  alpha error: 0.00484; worst frame-difference p99 error: 0.00690. These are
+  integration error bounds for synthetic inputs, not proof of flicker-free play.
+- Background checks preserve near-water, air, lava and powder-snow behavior;
+  distant water becomes bluer and less washed out without a black clamp.
+
+Shaft-only GPU queries at 960x540, 48 queries/four draws each, RTX 5060 Ti:
+previous smoky underwater median 0.03931 ms / p95 0.03946 ms; corrected underwater
+median 0.04349 ms / p95 0.04460 ms. The isolated increase is about 0.0042 ms.
+No full-game FPS improvement or identical FPS is established. Timings exclude
+world geometry, CPU, bloom and background fog; desktop load/clocks affect results.
+
+Current reproduction commands are the same as the historical commands below.
+The ray checks additionally need the preserved `XON-Shader-v1.0.4-revised.zip`.
+Reports remain local and excluded from source/runtime archives. The comparison
+PNG now contrasts the rejected smoke field with occluder-defined scattering on a
+constant backdrop; it is a diagnostic, not a Minecraft scene or reference match.
+
+Select **XON-Shader-v1.0.4-water-stability.zip** and Apply. Swim forward/backward,
+strafe and rotate at the supplied location, then compare under building edges and
+in unobstructed water. Check the blue background, nearby visibility, ray intensity
+0/1 and FPS with identical settings. Uniformly lit open water is intentionally
+subtle; visible shafts need occlusion contrast. Fine geometry/shadow-map changes
+can still alias within this small sample budget. Shadow rays assume straight
+sunlight and do not simulate wave-refraction or multiple scattering. No live
+Minecraft reload, final appearance check or game FPS measurement was performed.
+
+The new ZIP is installed alongside the previous pack with copied shader-option
+preferences. Active Iris selection is unchanged. The runtime ZIP and a matching
+source archive use the `1.0.4-water-stability` filename.
+
+# Historical 1.0.4-revised verification (superseded underwater implementation)
 
 30 October 2026. Builds on player screenshots showing flat building shade and
 missing underwater beams. Offscreen checks use the installed RTX 5060 Ti OpenGL

@@ -72,6 +72,15 @@ float xonRayVisibility(vec3 playerPosition) {
     coordinate.z -= 0.000025;
     return texture(shadowtex0, coordinate);
 }
+
+float xonWaterRayVisibility(vec3 playerPosition) {
+    vec3 coordinate = xonShadowCoordinate(playerPosition);
+    if (any(lessThan(coordinate, vec3(0.005))) || any(greaterThan(coordinate, vec3(0.995)))) return 0.0;
+    coordinate.z -= 0.000025;
+    vec2 radius = vec2(1.25, 0.60) / float(shadowMapResolution);
+    return 0.5 * (texture(shadowtex0, coordinate + vec3(radius, 0.0))
+                + texture(shadowtex0, coordinate - vec3(radius, 0.0)));
+}
 #endif
 #endif
 
