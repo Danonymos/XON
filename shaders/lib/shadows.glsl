@@ -36,6 +36,12 @@ float xonShadowVisibility(vec3 playerPosition, vec3 normal, float facing, float 
     float distSq = dot(playerPosition.xz, playerPosition.xz);
     float maxDist = shadowDistance * 0.98;
     float fallback = smoothstep(0.60, 0.96, skylight);
+    if (foliage > 0.0) {
+        // Undo the foliage light wrap so leaves retain directional depth outside the shadow map.
+        float leafFacing = clamp((facing - 0.52) * (1.0 / 0.48), 0.0, 1.0);
+        float canopyExposure = (0.92 + 0.08 * max(normal.y, 0.0)) * (0.74 + 0.26 * leafFacing);
+        fallback *= mix(1.0, canopyExposure, foliage);
+    }
     if (distSq >= maxDist * maxDist) return fallback;
     vec4 rawShadow = shadowProjection * shadowModelView * vec4(playerPosition, 1.0);
     vec3 shadowNDC = rawShadow.xyz / max(abs(rawShadow.w), 0.00001);
@@ -82,7 +88,8 @@ float xonShadowVisibility(vec3 playerPosition, vec3 normal, float facing, float 
         }
     }
     float boxFade = smoothstep(0.75, 0.97, edgeDist);
-    float rangeFade = max(boxFade, smoothstep(shadowDistance * 0.88, maxDist, dist));
+    // A broader foliage handoff avoids a narrow band between cast shadows and approximate canopy shade.
+    float rangeFade = max(boxFade, smoothstep(shadowDistance * mix(0.88, 0.72, foliage), maxDist, dist));
     return mix(visibility, fallback, rangeFade);
 }
 

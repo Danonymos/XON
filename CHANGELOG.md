@@ -44,6 +44,18 @@ before this release's changes.
 - Add 30 GPU material, propagation, lantern, bloom and movement cases plus a
   client-asset/state mapping check. Re-run the existing regression suites.
 
+### Distant foliage update
+
+- Preserve the pre-update 1.1 source in commit `9b080ba`; retain version 1.1.
+- Give foliage outside the detailed shadow map soft directional canopy shading,
+  following the active sun/moon and existing skylight. Distant forests retain
+  more face contrast alongside their existing ambient occlusion and cloud shade.
+- Widen the foliage transition into that approximation. Keep ordinary terrain,
+  covered nearby cast shadows, indoor lighting and the shadow-map range/resolution.
+- Add no pass, texture fetch, buffer, dependency or CPU frame work. This is an
+  approximation, not distant object-cast shadows. See the measured cost and 31
+  new GPU cases in the [update verification](https://github.com/Danonymos/XON/blob/main/docs/distant-shading-validation.md).
+
 ## 1.0.9 — Balanced interiors and softer pools of light
 
 31 October 2026.

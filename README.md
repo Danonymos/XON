@@ -28,6 +28,9 @@ direction; it is not a controlled comparison or proof of the latest fixes.
 
 ## What's new in 1.1
 
+- **More depth in distant forests.** Soft sun/moon-oriented canopy shading blends
+  with nearby detailed shadows, preserving distant foliage contrast without
+  expanding shadow rendering. Distant object-cast shadows remain an approximation.
 - **More natural and magical emitters.** Amethyst blocks cast purple light, glow
   lichen adds a gentle mint aura, glow berries cast warm light and sculk veins
   join the cyan accent family. Berry-free vines keep their ordinary behavior.
@@ -147,13 +150,14 @@ samples and half-resolution post effects. These choices control cost; they do
 not make shader rendering free or guarantee a particular frame rate.
 
 The current shader source passed **840 OpenGL compile/link configurations** and
-**872 GPU regression cases/comparisons** plus client material/state mapping checks,
+**903 GPU regression cases/comparisons** plus client material/state mapping checks,
 including emissive plants, lantern cores, bloom, occluder edges, indoor balance, celestial
 occlusion, terrain rings, ore propagation, cloud motion, AA, water, rays and hand
 protection. Those checks use controlled
 inputs on an RTX 5060 Ti. They do not certify every mod stack or replace live
 Minecraft visual and FPS testing. See [the verification record](VERIFICATION.md)
-for methodology, timings and remaining checks.
+for methodology, timings and remaining checks, plus the
+[distant-foliage update measurements](docs/distant-shading-validation.md).
 
 Colored light follows open voxel paths rather than spherical ray tracing. The
 local volume and corners can shorten its reach. Cloud ground shade is an artistic

@@ -15,6 +15,7 @@ ore illumination, layered water and built-in spatial edge smoothing.
 
 ## Highlights
 
+- Soft distant-foliage shading that follows the sun/moon, with a broader shadow handoff.
 - Purple amethyst blocks, mint glow lichen, warm glow berries and cyan sculk veins.
 - Violet quartz stairs/slabs, extending the existing full-block quartz aura.
 - Brighter regular/soul lantern cores with normally shaded metal frames.
@@ -49,6 +50,8 @@ Ordinary lamps use the existing scalar lightmap; this balance does not add
 directional lamp tracing or new source-cast shadows.
 Bloom is a screen-space halo whose apparent world size depends on the view.
 The specific reported moving quartz/wood/stone-brick flicker needs a live recheck.
+Detailed cast shadows retain their bounded range; distant foliage uses approximate
+canopy shading, not extra object-cast shadows across the full render distance.
 
 ## Project, support and license
 

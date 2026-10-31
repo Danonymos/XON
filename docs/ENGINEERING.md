@@ -6,7 +6,7 @@ for measured GPU checks and the distinction between driver tests and live gamepl
 | Area | Source | Current design |
 | --- | --- | --- |
 | Settings and profiles | `shaders/lib/settings.glsl`, `shaders/shaders.properties` | Native/85%/75% render scales; four presets; built-in AA in every preset. |
-| Directional shadows | `shaders/lib/shadows.glsl` | Bounded 1024 map and 96-block defaults, adaptive 4/2/1 PCF lookups, receiver-plane depth correction and range/frustum fades. |
+| Directional shadows | `shaders/lib/shadows.glsl` | Bounded 1024 map and 96-block defaults, adaptive 4/2/1 PCF lookups, receiver-plane depth correction, range/frustum fades and directional far-foliage approximation. |
 | Colored block light | `shaders/lib/emissive_light.glsl`, `shaders/program/shadow.vsh`, `shadowcomp.csh` | 96×48×96 local occupancy/history images, six-neighbor flood fill, eight-fetch interpolation and quintic falloff; all three dimensions. |
 | Cloud ground shade | `shaders/lib/clouds.glsl`, `lighting.glsl` | Three existing noise samples, balanced warped coverage, broad eased boundaries and independent wind layers; 0.5-block/second primary motion. |
 | Static AA | `shaders/lib/antialiasing.glsl` | Shared cardinal sharpening samples, depth-curvature gate and bounded 3×3 edge reconstruction; no span walk or temporal history. |
@@ -31,6 +31,14 @@ unbiased sample. Rendering cost still depends on hardware, resolution and scene.
 
 Ground shade is world anchored, but its field is not a traced projection of the
 visible sky-cloud geometry. Spatial AA cannot provide full temporal reconstruction.
+
+Outside valid shadow coverage, foliage modulates the existing skylight fallback
+with the unwrapped celestial facing and a mild sky-facing term. Its radial handoff
+starts at 72% of shadowDistance, versus 88% for ordinary terrain; both finish at
+98%, with the existing frustum fade still applied. Valid full-coverage nearby
+shadows retain their samples and result. No extra shadow geometry, pass, image or
+texture read is added. This cannot recover distant object occluders. See the
+[GPU checks and timings](distant-shading-validation.md).
 
 Foliage skips receiver-plane gradient evaluation when its final multiplier is
 zero, and skips view-dependent backlight math under full occlusion. These are
