@@ -1,4 +1,4 @@
-# XON Shader 1.0.7
+# XON Shader 1.0.9
 
 Warm light, clear water and a world in motion. XON is an Iris shader pack for
 Minecraft: Java Edition, with directional shadows, moving cloud shade, colored
@@ -8,17 +8,18 @@ ore illumination, layered water and built-in spatial edge smoothing.
 
 1. Use a compatible Minecraft Java + Iris + Sodium installation. The development
    target is Minecraft Java 26.3, Iris 1.11.7 and Sodium 0.9.2.
-2. Place XON-Shader-v1.0.7.zip directly in your instance's shaderpacks folder.
+2. Place XON-Shader-v1.0.9.zip directly in your instance's shaderpacks folder.
    Do not extract it or install it as a mod/resource pack.
 3. Open Video Settings → Shader Packs, select XON and Apply.
 4. Start with Balanced + Native. Speed lowers the effect budget.
 
-The separately named 1.0.7-smooth build contains the same shader code and can be
-selected alongside an older 1.0.7 installation. New repository packaging includes
-this guide, the updated changelog and the full license.
-
 ## Highlights
 
+- Gentler indoor lamps and held lights, with smooth falloff into readable shade.
+- Continuous indoor/outdoor blending, quieter daylight and balanced Nether/End fill.
+- Pale golden light, teal-blue shade, deeper blue nights and a gentler base exposure.
+- Shadow-aware moon glints and block-surface relief aligned with the active light.
+- Exact foliage work skips, without extra passes, images or texture lookups.
 - Built-in edge smoothing in every preset, with no AA toggle or quality selector.
 - Motion filtering that shares the six camera-blur samples and protects held items.
 - Gentler distant mip detail while preserving nearby textures and cutout coverage.
@@ -39,6 +40,8 @@ Corners and the volume boundary shorten its reach. Mip stabilization needs the
 existing game mip chain. Ground cloud shade is an artistic approximation. Spatial
 AA cannot recover missing subpixel/temporal information. GPU tests do not guarantee
 identical FPS or compatibility with every mod stack.
+Ordinary lamps use the existing scalar lightmap; this balance does not add
+directional lamp tracing or new source-cast shadows.
 
 ## Project, support and license
 

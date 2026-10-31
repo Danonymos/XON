@@ -34,7 +34,7 @@ void main() {
     }
     float visibility;
     vec3 c=xonLighting(albedo,n,(gbufferModelView*vec4(p,1)).xyz,p,vec2(0,1),0,0,visibility);
-    c=max(c*XON_BRIGHTNESS,vec3(0));
+    c=max(c*(XON_BRIGHTNESS*XON_BASE_EXPOSURE),vec3(0));
     c=c*(2.51*c+.03)/(c*(2.43*c+.59)+.14);
     c=xonApplyGrade(xonToDisplay(clamp(c,0,1)));
     result=vec4(c,box && n.z>.5 ? 1.0 : (box ? .75 : (visibility<.3 ? .5 : .25)));
@@ -130,6 +130,7 @@ def run():
             text='#version 330 compatibility\n#define XON_DIMENSION 0\n'
             text+='\n'.join(source('lib/'+name+'.glsl',old) for name in
                             ['settings','uniforms','math','atmosphere','clouds','shadows','lighting','grading'])
+            if old:text+='\nconst float XON_BASE_EXPOSURE=1.0;\n'
             scene_programs.append(program(source('final.vsh',old),text+'\n'+BODY))
         metrics=[]
         for version,selected in zip(['original 1.0.4','revised 1.0.4'],scene_programs):

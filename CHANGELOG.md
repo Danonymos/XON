@@ -1,9 +1,66 @@
 # Changelog
 
-Player-facing changes from the first XON beta to the current **1.0.7** build.
+Player-facing changes from the first XON beta to the current **1.0.9** build.
 Versions describe the final behavior of each build; experimental implementations
 that were later corrected are identified below. Validation details and measured
 limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
+
+## 1.0.9 — Balanced interiors and softer pools of light
+
+31 October 2026.
+
+- Reduce indoor block/held light peak energy by 20%, with a smoother, faster
+  falloff through the midrange. Let adjacent lamps leave visible shade between
+  their pools, retaining the existing visibility floor instead of black corners.
+- Blend local-light gain and falloff with each surface's skylight exposure.
+  Outdoor block light retains its previous curve at 90% peak energy; doorways
+  have no camera-wide mode switch or hard indoor/outdoor threshold.
+- Gently lower daytime direct light and sky fill, with slightly deeper daytime
+  cave/shadow fill. Retain the existing moonlight and night cave floor.
+- Rebalance Nether ambient light to 84% and End ambient light to 90% of 1.0.8.
+  Preserve the End flash, emissive source floor, ore auras and existing light hue.
+- Keep current player brightness/strength defaults. Bake constant gains into
+  existing math; add no pass, texture lookup, buffer, CPU frame work or dependency.
+- Benchmark an uninstalled candidate against 1.0.8 before adopting it. Add 24 GPU
+  balance cases and interleaved 1080p lighting/terrain timings. Full-game appearance
+  and FPS remain a separate live check; see VERIFICATION.md for measured costs.
+
+Ordinary lamps still use Minecraft's scalar block-light data. This release changes
+their visible intensity/falloff; it does not change gameplay light levels, create
+source-direction data or add new directional lamp shadows.
+
+## 1.0.8 — Golden light, cooler shade and consistent moonlighting
+
+31 October 2026.
+
+### Atmosphere
+
+- Rebalance sunlight toward pale gold, sky fill toward teal-blue and nights toward
+  deeper blue. Retain readable caves and warm local lights.
+- Reduce baked linear exposure by 10%, independently of the unchanged brightness
+  control. Filmic mapping makes the visible reduction depend on scene brightness.
+- Refine contrast, restrained split toning and saturation in the existing color LUT.
+  Keep its size and lookup budget; regenerate grading without touching noise data.
+
+### Lighting fixes and efficiency
+
+- Make moon glints respect shadow visibility, including refractive water under
+  cover. Preserve exposed glints and existing daytime behavior.
+- Align fine block-surface relief with the active sun/moon rather than the
+  below-horizon sun, correcting reversed night highlights.
+- Skip receiver-plane gradient work on foliage where its contribution is zero,
+  and skip foliage backlight math under full occlusion. GPU parity checks retain
+  identical results, including fractional foliage inputs.
+- Retain the existing shadow resolution/range, filtering budgets, voxel volume,
+  render passes and CPU work. The measured isolated foliage saving is small;
+  this is not an in-game FPS guarantee.
+
+### Verification and packaging
+
+- Add 17 actual GPU palette checks and 11 lighting/occlusion/parity cases.
+- Keep water and AA comparisons at a shared palette/exposure so those checks
+  isolate the behavior they test rather than reject the intended color revision.
+- Ship the canonical `XON-Shader-v1.0.8.zip`, with updated project and release notes.
 
 ## 1.0.7 — Smoother edges, softer light, moving moonlit landscapes
 

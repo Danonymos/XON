@@ -51,7 +51,8 @@ float xonShadowVisibility(vec3 playerPosition, vec3 normal, float facing, float 
     vec3 coordinate = xonShadowCoordinate(offsetPosition);
     if (any(lessThan(coordinate, vec3(0.005))) || any(greaterThan(coordinate, vec3(0.995)))) return fallback;
     coordinate.z -= 0.000032 + 0.000065 * (1.0 - facing) + foliage * 0.00024;
-    vec2 depthGradient = xonShadowDepthGradient(shadowNDC, normal) * (1.0 - foliage);
+    vec2 depthGradient = vec2(0.0);
+    if (foliage < 1.0) depthGradient = xonShadowDepthGradient(shadowNDC, normal) * (1.0 - foliage);
     // Hardware PCF also compares four neighboring texels, each at a different plane depth.
     coordinate.z -= (abs(depthGradient.x) + abs(depthGradient.y)) / float(shadowMapResolution);
     float radius = 0.75 / float(shadowMapResolution);

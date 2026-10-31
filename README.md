@@ -7,11 +7,11 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/releases/1.0.7.md">1.0.7 release notes</a> ·
+  <a href="docs/releases/1.0.9.md">1.0.9 release notes</a> ·
   <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/build-1.0.7-35b8b0?style=flat-square" alt="Current build: 1.0.7">
+  <img src="https://img.shields.io/badge/build-1.0.9-35b8b0?style=flat-square" alt="Current build: 1.0.9">
   <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
   <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
@@ -26,7 +26,29 @@ the day, and edges receive built-in smoothing. Native resolution is the default.
 The gallery uses existing XON gameplay captures. It illustrates the pack's visual
 direction; it is not a controlled comparison or proof of the latest fixes.
 
-## What's new in 1.0.7
+## What's new in 1.0.9
+
+- **Indoor light with room for shade.** Gentler block and held lighting, with a
+  smooth falloff that lets pools of lamp light blend into readable darker areas.
+- **Balanced across spaces.** Skylight blends indoor and outdoor response per
+  surface. Daylight is slightly quieter, and Nether/End ambient light is reduced.
+  Existing moonlight and the night cave visibility floor are retained.
+- **Benchmarked before adoption.** Compare actual lighting and terrain shaders
+  against 1.0.8, including adjacent lamps, dark materials and doorway transitions.
+  Use existing light data and sampling budgets without another rendering pass.
+
+### Retained from 1.0.8
+
+- **A richer, quieter atmosphere.** Pale golden sunlight meets teal-blue shade,
+  with deeper blue nights, restrained saturation and slightly lower base exposure.
+  The brightness control keeps its existing default.
+- **More consistent celestial light.** Moon glints respect solid shadow casters,
+  and fine block-surface relief follows the active sun or moon.
+- **Less wasted foliage work.** Skip unused receiving-plane correction on foliage
+  and backlight calculations when fully occluded, preserving the lighting result.
+  No extra rendering pass, image or texture lookup is introduced.
+
+### Retained from 1.0.7
 
 - **Smoother edges by default.** Built-in spatial anti-aliasing and shared
   motion-blur filtering reduce jaggies and moving noise. Distant terrain uses
@@ -43,7 +65,7 @@ direction; it is not a controlled comparison or proof of the latest fixes.
   camera-following sun/moon shadow rings while retaining real object shadows.
 
 Read the [complete changelog](CHANGELOG.md) for every version from the first beta
-through 1.0.7, including the underwater, material and lighting improvements.
+through 1.0.9, including the underwater, material and lighting improvements.
 
 ## The XON look
 
@@ -66,7 +88,7 @@ through 1.0.7, including the underwater, material and lighting improvements.
 ## Install
 
 1. Use a compatible **Minecraft: Java Edition + Iris + Sodium** installation.
-2. Get a packaged `XON-Shader-v1.0.7.zip` from [official releases](https://github.com/Danonymos/XON/releases).
+2. Get a packaged `XON-Shader-v1.0.9.zip` from [official releases](https://github.com/Danonymos/XON/releases).
    If a release has not been published yet, use the [source build](#build-from-source)
    or a successful [pack-build artifact](https://github.com/Danonymos/XON/actions/workflows/build.yml).
 3. Place the **shader-pack ZIP** directly in your instance's `shaderpacks` folder.
@@ -74,10 +96,8 @@ through 1.0.7, including the underwater, material and lighting improvements.
 4. Open **Video Settings → Shader Packs**, select XON, then **Apply**.
 5. Start with **Balanced + Native**. Use **Speed** for a lighter effect budget.
 
-The separately named `XON-Shader-v1.0.7-smooth.zip` is the same 1.0.7 smoothing
-build used for side-by-side installation. Select that filename if an earlier
-1.0.7 pack is already open in the game. When downloading an Actions artifact,
-extract the artifact container and install the shader ZIP inside it.
+When downloading an Actions artifact, extract the artifact container and install
+the shader ZIP inside it.
 
 ### Compatibility
 
@@ -111,8 +131,9 @@ samples and half-resolution post effects. These choices control cost; they do
 not make shader rendering free or guarantee a particular frame rate.
 
 The current shader source passed **840 OpenGL compile/link configurations** and
-**790 GPU regression cases/comparisons**, including terrain rings, ore propagation,
-cloud motion, AA, water, rays and hand protection. Those checks use controlled
+**842 GPU regression cases/comparisons**, including indoor balance, palette, celestial
+occlusion, terrain rings, ore propagation, cloud motion, AA, water, rays and hand
+protection. Those checks use controlled
 inputs on an RTX 5060 Ti. They do not certify every mod stack or replace live
 Minecraft visual and FPS testing. See [the verification record](VERIFICATION.md)
 for methodology, timings and remaining checks.
@@ -121,6 +142,8 @@ Colored light follows open voxel paths rather than spherical ray tracing. The
 local volume and corners can shorten its reach. Cloud ground shade is an artistic
 approximation, not a traced projection of the visible sky clouds. Spatial AA
 reduces shimmer but cannot recover missing subpixel information like temporal AA.
+Ordinary block lighting uses Minecraft's scalar lightmap; its softer falloff does
+not add directional source tracing or new lamp-cast shadows.
 
 ## Build from source
 

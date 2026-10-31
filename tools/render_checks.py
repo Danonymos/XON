@@ -123,8 +123,8 @@ class Renderer:
         self.delete_textures(12, self.textures)
 
 
-def expected_color(rgb):
-    color = np.asarray(rgb, dtype=np.float32) * 1.05
+def expected_color(rgb, base_exposure=0.90):
+    color = np.asarray(rgb, dtype=np.float32) * (1.05 * base_exposure)
     color = color * (2.51 * color + 0.03) / (color * (2.43 * color + 0.59) + 0.14)
     return np.clip(color ** (1 / 2.2), 0, 1)
 

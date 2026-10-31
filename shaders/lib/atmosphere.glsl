@@ -21,15 +21,14 @@ vec3 xonSunlightColor(vec3 sun) {
     vec4 phases = xonTimePhases(sun);
     float goldenHour = smoothstep(-0.04, 0.22, sunHeight) * (1.0 - smoothstep(0.22, 0.62, sunHeight));
     float noon = smoothstep(0.18, 0.72, sunHeight);
-    vec3 dawnDusk = vec3(1.68, 0.88, 0.46);
-    vec3 afternoon = vec3(1.42, 1.12, 0.78);
-    vec3 midday = vec3(1.26, 1.19, 1.05);
+    vec3 dawnDusk = vec3(1.48, 1.02, 0.66);
+    vec3 afternoon = vec3(1.34, 1.15, 0.85);
+    vec3 midday = vec3(1.30, 1.17, 0.98);
     vec3 designed = mix(mix(dawnDusk, afternoon, smoothstep(0.02, 0.35, sunHeight)), midday, noon);
-    designed = mix(designed, vec3(1.58, 0.94, 0.54), goldenHour * 0.45);
-    // Distinct time-of-day moods: pearlescent rose-gold early morning, honey-gold afternoon, and fiery copper-amber evening.
-    designed = mix(designed, vec3(1.54, 1.04, 0.82), clamp(phases.x * 0.65, 0.0, 0.85));
-    designed = mix(designed, vec3(1.48, 1.08, 0.68), clamp(phases.z * 0.60, 0.0, 0.85));
-    designed = mix(designed, vec3(1.74, 0.78, 0.38), clamp(phases.w * 0.70, 0.0, 0.85));
+    designed = mix(designed, vec3(1.46, 1.075, 0.74), goldenHour * 0.45);
+    designed = mix(designed, vec3(1.44, 1.12, 0.91), clamp(phases.x * 0.65, 0.0, 0.85));
+    designed = mix(designed, vec3(1.40, 1.14, 0.80), clamp(phases.z * 0.60, 0.0, 0.85));
+    designed = mix(designed, vec3(1.54, 0.98, 0.62), clamp(phases.w * 0.70, 0.0, 0.85));
     return mix(vec3(1.15), designed, XON_WARMTH);
 }
 
@@ -43,7 +42,7 @@ vec3 xonSunlightColor() {
 
 vec3 xonNightColor() {
     float phase = abs(float(moonPhase) - 4.0) * 0.25;
-    return vec3(0.10, 0.15, 0.25) * mix(0.70, 1.0, phase);
+    return vec3(0.085, 0.135, 0.25) * mix(0.70, 1.0, phase);
 }
 
 vec3 xonSky(vec3 direction) {
@@ -76,8 +75,8 @@ vec3 xonSky(vec3 direction) {
     float dusk = (1.0 - smoothstep(0.02, 0.52, abs(sun.y))) * day;
     float sunDot = dot(direction, sun);
     float towardSun = xonSaturate(sunDot * 0.5 + 0.5);
-    vec3 zenith = vec3(0.08, 0.30, 0.80);
-    vec3 horizon = vec3(0.46, 0.72, 0.99);
+    vec3 zenith = vec3(0.075, 0.295, 0.76);
+    vec3 horizon = vec3(0.43, 0.69, 0.95);
     // Shift zenith & horizon palette across Early Morning (rose-azure), Warm Afternoon (golden-teal), and Evening (twilight violet).
     zenith = mix(zenith, vec3(0.11, 0.34, 0.82), clamp(phases.x * 0.55, 0.0, 0.75));
     zenith = mix(zenith, vec3(0.09, 0.32, 0.76), clamp(phases.z * 0.50, 0.0, 0.75));
@@ -90,14 +89,14 @@ vec3 xonSky(vec3 direction) {
     vec3 clearDay = mix(horizon, zenith, height);
     float horizonCurve = xonSquare(xonSquare(1.0 - xonSaturate(abs(direction.y))));
     float sunsetBand = horizonCurve * dusk * (0.28 + 0.68 * towardSun * towardSun);
-    vec3 morningBandHue = mix(vec3(0.76, 0.52, 0.72), vec3(1.32, 0.74, 0.48), towardSun);
-    vec3 eveningBandHue = mix(vec3(0.85, 0.36, 0.54), vec3(1.36, 0.52, 0.20), towardSun);
+    vec3 morningBandHue = mix(vec3(0.76, 0.56, 0.72), vec3(1.24, 0.84, 0.58), towardSun);
+    vec3 eveningBandHue = mix(vec3(0.80, 0.42, 0.56), vec3(1.28, 0.67, 0.34), towardSun);
     vec3 sunsetHue = mix(eveningBandHue, morningBandHue, clamp(sun.x * 1.5 + 0.5, 0.0, 1.0));
     clearDay = mix(clearDay, sunsetHue, sunsetBand);
     // Distinct lower-void mood below the horizon (direction.y < 0) so void color matches morning mist, afternoon warmth, or evening twilight.
     vec3 dayVoid = mix(vec3(0.18, 0.34, 0.58), vec3(0.28, 0.22, 0.38), clamp((phases.x + phases.w) * 0.65, 0.0, 0.85));
     clearDay = mix(clearDay, dayVoid, smoothstep(0.0, 0.45, voidDepth) * 0.65);
-    vec3 clearNight = mix(vec3(0.032, 0.048, 0.092), vec3(0.008, 0.016, 0.040), height);
+    vec3 clearNight = mix(vec3(0.024, 0.042, 0.087), vec3(0.006, 0.014, 0.036), height);
     clearNight = mix(clearNight, vec3(0.004, 0.008, 0.022), smoothstep(0.0, 0.45, voidDepth));
     vec3 result = mix(clearNight, clearDay, day);
     float storm = xonSaturate(rainStrength * 0.78 + thunderStrength * 0.22);

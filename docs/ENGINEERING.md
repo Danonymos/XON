@@ -1,6 +1,6 @@
 # Engineering notes
 
-Current architecture for **XON Shader 1.0.7**. See [VERIFICATION.md](../VERIFICATION.md)
+Current architecture for **XON Shader 1.0.9**. See [VERIFICATION.md](../VERIFICATION.md)
 for measured GPU checks and the distinction between driver tests and live gameplay.
 
 | Area | Source | Current design |
@@ -15,6 +15,7 @@ for measured GPU checks and the distinction between driver tests and live gamepl
 | Water and materials | `shaders/program/geometry.fsh` | Layered normals, sky/cloud reflections, half-resolution refraction, depth absorption, caustics and dedicated emissive material paths. |
 | Shafts and bloom | `shaders/program/composite.fsh`, `composite1.fsh` | Existing half-resolution buffers; outdoor four-step and underwater twelve-step shadow sampling with bounded ranges. |
 | Foliage and atmosphere | `shaders/program/geometry.vsh`, `shadow.vsh`, `shaders/lib/atmosphere.glsl` | Synchronized wind, dimension palettes, weather, clear near air and render-border/medium fog. |
+| Exposure and grade | `shaders/lib/grading.glsl`, `shaders/textures/xon-grade.png` | Private 0.90 base exposure, unchanged brightness control, existing 16-cubed LUT and two-fetch grading budget. |
 
 ## Work budgets
 
@@ -30,6 +31,28 @@ unbiased sample. Rendering cost still depends on hardware, resolution and scene.
 
 Ground shade is world anchored, but its field is not a traced projection of the
 visible sky-cloud geometry. Spatial AA cannot provide full temporal reconstruction.
+
+Foliage skips receiver-plane gradient evaluation when its final multiplier is
+zero, and skips view-dependent backlight math under full occlusion. These are
+exact work skips; shadow filtering and light budgets are retained. Surface relief
+uses Iris's active celestial direction, while water glints apply shadow visibility
+to both sun and moon. Palette colors and saturation are baked into existing
+lighting constants and the LUT; `python tools/make_textures.py --grade-only`
+regenerates that LUT without rewriting the noise atlas.
+
+Ordinary lamps use the interpolated block-light coordinate. The cubic response
+blends its shoulder from 0.35 indoors to the original 0.72 outdoors, using the
+existing smooth skylight curve. Peak local energy blends from 0.80 to 0.90 of
+1.0.8; held-light energy shares that gain. No source vectors are inferred from
+the scalar lightmap. Minecraft's actual propagation radius/gameplay values and
+the separate colored ore volume remain intact.
+
+Day key/fill gains are 0.92/0.94; daytime cave fill is 0.92. Constant folding keeps
+these adjustments inside the existing math. The lunar coefficient compensates
+the shared key multiplier so moonlight stays stable. Night cave fill is retained;
+Nether/End ambient gains are 0.84/0.90. The benchmark tool accepts --candidate to
+test an uninstalled library, and interleaves before/current 1080p timer queries
+for lighting kernels and actual terrain fragments.
 
 ## Build and validation
 

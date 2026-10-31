@@ -1,3 +1,120 @@
+# XON Shader 1.0.9 - indoor/outdoor lighting balance
+
+31 October 2026. An uninstalled candidate was tested against the preserved 1.0.8
+runtime before changing production lighting. The final library matches that
+candidate, apart from one explanatory comment. Ordinary block light remains
+scalar Minecraft lightmap data: this update adjusts its visible response, not
+gameplay propagation, source directions or new lamp-cast shadows.
+
+The cubic block-light shoulder blends from 0.35 indoors to the original 0.72
+outdoors using the existing per-surface skylight curve. Peak block/held energy
+blends from 80% to 90% of 1.0.8. The curve remains continuous with a zero-slope
+dark endpoint. It allows more shade through the midrange instead of uniformly
+brightening rooms; the existing dark-material toe lift remains available.
+
+Daytime key light is 92%, sky fill 94%, and daytime cave fill 92% of 1.0.8.
+Moonlight and the night cave visibility floor are retained. Nether ambient is
+84%; End ambient is 90%, with its flash unchanged. Color LUT, noise, brightness
+and strength controls, ore volume/auras, shadows and sampling budgets are retained.
+Constant gains are folded into existing coefficients where possible. Continuous
+local blending adds a small amount of arithmetic, with no new pass, image, texture
+lookup, dependency or CPU frame work.
+
+All 840 graphics compile/link configurations pass, with 936 unique stages and
+zero warnings. All 842 GPU cases/comparisons pass: the previous 818 plus 24 new
+balance cases in tools/lighting_balance_checks.py. No existing regression
+assertions were changed for this release. New checks use the actual library,
+current filmic mapping/LUT and five material albedos, with controlled lightmaps:
+
+- Tested stone display luminance is 2.6% lower in sunlight, 10.6% lower beneath
+  the stronger indoor lamp, 15.7% lower in the dimmer cave lamp test, and 11.6%
+  lower under Nether ambient. These are scene-specific results, not universal
+  brightness percentages. White blocks and dark wood are also checked.
+- Two sources ten blocks apart, using controlled Manhattan-like light levels,
+  reduce the gap-to-peak luminance ratio from 0.679 to 0.638. The gap remains
+  readable at 0.365 display luminance on the stone swatch.
+- 1024-sample lamp ramps in every dimension remain smooth; graded channel
+  differences below 0.00001 are treated as numerical/LUT tolerance. The tested
+  doorway ramp's largest display-channel step is about 0.0017.
+- Moonlit terrain and unlit night cave probes retain their result within 0.000001.
+  Emissive-floor parity in every dimension, with and without night vision, passes.
+
+RTX 5060 Ti, 1920x1080 RGBA32F target, 48 interleaved queries per version, eight
+draws per query after warmup. Final-run medians below include actual production
+lighting kernels and terrain fragments; terrain timing disables colored voxel
+lighting/clouds, with outdoor shadow sampling enabled:
+
+| Workload | 1.0.8 ms | 1.0.9 ms |
+| --- | ---: | ---: |
+| Indoor lighting kernel | 0.08674 | 0.08845 |
+| Daylight kernel | 0.08647 | 0.08716 |
+| Nether lighting kernel | 0.06165 | 0.06165 |
+| Held-light kernel | 0.08737 | 0.08934 |
+| Indoor terrain fragment | 0.18991 | 0.19189 |
+| Daylit terrain fragment with shadows | 0.24880 | 0.26702 |
+
+Kernel increases are roughly 0-0.002 ms in this run; the daylit terrain difference
+is about 0.018 ms. Concurrent desktop/game activity caused scheduling spikes and
+variation across runs. These measurements neither establish identical FPS nor
+predict a complete Minecraft frame. Reports: validation-lighting-balance.json
+and validation-lighting-balance.png (synthetic swatches, not a game screenshot).
+
+Runtime/source ZIPs use canonical 1.0.9 names; 1.0.8 remains the immutable baseline.
+The installed pack inherits the active pack's saved preferences; Iris selection
+is unchanged. Select XON-Shader-v1.0.9.zip and Apply. Compare a room with spaced
+lanterns/torches/end rods, its shaded corners and doorway, a cave, Nether terrain
+and daylight at the same camera/settings. Live appearance/FPS remains unverified.
+
+# XON Shader 1.0.8 - atmosphere and lighting audit
+
+31 October 2026. The requested palette uses pale golden sun colors, teal-blue
+sky/shadow fill and deeper blue moonlight. A private 0.90 linear exposure factor
+is folded into the existing final multiplier; XON_BRIGHTNESS remains 1.05.
+Filmic tone mapping makes the visible brightness reduction scene-dependent.
+Contrast, modest saturation and restrained split toning are baked into the
+existing 16-cubed LUT. No pass, image allocation, texture lookup or CPU frame work
+is added. The noise atlas is unchanged; --grade-only regenerates only the LUT.
+
+The lighting audit reproduced two bugs in production GPU shader paths:
+
+- Moon water glints bypassed shadow visibility. Both celestial branches now
+  respect it; occluded specular error falls from 2.483 to zero in the controlled
+  linear-HDR test, with refraction both enabled and disabled. Exposed glints and
+  daytime occlusion retain their previous result.
+- Fine terrain relief used the sun even below the horizon. It now follows the
+  active Iris sun/moon direction, matching the main surface-lighting direction.
+
+Foliage avoids receiver-plane gradient evaluation when its contribution is zero,
+and avoids backlight math when fully occluded. Six actual lighting comparisons,
+including opaque, fractional and full foliage, have zero pixel difference.
+The shadow map, range, filtering, capture and voxel budgets are retained.
+
+Final offscreen checks on RTX 5060 Ti / OpenGL 4.6 pass:
+
+- 840 graphics compile/link configurations, 936 unique stages, zero warnings.
+- 818 GPU cases/comparisons: 12 final-pass, 22 lighting, 84 water, 27 rays,
+  12 building, 19 voxel, 16 cloud, 578 terrain-ring/contact, 20 AA, 17 palette
+  and 11 lighting-audit cases. Voxel tests execute the production compute stage.
+- Palette probes cover day, golden hour, night, lit/shaded surfaces, caves,
+  torchlight and sky. Neutral ramp channel spread stays below 0.009; the selected
+  saturation swatch gains about 5.4% chroma. These are synthetic material probes.
+- Water composition comparisons hold the current atmosphere fixed, and AA
+  reference comparisons normalize exposure, isolating the behavior under test.
+  Original water parity and AA quality assertions remain in force.
+
+Isolated 960x540 occluded-foliage lighting, 48 timer queries/four draws each:
+before 0.02816 ms median, current 0.02719 ms. This small saving is not a full-game
+FPS result; desktop load affected p95 and timings vary with hardware and scene.
+Reports: validation-palette.json, validation-lighting-audit.json and the existing
+regression reports. The palette PNG is a synthetic diagnostic, not gameplay.
+
+Runtime and source builds use canonical 1.0.8 filenames. The previous 1.0.7
+runtime/source snapshots are preserved as before-golden baselines. Live Minecraft
+appearance and FPS remain unverified. Select XON-Shader-v1.0.8.zip and Apply;
+compare shaded stone and pale blocks at noon/sunset, moonlit terrain and water
+beneath a roof, caves, ores and foliage at the same camera/settings. The installed
+pack inherits the existing shader preferences; active selection is unchanged.
+
 # Repository and release packaging
 
 The GitHub preparation retains the shader code validated below. The public README

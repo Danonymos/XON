@@ -235,8 +235,8 @@ void main() {
                 float closeFade = 1.0 - smoothstep(100.0, 625.0, viewDistSq);
                 float texLuma = dot(texel.rgb, vec3(0.30, 0.59, 0.11));
                 vec2 texGrad = vec2(dFdx(texLuma), dFdy(texLuma));
-                vec3 sunWorld = xonSunDirection();
-                vec3 keyWorld = xonSafeNormalize(vec3(sunWorld.x, max(abs(sunWorld.y), 0.35), sunWorld.z));
+                vec3 reliefLight = xonKeyDirection();
+                vec3 keyWorld = xonSafeNormalize(vec3(reliefLight.x, max(reliefLight.y, 0.35), reliefLight.z));
                 vec2 lightScreen = (mat3(gbufferModelView) * keyWorld).xy;
                 float bevel = clamp(dot(texGrad, lightScreen) * 2.4, -0.14, 0.14) * closeFade * (0.30 + 0.70 * sunVisibility);
                 float wallRelief = (rawAO - 0.85) * 0.22 * closeFade * sunVisibility * (1.0 - abs(normal.y) * 0.65);
@@ -459,7 +459,7 @@ void main() {
             // Dual-lobe water surface glitter: crisp sun/moon diamond glints + warm/silver shimmer path.
             float sunGlint = (nh64 * nh64 * nh64 * 3.4 + nh16 * nh8 * 0.42 + nh8 * 0.08 * crestHeight)
                            * (1.0 - rainStrength * 0.85) * smoothstep(0.50, 0.95, xonLightLevels.y);
-            vec3 glintColor = mix(xonNightColor() * 2.6, xonSunlightColor(sunDir) * sunVisibility, day);
+            vec3 glintColor = mix(xonNightColor() * 2.6, xonSunlightColor(sunDir), day) * sunVisibility;
             color += glintColor * sunGlint;
         }
 #endif

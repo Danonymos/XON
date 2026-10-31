@@ -62,6 +62,10 @@ def run():
     def final(old=False, motion=True, bypass=False, mode=0, probe=False):
         options = dict(OPTIONS, XON_MOTION_BLUR=motion, XON_RENDER_MODE=mode)
         fragment = source('final.fsh', old, options)
+        if old:
+            # Compare AA kernels at the same current exposure, independent of palette revisions.
+            fragment = fragment.replace('color = max(color * XON_BRIGHTNESS, vec3(0.0));',
+                                        'color = max(color * (XON_BRIGHTNESS * 0.90), vec3(0.0));')
         if bypass:
             fragment = fragment.replace('color = xonEdgeAA(color, depth, motionPixels, handMask);', '')
         if probe:

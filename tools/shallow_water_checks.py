@@ -18,6 +18,9 @@ def run():
     try:
         with zipfile.ZipFile(ROOT.parent / 'XON-Shader-v1.0.3.zip') as archive:
             def old_source(name):
+                # Hold the intentional palette rebalance fixed while testing water composition.
+                if name == 'lib/atmosphere.glsl':
+                    return expand(SHADERS / name)
                 text = archive.read('shaders/' + name).decode('utf-8')
                 return re.sub(r'^\s*#include\s+"([^"]+)"\s*$',
                               lambda m: old_source(m[1].lstrip('/')), text, flags=re.M)
@@ -76,7 +79,7 @@ def run():
             driver.delete_shader(stage)
         renderer.close()
         driver.close()
-    report = {'passed': True, 'kind': 'synthetic water-fragment checks, not game FPS', 'checks': checks}
+    report = {'passed': True, 'kind': 'synthetic water-fragment checks at the same current atmospheric palette; not game FPS', 'checks': checks}
     (ROOT / 'validation-shallow-water.json').write_text(json.dumps(report, indent=2)+'\n', encoding='utf-8')
     print('Passed', len(checks), 'water cases; deep/underwater parity and thin indoor visibility')
 
