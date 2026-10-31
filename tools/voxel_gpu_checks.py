@@ -214,14 +214,14 @@ void main() { result = vec4(xonEmissiveLight(testPosition, testNormal), 1); }
             occupancy = renderer.read(0)
             assert occupancy[voxel] == 9 and np.count_nonzero(occupancy) == 1, 'Emitter capture/transform failed'
             checks.append({'case': 'real shadow vertex capture at negative coordinates and rotated shadow view', 'dimension': dimension})
-        for material, expected in [(0, 1), (10010, 2), (10019, 10), (10023, 12), (10003, 0), (10004, 0), (10006, 0)]:
+        for material, expected in [(0, 1), (10010, 2), (10019, 10), (10023, 12), (10003, 0), (10004, 0), (10006, 13), (10024, 14)]:
             renderer.reset()
             voxel = renderer.capture(shadow_programs[0], material)
             assert renderer.read(0)[voxel] == expected, f'Wrong voxel for material {material}'
         renderer.reset()
         renderer.capture(shadow_programs[0], 10010, stage=12)
         assert np.count_nonzero(renderer.read(0)) == 0, 'Entity entered terrain volume'
-        checks.append({'case': 'ore/quartz IDs, solid occluders, plant/lichen and entity exclusion'})
+        checks.append({'case': 'ore/quartz/lichen/berry IDs, solid occluders, ordinary plant and entity exclusion'})
 
         sample = sampler_program()
         default_compute = None

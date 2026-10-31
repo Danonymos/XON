@@ -20,8 +20,8 @@ void xonVoxelize(vec4 shadowView) {
                 || renderStage == MC_RENDER_STAGE_TERRAIN_CUTOUT
                 || renderStage == MC_RENDER_STAGE_TERRAIN_CUTOUT_MIPPED;
     if (!terrain) return;
-    if (mc_Entity.x == 10003.0 || mc_Entity.x == 10004.0 || mc_Entity.x == 10006.0) return;
     uint data = xonVoxelEmitterId(mc_Entity.x);
+    if (data == XON_VOXEL_EMPTY && (mc_Entity.x == 10003.0 || mc_Entity.x == 10004.0 || mc_Entity.x == 10006.0)) return;
     // Only opaque full-layer blocks occlude; glass, leaves and plants let light through.
     if (data == XON_VOXEL_EMPTY && renderStage == MC_RENDER_STAGE_TERRAIN_SOLID) data = XON_VOXEL_SOLID;
     if (data == XON_VOXEL_EMPTY) return;
@@ -44,7 +44,7 @@ void main() {
 #endif
 #ifdef XON_WAVING_FOLIAGE
     bool isLeaves = abs(mc_Entity.x - 10003.0) < 0.5;
-    bool isCrossPlant = abs(mc_Entity.x - 10004.0) < 0.5;
+    bool isCrossPlant = abs(mc_Entity.x - 10004.0) < 0.5 || abs(mc_Entity.x - 10024.0) < 0.5;
     if (isLeaves || isCrossPlant) {
         vec3 playerPos = (shadowModelViewInverse * shadowView).xyz;
         float foliageDistSq = dot(playerPos, playerPos);

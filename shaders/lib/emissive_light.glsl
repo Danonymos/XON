@@ -16,6 +16,7 @@ const float XON_EMISSIVE_STEP = 1.0 / (XON_EMISSIVE_REACH + 1.0);
 
 uint xonVoxelEmitterId(float material) {
     int id = int(material + 0.5);
+    if (id == 10006) return 13u;
     if (id == 10010) return 2u;
     if (id == 10011) return 3u;
     if (id == 10012) return 4u;
@@ -27,6 +28,7 @@ uint xonVoxelEmitterId(float material) {
     if (id == 10019) return 10u;
     if (id == 10020) return 11u;
     if (id == 10023) return 12u;
+    if (id == 10024) return 14u;
     return XON_VOXEL_EMPTY;
 }
 
@@ -43,6 +45,8 @@ vec3 xonVoxelEmitterColor(uint id) {
     if (id == 10u) return vec3(0.72, 0.38, 1.00) * 0.90;
     if (id == 11u) return vec3(0.15, 0.75, 0.85) * 0.80;
     if (id == 12u) return vec3(0.64, 0.32, 1.00) * 0.45;
+    if (id == 13u) return vec3(0.42, 0.78, 0.62) * 0.26;
+    if (id == 14u) return vec3(1.00, 0.56, 0.18) * 0.35;
     return vec3(0.0);
 }
 
@@ -88,7 +92,9 @@ vec3 xonEmissiveLight(vec3 playerPos, vec3 normal) {
     float level = levelSum / weightSum;
     // Quintic easing has zero slope and curvature at the bright core and dark outer edge.
     float falloff = level * level * level * (level * (level * 6.0 - 15.0) + 10.0);
-    return (colorSum / levelSum) * falloff * volumeFade * XON_EMISSIVE_INTENSITY;
+    // Tiny surviving corner weights must fade rather than normalize into a bright occluder-edge flash.
+    float occlusionFade = smoothstep(0.0, 0.5, weightSum);
+    return (colorSum / levelSum) * falloff * volumeFade * occlusionFade * XON_EMISSIVE_INTENSITY;
 }
 #endif
 

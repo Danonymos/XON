@@ -1,6 +1,6 @@
 # Engineering notes
 
-Current architecture for **XON Shader 1.0.9**. See [VERIFICATION.md](../VERIFICATION.md)
+Current architecture for **XON Shader 1.1**. See [VERIFICATION.md](../VERIFICATION.md)
 for measured GPU checks and the distinction between driver tests and live gameplay.
 
 | Area | Source | Current design |
@@ -55,6 +55,26 @@ test an uninstalled library, and interleaves before/current 1080p timer queries
 for lighting kernels and actual terrain fragments.
 
 ## Build and validation
+
+The 1.1 emitter map reuses amethyst/sculk families and adds IDs 13/14 in the byte
+occupancy image for lichen/berries. Capture classifies emitters before excluding
+ordinary foliage. Berry-bearing states preserve cross-plant wind, shadow normals
+and cutout filtering. Attached lichen retains its separate non-waving material.
+Selectors follow [Iris block-state syntax](https://shaders.properties/current/reference/miscellaneous/block_properties/).
+
+Lantern material IDs 10025/10026 use texture-color masks to separate the emitting
+core from the metal, with pale-core support. Unusual resource packs can need mask
+tuning. They retain vanilla block-light propagation and the accepted 1.0.9 room
+balance. Bloom remains shared: the soft knee spans linear peaks 0.90–1.30; the
+five-tap RGB blur weights center/corners 0.36/0.16 while shaft alpha retains its
+old filter. Resolve gain is 0.208 versus 0.16, with unchanged texture-fetch budgets.
+This halo is screen-space rather than a fixed world-radius light volume.
+
+Colored-light interpolation uses a smooth confidence fade below 0.5 total open
+weight. This suppresses the previous near-zero-weight normalization flash while
+keeping fully open sampling and the existing falloff. The complete new suite is
+`tools/emissive_material_checks.py`; it accepts --minecraft-jar for local original
+texture/state inputs. Client assets are read for testing and are not packaged.
 
 - [Build and package checks](RELEASING.md) use only Python's standard library and run in GitHub Actions.
 - Driver/GPU tools require Windows, a compatible OpenGL context, NumPy and Pillow.

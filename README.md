@@ -7,11 +7,11 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/releases/1.0.9.md">1.0.9 release notes</a> ·
+  <a href="docs/releases/1.1.md">1.1 release notes</a> ·
   <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/build-1.0.9-35b8b0?style=flat-square" alt="Current build: 1.0.9">
+  <img src="https://img.shields.io/badge/build-1.1-35b8b0?style=flat-square" alt="Current build: 1.1">
   <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
   <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
@@ -26,7 +26,23 @@ the day, and edges receive built-in smoothing. Native resolution is the default.
 The gallery uses existing XON gameplay captures. It illustrates the pack's visual
 direction; it is not a controlled comparison or proof of the latest fixes.
 
-## What's new in 1.0.9
+## What's new in 1.1
+
+- **More natural and magical emitters.** Amethyst blocks cast purple light, glow
+  lichen adds a gentle mint aura, glow berries cast warm light and sculk veins
+  join the cyan accent family. Berry-free vines keep their ordinary behavior.
+- **Violet architectural light.** Quartz blocks already cast violet light; quartz
+  and smooth-quartz stairs/slabs now join that same family.
+- **Lanterns with luminous cores.** Regular and soul lanterns keep shaded metal
+  frames around brighter warm/cyan cores. The balanced room-light response remains.
+- **Soft, compact bloom.** A soft highlight threshold and weighted blur accompany
+  about 30% more bloom energy, using the existing passes and sample counts. This
+  shared effect also covers other bright emissive highlights.
+- **More stable occluder edges.** Fade tiny surviving interpolation weights to
+  prevent bright color flashes near blocked corners. The reported moving
+  quartz–wood–stone-brick scene still needs a live confirmation.
+
+### Retained from 1.0.9
 
 - **Indoor light with room for shade.** Gentler block and held lighting, with a
   smooth falloff that lets pools of lamp light blend into readable darker areas.
@@ -65,7 +81,7 @@ direction; it is not a controlled comparison or proof of the latest fixes.
   camera-following sun/moon shadow rings while retaining real object shadows.
 
 Read the [complete changelog](CHANGELOG.md) for every version from the first beta
-through 1.0.9, including the underwater, material and lighting improvements.
+through 1.1, including the underwater, material and lighting improvements.
 
 ## The XON look
 
@@ -88,7 +104,7 @@ through 1.0.9, including the underwater, material and lighting improvements.
 ## Install
 
 1. Use a compatible **Minecraft: Java Edition + Iris + Sodium** installation.
-2. Get a packaged `XON-Shader-v1.0.9.zip` from [official releases](https://github.com/Danonymos/XON/releases).
+2. Get a packaged `XON-Shader-v1.1.zip` from [official releases](https://github.com/Danonymos/XON/releases).
    If a release has not been published yet, use the [source build](#build-from-source)
    or a successful [pack-build artifact](https://github.com/Danonymos/XON/actions/workflows/build.yml).
 3. Place the **shader-pack ZIP** directly in your instance's `shaderpacks` folder.
@@ -131,7 +147,8 @@ samples and half-resolution post effects. These choices control cost; they do
 not make shader rendering free or guarantee a particular frame rate.
 
 The current shader source passed **840 OpenGL compile/link configurations** and
-**842 GPU regression cases/comparisons**, including indoor balance, palette, celestial
+**872 GPU regression cases/comparisons** plus client material/state mapping checks,
+including emissive plants, lantern cores, bloom, occluder edges, indoor balance, celestial
 occlusion, terrain rings, ore propagation, cloud motion, AA, water, rays and hand
 protection. Those checks use controlled
 inputs on an RTX 5060 Ti. They do not certify every mod stack or replace live

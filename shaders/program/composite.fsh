@@ -12,7 +12,8 @@ layout(location = 0) out vec4 xonEffects;
 vec3 xonBloomSample(vec2 uv) {
     vec3 color = texture(colortex0, xonSourceUV(uv)).rgb;
     float peak = max(color.r, max(color.g, color.b));
-    float threshold = max(peak - 1.10, 0.0) / max(peak, 0.001);
+    float knee = clamp(peak - 0.90, 0.0, 0.40);
+    float threshold = max(peak - 1.10, knee * knee * 1.25) / max(peak, 0.001);
     return min(color * threshold, vec3(4.0));
 }
 

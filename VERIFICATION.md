@@ -1,3 +1,72 @@
+# XON Shader 1.1 - emitter expansion, lanterns and occluder edges
+
+31 October 2026. Commit d5de206 saves the accepted 1.0.9 source before these
+changes. The 1.0.9 runtime/source archives remain intact. No push or remote
+release is performed by this work.
+
+New source mappings reuse the existing crystal/cyan/quartz families and add two
+byte IDs for glow lichen and ripe glow berries. The ordinary amethyst block was
+previously missing; buds, clusters and budding amethyst were already supported.
+Full quartz blocks already cast violet light; four quartz/smooth-quartz stair/slab
+variants now join them. Sculk veins join the existing accent family. Berry-free
+vines remain non-emitting plants. Both berry states keep their original wind and
+shadow behavior; attached lichen keeps stationary geometry and attachment normals.
+
+Lantern and soul-lantern texture masks separate the luminous core from shaded
+metal. Real default-client texture probes show about 1.56/1.52 times the old
+linear-HDR core signal, while the frame dims normally. These are not display
+brightness ratios. Pale bright-core pixels are supported; unusual resource packs
+can need mask tuning. Torch, end-rod and sea-lantern textures retain HDR cores for
+the existing bloom. Balanced room lighting from 1.0.9 is retained.
+
+The shared bloom soft knee starts at 0.90 and joins the linear threshold at 1.30.
+Its existing five-lookups softening pass uses center/corner RGB weights 0.36/0.16;
+shaft alpha keeps its original filter. Final bloom resolve is 0.208 rather than
+0.16, measuring 1.3003 times integrated bloom energy in the controlled point-light
+fixture. Other bright emissive highlights also receive this shared adjustment.
+The halo is screen-space, not a guaranteed one-block world radius. Existing bloom
+settings still apply, and no extra pass, buffer or texture lookup is added.
+
+The player isolated a moving quartz–wood–stone-brick flicker to Colored Emissive
+Lighting. A controlled full-block top-surface motion probe was already stable;
+it does not establish the exact live cause. A separate GPU fixture did reproduce
+a normalization discontinuity at partly blocked interpolation corners: an almost
+zero surviving weight could jump to full color. A smooth confidence fade below
+0.5 total open weight reduces the tested largest RGB step from about 1.0 to
+0.00000463. Fully open sampling, aura falloff and existing wall tests remain
+unchanged. This addresses that edge case, but the exact reported live scene
+still needs confirmation; it is not claimed as a reproduced in-game fix.
+
+All 840 graphics compile/link configurations pass with zero warnings. All previous
+842 GPU cases pass, plus 30 new GPU material/capture/compute/lantern/bloom/movement
+cases. One additional check validates new block names and disjoint berry-state
+selectors against the installed client's original assets. The new suite reads
+those local assets for testing only; none are copied into the source/runtime ZIPs.
+The existing voxel expectation changes lichen from excluded to emitter ID 13 and
+adds berry ID 14; its exclusion, occlusion and fade assertions remain intact.
+
+Isolated RTX 5060 Ti medians, 960x540, 32 interleaved queries per version/four draws:
+
+| Workload | 1.0.9 ms | 1.1 ms |
+| --- | ---: | ---: |
+| Lit colored surface sampler | 0.01548 | 0.01547 |
+| Bloom extraction | 0.02131 | 0.02130 |
+| Effect softening | 0.02567 | 0.02568 |
+
+These microbenchmarks do not establish a speedup or identical full-game FPS.
+Desktop activity causes p95 spikes; real emitter density and resource packs affect
+cost. The 96x48x96 volume, roughly 7.17 MiB storage, six-neighbor flood, one compute
+dispatch and eight receiving fetches remain. Added material tests, masks, capture
+writes for plants and confidence math are real work.
+
+Reports: validation-emissive-materials.json and the existing regression reports.
+Reproduce with python tools/emissive_material_checks.py --minecraft-jar <client.jar>.
+Select XON-Shader-v1.1.zip and Apply. Check amethyst, quartz stairs/slabs, lichen,
+ripe versus picked vines, regular/soul lantern cores/frames and soft bloom around
+torches, end rods and sea lanterns. Strafe past the exact quartz–wood–stone-brick
+arrangement with Colored Emissive Lighting enabled. Live appearance/FPS and that
+specific flicker remain unverified. Saved preferences are copied; selection is unchanged.
+
 # XON Shader 1.0.9 - indoor/outdoor lighting balance
 
 31 October 2026. An uninstalled candidate was tested against the preserved 1.0.8

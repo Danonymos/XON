@@ -71,14 +71,14 @@ vec4 xonSampleAnisotropic(vec2 uv) {
     float mipBlend = smoothstep(1.0, 4.0, footprint);
     // Preserve cutout coverage; only minified opaque terrain gets the small stability bias.
     if (abs(xonMaterial - 10003.0) < 0.5 || abs(xonMaterial - 10004.0) < 0.5
-        || abs(xonMaterial - 10006.0) < 0.5) mipBlend = 0.0;
+        || abs(xonMaterial - 10006.0) < 0.5 || abs(xonMaterial - 10024.0) < 0.5) mipBlend = 0.0;
     vec4 base = texture(gtexture, uv, mipBlend * 0.32);
     if (mipBlend > 0.001 && base.a < 0.99) return textureGrad(gtexture, uv, du, dv);
 #else
     vec4 base = texture(gtexture, uv);
 #endif
 #if XON_ANISOTROPIC > 0 && (defined XON_TERRAIN || defined XON_WATER) && !defined XON_HAND
-    if (base.a < 0.99 || abs(xonMaterial - 10004.0) < 0.5) return base;
+    if (base.a < 0.99 || abs(xonMaterial - 10004.0) < 0.5 || abs(xonMaterial - 10024.0) < 0.5) return base;
     float viewDistSq = dot(xonViewPosition, xonViewPosition);
     if (viewDistSq < 4.0 || viewDistSq > 1444.0) return base;
     vec3 surfNormal = xonSafeNormalize(xonWorldNormal);
@@ -174,7 +174,7 @@ void main() {
 #endif
     if (surface.a < alphaTestRef) discard;
 #ifdef XON_TERRAIN
-    bool isCrossPlant = abs(xonMaterial - 10004.0) < 0.5;
+    bool isCrossPlant = abs(xonMaterial - 10004.0) < 0.5 || abs(xonMaterial - 10024.0) < 0.5;
 #else
     bool isCrossPlant = false;
 #endif
@@ -268,6 +268,9 @@ void main() {
         vec3 brightCore = vec3(4.20, 2.35, 0.48);
         color = mix(mix(darkCrust, moltenOrange, smoothstep(0.0, 0.58, heat)),
                     brightCore, smoothstep(0.55, 1.0, heat));
+    } else if (xonMaterial > 10024.5 && xonMaterial < 10026.5) {
+        float coreMask = xonLanternCoreMask(xonMaterial, texel.rgb);
+        color = mix(color, xonToLinear(texel.rgb) * 5.0, coreMask);
     } else if (abs(xonMaterial - 10019.0) < 0.5) {
         // Amethyst & crystal clusters: preserve exact vanilla pale lilac-white tips and lavender base without orange torch tint or solid purple override.
         float crystalGlow = xonOreEmission(xonMaterial, texel.rgb);
@@ -314,7 +317,7 @@ void main() {
         float accentGlow = xonOreEmission(xonMaterial, texel.rgb);
         vec3 accentColor = pow(clamp(xonToLinear(texel.rgb), 0.001, 1.0), vec3(1.30));
         color += accentColor * accentGlow * 0.95;
-    } else if (xonMaterial > 10009.5) {
+    } else if (xonMaterial > 10009.5 || abs(xonMaterial - 10006.0) < 0.5) {
         float oreGlow = xonOreEmission(xonMaterial, texel.rgb);
         vec3 oreColor = xonToLinear(texel.rgb);
         oreColor /= max(max(oreColor.r, max(oreColor.g, oreColor.b)), 0.08);

@@ -1,9 +1,48 @@
 # Changelog
 
-Player-facing changes from the first XON beta to the current **1.0.9** build.
+Player-facing changes from the first XON beta to the current **1.1** build.
 Versions describe the final behavior of each build; experimental implementations
 that were later corrected are identified below. Validation details and measured
 limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
+
+## 1.1 — Living emitters, luminous lanterns and soft bloom
+
+31 October 2026. The accepted 1.0.9 source is saved in local commit `d5de206`
+before this release's changes.
+
+### Emissive materials
+
+- Add the missing ordinary amethyst block to the existing violet crystal family.
+- Connect attached glow lichen to capture, colored propagation and subtle surface
+  glow, keeping its attachment normals and stationary geometry.
+- Give berry-bearing cave-vine states a warm aura and masked berry glow; preserve
+  green leaves, wind/shadow synchronization and non-emitting berry-free vines.
+- Add sculk veins to the existing cyan accent family. Ordinary sculk and ordinary
+  vines are unchanged.
+- Confirm full quartz blocks already emit violet light. Extend that family to
+  quartz/smooth-quartz stairs and slabs, preserving normal surface appearance.
+
+### Light-source appearance and stability
+
+- Split regular and soul lanterns from whole-block emission. Highlight their warm
+  or cyan cores while allowing the metal frames to receive ordinary shading.
+- Add a soft bloom knee, smoother center-weighted RGB blur and 30% more shared
+  bloom energy. Torch, end-rod and sea-lantern cores use that same existing bloom
+  path. Other bright emissive highlights also receive the shared adjustment.
+- Preserve the original shaft-alpha filter, indoor light response, shadow-map
+  budget and three-block colored aura tail.
+- Fade very small open-corner weights in voxel sampling before they can normalize
+  into bright flashes. Reproduce/fix that interpolation edge case on the GPU;
+  a controlled moving three-block probe is stable. The exact reported live
+  quartz–wood–stone-brick flicker still requires confirmation in Minecraft.
+
+### Cost and checks
+
+- Retain the 96×48×96 voxel volume, six-neighbor propagation, eight surface fetches,
+  existing passes and effect lookup counts. Add material comparisons and a small
+  amount of mask/fade math, without a dependency or CPU frame loop.
+- Add 30 GPU material, propagation, lantern, bloom and movement cases plus a
+  client-asset/state mapping check. Re-run the existing regression suites.
 
 ## 1.0.9 — Balanced interiors and softer pools of light
 

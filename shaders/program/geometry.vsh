@@ -69,7 +69,7 @@ void main() {
 #ifdef XON_TERRAIN
 #ifdef XON_WAVING_FOLIAGE
     bool isLeaves = abs(xonMaterial - 10003.0) < 0.5;
-    bool isCrossPlant = abs(xonMaterial - 10004.0) < 0.5;
+    bool isCrossPlant = abs(xonMaterial - 10004.0) < 0.5 || abs(xonMaterial - 10024.0) < 0.5;
     float foliageDistSq = dot(playerPos, playerPos);
     if ((isLeaves || isCrossPlant) && foliageDistSq < 1600.0) {
         float waveFade = 1.0 - smoothstep(900.0, 1600.0, foliageDistSq);
