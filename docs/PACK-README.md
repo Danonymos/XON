@@ -1,4 +1,4 @@
-# XON Shader 1.2
+# XON Shader 1.3
 
 Warm light, clear water and a world in motion. XON is an Iris shader pack for
 Minecraft: Java Edition, with directional shadows, moving cloud shade, colored
@@ -8,13 +8,17 @@ ore illumination, layered water and built-in spatial edge smoothing.
 
 1. Use a compatible Minecraft Java + Iris + Sodium installation. The development
    target is Minecraft Java 26.3, Iris 1.11.7 and Sodium 0.9.2.
-2. Place XON-Shader-v1.2.zip directly in your instance's shaderpacks folder.
+2. Place XON-Shader-v1.3.zip directly in your instance's shaderpacks folder.
    Do not extract it or install it as a mod/resource pack.
 3. Open Video Settings → Shader Packs, select XON and Apply.
 4. Start with Balanced + Native. Speed lowers the effect budget.
 
 ## Highlights
 
+- Blue-violet End galaxies with magenta clouds, pale star bands and dark dust lanes.
+- A luminous black hole with offline-traced disk images, redshift and Doppler brightness.
+- Cumulus, cloudlets and veils blending through a seamless 15-minute cloud cycle.
+- Adjustable lava glow, using the existing bloom passes and preserving dark crust.
 - Focused settings pages with wide controls, short labels and hover explanations.
 - Colored block-light saturation defaults to 135%, with luminance-preserving
   color limits. Set Light Saturation to 100% for the previous color response.
@@ -44,6 +48,8 @@ ore illumination, layered water and built-in spatial edge smoothing.
 Native is the default. Boost 85%/75% lowers world shading resolution and may look
 softer. AA stays built in; camera blur and extra nearby surface filtering are
 separate settings. Speed disables colored voxel lighting and expensive effects.
+It also omits the End galaxy and black hole. Sky & Atmosphere contains the new
+Cloud Formations and End Sky pages; Lava Glow is under Colored Block Light.
 
 Colored light follows open voxel paths in a bounded player-centered volume.
 Corners and the volume boundary shorten its reach. Mip stabilization needs the
@@ -57,6 +63,9 @@ Bloom is a screen-space halo whose apparent world size depends on the view.
 The specific reported moving quartz/wood/stone-brick flicker needs a live recheck.
 Detailed cast shadows retain their bounded range; distant foliage uses approximate
 canopy shading, not extra object-cast shadows across the full render distance.
+The black hole is a fixed celestial thin-disk view baked into a small lookup,
+not a scene-wide relativistic simulation. It adds about 4 MiB of texture storage
+before driver overhead/mipmaps. New sky math costs GPU time; live FPS varies.
 
 ## Project, support and license
 

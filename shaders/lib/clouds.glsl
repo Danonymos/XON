@@ -7,6 +7,29 @@ uniform sampler2D noisetex;
 
 #if XON_CLOUD_STYLE == 1 && XON_DIMENSION == 0
 const mat2 XON_CLOUD_ROT = mat2(0.80, -0.60, 0.60, 0.80);
+const float XON_CLOUD_CYCLE = 900.0;
+
+vec3 xonCloudFormationWeights() {
+#if XON_CLOUD_FORMATION == 1
+    return vec3(1.0, 0.0, 0.0);
+#elif XON_CLOUD_FORMATION == 2
+    return vec3(0.0, 1.0, 0.0);
+#elif XON_CLOUD_FORMATION == 3
+    return vec3(0.0, 0.0, 1.0);
+#else
+    float phase = mod(frameTimeCounter * (3.0 / XON_CLOUD_CYCLE), 3.0);
+    vec3 distanceToStyle = abs(vec3(phase) - vec3(0.0, 1.0, 2.0));
+    distanceToStyle = min(distanceToStyle, 3.0 - distanceToStyle);
+    return 1.0 - smoothstep(vec3(0.0), vec3(1.0), distanceToStyle);
+#endif
+}
+
+vec2 xonCloudWind() {
+    // Close the path at Iris's hourly timer reset, including each sheared noise layer.
+    const float frequency = 6.28318530718 / 3600.0;
+    float phase = mod(frameTimeCounter, 3600.0) * frequency;
+    return mat2(2.2, 0.55, -0.55, 2.2) * vec2(sin(phase), 1.0 - cos(phase)) / frequency;
+}
 
 // Pure ALU hashes (zero SFU sin() stalls and full precision at large server coordinates).
 vec2 xonHash22(vec2 p) {
@@ -35,19 +58,21 @@ float xonWorleyDomes(vec2 p) {
 
 // Evaluates the continuous 3D heightfield H(x,z) of the cumulus cloud deck:
 // x = opacity/density [0..1], y = 3D dome relief height [0..1] for normal & self-shadow calculation.
-vec2 xonCloudHeightfield(vec2 position, float distFadeDetail, bool detailed) {
-    vec2 uv = position * (1.0 / 3600.0);
+vec2 xonCloudHeightfield(vec2 position, float distFadeDetail, bool detailed, vec3 formation, vec2 wind) {
+    vec2 shape = mix(vec2(1.0), vec2(0.38, 1.45), formation.z);
+    float scale = dot(formation, vec3(1.0, 1.65, 0.78));
+    vec2 uv = position * shape * (scale / 3600.0);
     vec3 n0 = texture(noisetex, uv).rgb;
     vec2 warp = (n0.gb - 0.5) * 0.10;
-    vec3 n1 = texture(noisetex, XON_CLOUD_ROT * (uv * 2.15 + warp) + vec2(0.17, 0.31)).rgb;
-    vec3 n2 = texture(noisetex, XON_CLOUD_ROT * (uv * 4.65 - warp * 1.3) + vec2(0.43, 0.67)).rgb;
+    vec3 n1 = texture(noisetex, XON_CLOUD_ROT * (uv * 2.15 + warp - wind * 0.00008) + vec2(0.17, 0.31)).rgb;
+    vec3 n2 = texture(noisetex, XON_CLOUD_ROT * (uv * 4.65 - warp * 1.3 + wind * 0.00012) + vec2(0.43, 0.67)).rgb;
 
     // Macro cloud continents from smooth periodic noise.
     float continent = xonSaturate((n0.r * 0.62 + n0.g * 0.38 - 0.5) * 2.15 + 0.52);
     float subContinent = xonSaturate((n1.r * 0.58 + n1.b * 0.42 - 0.5) * 2.05 + 0.50);
 
     // True Perlin-Worley cellular spheres warped by wind flow for round, fluffy cauliflower cumulus domes.
-    vec2 cellCoord = position * (1.0 / 240.0) + (n0.rg - 0.5) * 1.55 + (n1.gb - 0.5) * 0.70;
+    vec2 cellCoord = position * shape * (scale / 240.0) + (n0.rg - 0.5) * 1.55 + (n1.gb - 0.5) * 0.70;
     float majorDomes = xonWorleyDomes(cellCoord);
     float midPuffs = detailed ? xonWorleyDomes(XON_CLOUD_ROT * cellCoord * 2.25 + (n2.rg - 0.5) * 0.75)
                               : (1.0 - abs(n1.g * 2.0 - 1.0));
@@ -57,15 +82,15 @@ vec2 xonCloudHeightfield(vec2 position, float distFadeDetail, bool detailed) {
 
     // Combine macro cloud islands with cellular Worley domes so edges have round puffy cumulus silhouettes.
     float macroMass = continent * 0.60 + subContinent * 0.40;
-    float field = macroMass * 0.70 + billows * 0.30;
+    float field = mix(macroMass, billows, dot(formation, vec3(0.30, 0.64, 0.16)));
 
-    float threshold = clamp(mix(0.475, 0.305, rainStrength) - (XON_CLOUD_DENSITY - 1.0) * 0.11, 0.22, 0.65);
-    float raw = smoothstep(threshold, threshold + 0.22, field);
+    float threshold = clamp(mix(0.475, 0.305, rainStrength) + formation.y * 0.035 - (XON_CLOUD_DENSITY - 1.0) * 0.11, 0.22, 0.65);
+    float raw = smoothstep(threshold, threshold + dot(formation, vec3(0.22, 0.18, 0.28)), field);
     float density = raw * raw * (3.0 - 2.0 * raw);
 
     // 3D dome relief height rises smoothly on every spherical Worley dome and macro crown.
     float domeHeight = xonSaturate(raw * 0.42 + billows * 0.64 + (subContinent - 0.45) * 0.25) * smoothstep(0.0, 0.22, raw);
-    return vec2(density, domeHeight);
+    return vec2(density, domeHeight * (1.0 - formation.z * 0.52));
 }
 
 float xonCirrusDensity(vec2 position) {
@@ -84,8 +109,9 @@ float xonCloudCover(vec3 direction) {
     if (direction.y < 0.015 || cameraPosition.y >= 320.0) return 0.0;
     float domeY = sqrt(direction.y * direction.y + 0.035);
     float distanceToCloud = max(320.0 - max(cameraPosition.y - 80.0, 0.0), 80.0) / domeY;
-    vec2 position = cameraPosition.xz + direction.xz * distanceToCloud + vec2(2.2, 0.55) * frameTimeCounter;
-    float density = xonCloudHeightfield(position, 0.0, false).x;
+    vec2 wind = xonCloudWind();
+    vec2 position = cameraPosition.xz + direction.xz * distanceToCloud + wind;
+    float density = xonCloudHeightfield(position, 0.0, false, xonCloudFormationWeights(), wind).x;
     return (1.0 - exp(-density * 4.0)) * smoothstep(0.015, 0.11, direction.y)
          * (1.0 - smoothstep(1600.0, 3200.0, distanceToCloud));
 }
@@ -129,7 +155,8 @@ vec3 xonCloudSky(vec3 direction, bool detailed) {
     float c4 = c2 * c2;
     float hgPhase = c4 * c4 * 0.65 + c2 * 0.25;
     vec3 sunColor = xonSunlightColor(sun);
-    vec2 wind = vec2(2.2, 0.55) * frameTimeCounter;
+    vec2 wind = xonCloudWind();
+    vec3 formation = xonCloudFormationWeights();
     float horizonFade = smoothstep(0.012, 0.095, direction.y);
 
     // Spherical atmospheric dome projection keeps clouds cohesive and naturally scaled from zenith to horizon.
@@ -140,7 +167,7 @@ vec3 xonCloudSky(vec3 direction, bool detailed) {
     float cirrusDist = (520.0 * altitudeScale) / domeY;
     if (cirrusDist > 0.0 && cirrusDist < 3800.0) {
         vec2 cirrusPos = cameraPosition.xz + direction.xz * cirrusDist + wind * 0.45;
-        float cirrus = xonCirrusDensity(cirrusPos) * horizonFade
+        float cirrus = xonCirrusDensity(cirrusPos) * (0.70 + formation.z * 0.65) * horizonFade
                      * (1.0 - smoothstep(1800.0, 3600.0, cirrusDist)) * (1.0 - storm * 0.65);
         if (cirrus > 0.002) {
             vec3 cirrusDay = mix(vec3(0.96, 0.98, 1.06), sunColor * 1.38, 0.42 + dusk * 0.45);
@@ -157,15 +184,15 @@ vec3 xonCloudSky(vec3 direction, bool detailed) {
 
     float detailFade = 1.0 - smoothstep(650.0, 2100.0, cloudDist);
     vec2 pos = cameraPosition.xz + direction.xz * cloudDist + wind;
-    vec2 center = xonCloudHeightfield(pos, detailFade, detailed);
+    vec2 center = xonCloudHeightfield(pos, detailFade, detailed, formation, wind);
     float density = center.x;
     if (density < 0.002) return sky;
 
     // Evaluate directional 3D billow slope toward the sun and along the view ray using fast macro probes.
     vec2 sunDir2D = xonSafeNormalize(vec3(sun.x, 0.0, sun.z)).xz;
     vec2 viewStep = direction.xz * min(18.0 / (direction.y + 0.18), 42.0);
-    vec2 sunNear = xonCloudHeightfield(pos + sunDir2D * 42.0, 0.0, false);
-    vec2 upperProbe = detailed ? xonCloudHeightfield(pos + viewStep, 0.0, false) : center;
+    vec2 sunNear = xonCloudHeightfield(pos + sunDir2D * 42.0, 0.0, false, formation, wind);
+    vec2 upperProbe = detailed ? xonCloudHeightfield(pos + viewStep, 0.0, false, formation, wind) : center;
 
     // 3D normal-like illumination on each rounded Worley cumulus dome:
     // sunSlope > 0 on the sunlit side of every puff and upper crown; < 0 on the shaded backside and flat cloud base.

@@ -268,6 +268,9 @@ void main() {
         vec3 brightCore = vec3(4.20, 2.35, 0.48);
         color = mix(mix(darkCrust, moltenOrange, smoothstep(0.0, 0.58, heat)),
                     brightCore, smoothstep(0.55, 1.0, heat));
+#ifdef XON_BLOOM
+        color *= 1.0 + 0.55 * XON_LAVA_GLOW * smoothstep(0.18, 0.78, heat);
+#endif
     } else if (xonMaterial > 10024.5 && xonMaterial < 10026.5) {
         float coreMask = xonLanternCoreMask(xonMaterial, texel.rgb);
         color = mix(color, xonToLinear(texel.rgb) * 5.0, coreMask);

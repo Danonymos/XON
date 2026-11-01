@@ -1,9 +1,73 @@
 # Changelog
 
-Player-facing changes from the first XON beta to the current **1.2** build.
+Player-facing changes from the first XON beta to the current **1.3** build.
 Versions describe the final behavior of each build; experimental implementations
 that were later corrected are identified below. Validation details and measured
 limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
+
+## 1.3 — Galactic End skies, evolving clouds and luminous lava
+
+1 November 2026.
+
+### End sky and black hole
+
+- Rework the End backdrop with blue-violet galaxies, magenta nebulae, pale star
+  bands and dark dust lanes. Add two scales of filtered, gently twinkling stars.
+- Add a black hole with an amber-white accretion disk curving above and below
+  its shadow. Calculate Schwarzschild light paths, lensed disk images, redshift
+  and approximate orbital Doppler brightness offline, then sample a baked texture
+  in-game. The disk uses a fixed view and artistic emissivity.
+
+### Overworld clouds
+
+- Add rippled cloudlets and stretched veils alongside rounded cumulus. Evolving
+  blends the three formations smoothly through a seamless 15-minute cycle.
+- Allow fixed formation choices while retaining wind and internal shape evolution.
+  Independent detail shear changes the clouds as they move; the hourly timer reset
+  stays continuous.
+- Share the existing heightfield reads and lighting probes across formations.
+  Retain ground cloud shade and the existing water-reflection path.
+
+### Lava glow
+
+- Feed more energy from molten lava into existing bloom, covering pools and flows
+  while preserving dark cooling crust and orange detail.
+- Add Lava Glow under Colored Block Light. It requires Bloom; zero restores the
+  previous lava response. Other light sources keep their existing bloom response.
+
+### Settings and presets
+
+- Add compact Cloud Formations and End Sky pages under Sky & Atmosphere, with
+  separate galaxy brightness, star brightness and black-hole controls.
+- Preserve existing option IDs and saved preferences. Rename the displayed End
+  Aurora control to Galaxy Brightness while retaining its preference identifier.
+- Let Speed omit the galaxy and black hole, with a quieter star field. Balanced,
+  Vibrant Fantasy and Cinematic Ultra restore their intended End effects.
+
+### End rendering fixes
+
+- Remove the blanket additive sky-texture override that allowed underlying colors
+  to wash out the End sky and form a hard brightness split.
+- Preserve texture transparency and intensity for additive End flashes, preventing
+  random bright rectangles from being filled with galaxy imagery.
+- Keep both corrections within V1.3. The local `fixed` filename is a workaround
+  for the game locking an open ZIP; the public package is `XON-Shader-v1.3.zip`.
+
+### Performance and validation
+
+- Add no render pass or temporal history buffer. Use four noise reads for the
+  End galaxy and one projected lookup for the black hole. Its optional 1024-square
+  RGBA8 texture adds about 4 MiB of texels before driver overhead/mipmaps.
+- Pass 1092 OpenGL compile/link configurations with zero shader warnings and
+  947 cumulative GPU cases/comparisons, plus client mapping and property checks.
+  Add six-face cube, underlying-color, masked-flash and native celestial-blending
+  regression coverage after live screenshots exposed a gap in isolated tests.
+- Record isolated GPU costs and synthetic previews in the verification documents.
+  Live appearance and full-game FPS confirmation of the corrected pack remain
+  outstanding; these checks do not guarantee identical frame rates.
+
+V1.2's readable settings, richer colored block light, amber jack-o-lantern auras
+and cyan-teal soul-lantern auras are included. See the V1.2 entry below for those changes.
 
 ## 1.2 — Clear settings and richer colored light
 

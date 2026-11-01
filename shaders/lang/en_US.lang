@@ -8,6 +8,10 @@ screen.XON_SHADOW_SETTINGS=Shadows
 screen.XON_SHADOW_SETTINGS.comment=Sun and moon cast shadows: quality, distance and transitions.
 screen.XON_SKY=Sky & Atmosphere
 screen.XON_SKY.comment=Clouds, moving cloud shade, distant fog and the End sky.
+screen.XON_CLOUD_SETTINGS=Cloud Formations
+screen.XON_CLOUD_SETTINGS.comment=Evolving cumulus, rippled cloudlets and stretched veils. All formations share the existing noise and lighting samples.
+screen.XON_END_SKY=End Sky
+screen.XON_END_SKY.comment=Blue-violet galaxies, fine stars and a golden black hole with an accretion disk and lensed light arcs.
 screen.XON_WATER=Water & Plants
 screen.XON_WATER.comment=Water waves, underwater effects and wind in plants and leaves.
 screen.XON_RAYS=Light Rays
@@ -256,13 +260,37 @@ value.XON_GROUND_SHADOW_STRENGTH.1.00=100%
 value.XON_GROUND_SHADOW_STRENGTH.1.25=125%
 value.XON_GROUND_SHADOW_STRENGTH.1.50=150%
 
-option.XON_END_AURORA=End Aurora
-option.XON_END_AURORA.comment=Strength of purple/magenta aurora ribbons in the End sky. Default: 100%.
+option.XON_END_AURORA=Galaxy Brightness
+option.XON_END_AURORA.comment=Strength of blue, violet, magenta and pale galaxy clouds in the End. Retains the existing End Aurora preference. Stars and the black hole are separate. Default: 100%.
 value.XON_END_AURORA.0.00=Off
 value.XON_END_AURORA.0.50=50%
 value.XON_END_AURORA.1.00=100%
 value.XON_END_AURORA.1.35=135%
 value.XON_END_AURORA.1.75=175%
+
+option.XON_END_STARS=Star Brightness
+option.XON_END_STARS.comment=Brightness of softly twinkling, filtered stars in the End sky. Default: 100%.
+value.XON_END_STARS.0.00=Off
+value.XON_END_STARS.0.50=50%
+value.XON_END_STARS.1.00=100%
+value.XON_END_STARS.1.50=150%
+
+option.XON_END_BLACK_HOLE=Black Hole
+option.XON_END_BLACK_HOLE.comment=Dark shadow and a hot accretion disk with curved secondary images, redshift and Doppler brightness. Light paths are baked offline; one lookup at runtime. Default: On.
+
+option.XON_CLOUD_FORMATION=Formation
+option.XON_CLOUD_FORMATION.comment=Evolving blends rounded cumulus, rippled cloudlets and stretched veils over a seamless 15-minute cycle. Fixed styles retain wind and internal evolution. Requires XON clouds. Default: Evolving.
+value.XON_CLOUD_FORMATION.0=Evolving
+value.XON_CLOUD_FORMATION.1=Cumulus
+value.XON_CLOUD_FORMATION.2=Cloudlets
+value.XON_CLOUD_FORMATION.3=Veils
+
+option.XON_LAVA_GLOW=Lava Glow
+option.XON_LAVA_GLOW.comment=Adds bloom energy to molten lava while preserving dark crust and orange detail. Works on pools and flowing lava. Requires Bloom. Default: 100%.
+value.XON_LAVA_GLOW.0.00=Off
+value.XON_LAVA_GLOW.0.50=50%
+value.XON_LAVA_GLOW.1.00=100%
+value.XON_LAVA_GLOW.1.50=150%
 
 option.XON_ANISOTROPIC=Texture Filtering
 option.XON_ANISOTROPIC.comment=Extra nearby floor/road filtering at grazing angles. Higher levels cost texture reads. Built-in edge smoothing remains active even at Off. Default: 2x.

@@ -7,11 +7,11 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/releases/1.2.md">1.2 release notes</a> ·
+  <a href="docs/releases/1.3.md">1.3 release notes</a> ·
   <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/build-1.2-35b8b0?style=flat-square" alt="Current build: 1.2">
+  <img src="https://img.shields.io/badge/build-1.3-35b8b0?style=flat-square" alt="Current build: 1.3">
   <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
   <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
@@ -26,7 +26,32 @@ the day, and edges receive built-in smoothing. Native resolution is the default.
 The gallery uses existing XON gameplay captures. It illustrates the pack's visual
 direction; it is not a controlled comparison or proof of the latest fixes.
 
-## What's new in 1.2
+## What's new in 1.3
+
+**Galactic skies and living clouds.** V1.3 gives the End a new celestial backdrop,
+brings more variety to Overworld clouds and adds more glow to molten lava.
+
+- **An End full of stars.** Blue-violet and magenta nebulae, pale galactic bands,
+  dark dust lanes and two scales of filtered stars give the void more depth.
+- **A lensed black hole.** An amber-white accretion disk curves above and below
+  the shadow. Light paths are calculated offline; the game samples a compact
+  transfer texture, with no real-time geodesic integration.
+- **Clouds that change shape.** Rounded cumulus, rippled cloudlets and stretched
+  veils blend over a seamless 15-minute cycle. Choose a fixed formation or leave
+  Evolving enabled. Wind shear continues moving and changing the cloud detail.
+- **More luminous lava.** Molten fissures feed more energy into existing bloom,
+  retaining dark crust and orange detail. Adjust Lava Glow under Colored Block Light.
+- **Corrected End rendering.** Native background blending removes the pale sky
+  split, and masked End flashes no longer draw bright rectangular galaxy patches.
+
+![V1.3 End sky and black hole development preview](docs/images/v1.3-previews/black-hole.png)
+
+*Synthetic GPU development preview using the production shaders; not a Minecraft capture.*
+
+The [GPU preview gallery](docs/visual-polish-validation.md) shows controlled shader
+renders and measured costs. These are synthetic views, not Minecraft captures.
+
+### Retained from 1.2
 
 - **Readable settings.** Focused pages, wide controls, short labels and compact
   values keep titles and settings clear. Hover for explanations, dependencies
@@ -96,7 +121,7 @@ direction; it is not a controlled comparison or proof of the latest fixes.
   camera-following sun/moon shadow rings while retaining real object shadows.
 
 Read the [complete changelog](CHANGELOG.md) for every version from the first beta
-through 1.2, including the underwater, material and lighting improvements.
+through 1.3, including the underwater, material and lighting improvements.
 
 ## The XON look
 
@@ -104,9 +129,9 @@ through 1.2, including the underwater, material and lighting improvements.
 | --- | --- |
 | Light and atmosphere | Directional sunlight and moonlight, warm bounce, cool readable shade and five time-of-day moods. |
 | Colored emissive light | Ore and crystal glow with local colored spill onto walls and floors in all three dimensions. |
-| Sky and terrain | Layered cumulus and cirrus clouds, evolving ground cloud shade and waving foliage. |
+| Sky and terrain | Evolving cumulus, cloudlets and veils, moving ground cloud shade and waving foliage. |
 | Water | Layered waves, refraction, depth absorption, caustics and shadow-shaped underwater sunlight shafts. |
-| Materials and dimensions | Moving lava fissures, natural pale amethyst tips, restrained froglights and a purple End aurora. |
+| Materials and dimensions | Glowing lava fissures, natural pale amethyst tips, restrained froglights and a galactic End sky with a lensed black hole. |
 | Camera and clarity | Built-in edge smoothing, optional sharpening, protected held items and adjustable camera motion blur. |
 
 <details>
@@ -119,7 +144,7 @@ through 1.2, including the underwater, material and lighting improvements.
 ## Install
 
 1. Use a compatible **Minecraft: Java Edition + Iris + Sodium** installation.
-2. Get a packaged `XON-Shader-v1.2.zip` from [official releases](https://github.com/Danonymos/XON/releases).
+2. Get a packaged `XON-Shader-v1.3.zip` from [official releases](https://github.com/Danonymos/XON/releases).
    If a release has not been published yet, use the [source build](#build-from-source)
    or a successful [pack-build artifact](https://github.com/Danonymos/XON/actions/workflows/build.yml).
 3. Place the **shader-pack ZIP** directly in your instance's `shaderpacks` folder.
@@ -161,8 +186,8 @@ XON uses bounded shadow maps, a compact local light volume, shared filtering
 samples and half-resolution post effects. These choices control cost; they do
 not make shader rendering free or guarantee a particular frame rate.
 
-The current shader source passed **840 OpenGL compile/link configurations** and
-**921 GPU regression cases/comparisons** plus client material/state mapping checks,
+The current shader source passed **1092 OpenGL compile/link configurations** and
+**947 GPU regression cases/comparisons** plus client material/state mapping checks,
 including bounded emissive saturation, amber/cyan lamp spill, emissive plants,
 lantern cores, bloom, occluder edges, indoor balance, celestial
 occlusion, terrain rings, ore propagation, cloud motion, AA, water, rays and hand

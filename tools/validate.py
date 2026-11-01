@@ -183,6 +183,7 @@ def validate():
                                     'XON_REFRACTION': False, 'XON_COLOR_GRADE': False,
                                     'XON_CLOUD_STYLE': 0},
                     'speed': {'XON_SHADOWS': False, 'XON_COLORED_EMISSIVE_LIGHTING': False,
+                              'XON_END_BLACK_HOLE': False, 'XON_END_AURORA': '0.00', 'XON_END_STARS': '0.50',
                               'XON_LIGHT_SHAFTS': False,
                               'XON_BLOOM': False, 'XON_REFRACTION': False, 'XON_CLOUD_STYLE': 0,
                               'XON_ANISOTROPIC': 0},
@@ -193,7 +194,10 @@ def validate():
                     'minimum_shadows': {'shadowMapResolution': 512, 'shadowDistance': '64.0',
                                         'XON_ANISOTROPIC': 0},
                     'water_no_refraction': {'XON_REFRACTION': False},
-                    'water_no_shadows': {'XON_SHADOWS': False}}
+                    'water_no_shadows': {'XON_SHADOWS': False},
+                    'cloudlets': {'XON_CLOUD_FORMATION': 2},
+                    'cloud_veils': {'XON_CLOUD_FORMATION': 3},
+                    'end_effects_off': {'XON_END_BLACK_HOLE': False, 'XON_END_AURORA': '0.00', 'XON_END_STARS': '0.00'}}
         for label, options in variants.items():
             count = 0
             entrypoints = sorted(path for path in SHADERS.rglob('*.vsh')

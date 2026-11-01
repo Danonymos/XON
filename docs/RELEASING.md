@@ -33,14 +33,19 @@ container before installing the actual shader ZIP inside it.
 5. Wait for the pack workflow and inspect the artifact. Check the target commit
    contains the intended shader changes before creating its release tag.
 
-## Publish 1.2 through GitHub
+## Publish 1.3 through GitHub
 
 1. Open https://github.com/Danonymos/XON/releases/new after pushing the prepared commits.
-2. Choose a new **v1.2** tag targeting the reviewed main commit.
-3. Title the release **XON Shader 1.2 — Clear settings and richer colored light**.
-4. Paste [the prepared release body](releases/1.2.md).
-5. Upload `XON-Shader-v1.2.zip` from the fresh build or verified workflow artifact.
+2. Choose a new **v1.3** tag targeting the reviewed main commit.
+3. Title the release **XON Shader 1.3 — Galactic skies and living clouds**.
+4. Paste [the prepared release body](releases/1.3.md).
+5. Upload `XON-Shader-v1.3.zip` from the fresh build or verified workflow artifact.
 6. Publish when ready. No release has been created by the local preparation steps.
+
+The prepared body uses absolute image/document links pinned to `v1.3`, so they
+also work when pasted into GitHub's release editor. They resolve once the tag
+exists on GitHub. Upload the canonical `XON-Shader-v1.3.zip`; local `fixed` copies
+are the same shader correction under a filename that avoids an open-file lock.
 
 For a checksum, run from the checkout:
 

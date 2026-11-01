@@ -1,6 +1,6 @@
 # Engineering notes
 
-Current architecture for **XON Shader 1.2**. See [VERIFICATION.md](../VERIFICATION.md)
+Current architecture for **XON Shader 1.3**. See [VERIFICATION.md](../VERIFICATION.md)
 for measured GPU checks and the distinction between driver tests and live gameplay.
 
 | Area | Source | Current design |
@@ -18,6 +18,37 @@ for measured GPU checks and the distinction between driver tests and live gamepl
 | Exposure and grade | `shaders/lib/grading.glsl`, `shaders/textures/xon-grade.png` | Private 0.90 base exposure, unchanged brightness control, existing 16-cubed LUT and two-fetch grading budget. |
 
 ## Work budgets
+
+End sky details are isolated in `lib/end_sky.glsl`, called only by the End sky
+program. Terrain/fog lighting retains the existing cheaper atmosphere functions.
+Four reused noise-atlas reads shape a great-circle galaxy, dust lanes and colored
+nebulae. Two bounded ALU star fields use footprint filtering. A projected black-hole
+region samples one 1024-square RGBA8 map: RGB encodes sqrt(linear radiance/16),
+alpha contains horizon/disk occlusion. This is about 4 MiB of additional texture
+texels before driver overhead/mipmaps, omitted when Black Hole is disabled.
+
+End cube and celestial draws retain their different native blend states. The
+End textured fragment uses blendFunc's additive destination factor to identify
+flashes and preserve their texture alpha/intensity, rather than drawing another
+opaque galaxy patch. No blanket sky-texture blend override is installed.
+
+`tools/make_black_hole.py` solves `u'' + u = 1.5 u^2`, using Schwarzschild-radius
+units and RK4. Critical impact is sqrt(27)/2; the disk extends from the Schwarzschild
+ISCO at 3 radii to 12 radii and is inclined 86 degrees. Three disk crossings,
+gravitational redshift and approximate orbital Doppler transfer generate the image.
+Emissivity, color temperature and gas opacity are shaped for the visual target.
+The result is a fixed observer transfer image, not an evolving physical simulation
+or gravitational lensing of arbitrary world geometry. See the
+[Schwarzschild light-path derivation](https://doi.org/10.1088/0004-637X/800/1/77)
+and [visual checks](visual-polish-validation.md).
+
+Cloud formations blend shape/threshold/relief parameters before opacity, sharing
+the existing three heightfield reads, Worley evaluations and lighting probes.
+Independent detail drift supplies shape evolution. A 900-second formation cycle
+and 3600-second closed wind path meet continuously at Iris's hourly timer reset.
+Ground cloud shade retains its prior independent artistic field. Lava glow adds
+only a heat-weighted gain in the lava branch while Bloom is enabled; no global
+bloom threshold/kernel, image or pass is added.
 
 Settings retain stable option IDs, explicit page columns and concise value
 translations. Release checks validate navigation, option coverage, slider values

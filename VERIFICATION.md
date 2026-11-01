@@ -1,3 +1,109 @@
+# XON Shader 1.3 - End sky draw-state correction (no version bump)
+
+1 November 2026. Live screenshots revealed a pale upper-sky veil/hard split and
+random rectangular sky patches. The prior isolated tests disabled GPU blending,
+so their pass did not certify the actual End draw sequence. V1.3 is corrected
+in place; its initial runtime/source snapshots are preserved beside the repository
+with `before-end-sky-fix` suffixes.
+
+The installed Minecraft 26.3 / Iris 1.11.7 classes were inspected read-only.
+END_SKY and CELESTIAL share the sky-textured program but use different native
+blend states: translucent for the cube, additive for celestial bodies/flashes.
+The blanket additive override also affected the background; the attempted
+dimension-qualified override did not match Iris's unqualified program-name lookup.
+Both overrides are removed. The documented blendFunc destination factor now
+selects masked celestial rendering for additive End flashes; the background
+retains the full procedural sky. Alpha, intensity and medium/blindness gates apply.
+Native Overworld celestial blending already matches the removed blanket override.
+
+The production vertex/fragment GPU suite `tools/end_sky_pipeline_checks.py` passes
+11 aggregate GPU cases and one property check. It uses a six-face cube, a split
+underlying background and a masked flash with the actual native blend factors.
+The old background fixture retains 0.08 maximum RGB error from the underlying
+veil, versus zero after correction. The old zero-intensity flash adds up to
+3.886 RGB; the corrected flash adds none. Mask corners, four flash intensities,
+rotated/horizon views, media/blindness, both Boost modes and exact native Overworld
+celestial parity across weather/media pass. All 1092 compile/link configurations
+pass with zero warnings. Existing lighting and the 15 visual-polish cases pass;
+all other previously passing suites cover unchanged shader paths. The cumulative
+GPU count is now 947, plus client mapping and property checks.
+
+No pass, image, shader setting or version number is added. The hot sky math,
+black-hole image, lava glow and cloud formations retain their previous code.
+No live game interaction or reload was performed; confirm the supplied End view
+after applying the corrected V1.3 pack. Minecraft locks the active original ZIP,
+so identical corrected bytes are installed alongside it as
+**XON-Shader-v1.3-fixed.zip**, with the active V1.3 options copied. Select that
+file and Apply. Its version remains 1.3; the canonical distributable is rebuilt
+as XON-Shader-v1.3.zip. Source/runtime/installed-copy checks pass. See
+[draw-state checks](docs/visual-polish-validation.md).
+
+# XON Shader 1.3 - galaxy, black hole, cloud evolution and lava bloom
+
+1 November 2026. Commit `74f8355` preserves V1.2 before V1.3 work. The V1.2 runtime
+ZIP remains unchanged, SHA-256
+`8acf845993efc96ce1c3e4c3fb4b59d83afff8d51b4269d213eb9b33b20e51ab`.
+Its source snapshot is `XON-Shader-v1.2-source-before-1.3.zip` beside the repository.
+
+The End sky now has a four-noise-read, warped galactic band, dark dust lanes,
+blue/violet and magenta nebulae, pale filaments and two filtered star scales.
+The approved black hole is preserved while refining its background. Separate
+galaxy/star strengths and a black-hole toggle occupy a three-control End page.
+Terrain ambient/fog functions and ordinary dimension lighting retain V1.2 behavior.
+
+Black-hole null geodesics are integrated offline with RK4 in Schwarzschild space.
+The conserved first integral has maximum measured relative error 2.49e-12.
+Up to three disk crossings produce primary/secondary images; approximate orbital
+Doppler transfer, redshift, shaped emissivity and a fixed 86-degree thin-disk view
+are baked into a 1024-square RGBA8 map. Runtime uses one projected lookup, with
+no geodesic loop or extra render pass. About 4 MiB of texel storage is added before
+driver overhead/mipmaps. This is not scene-wide relativistic lensing or a dynamic
+gas simulation. Transparent dark texture borders avoid a rectangular sky seam.
+
+Cumulus, cloudlets and veils share the existing heightfield reads, Worley work
+and lighting probes. Smooth parameter weights evolve through a 900-second cycle;
+independent detail shear and a closed wind path maintain motion and exact hourly
+reset continuity. Fixed formations remain available. Ground cloud shade retains
+its existing independent artistic approximation. Lava Glow adds heat-weighted
+surface energy to existing bloom, preserving crust, other sources and shared kernels.
+
+Final offscreen RTX 5060 Ti / OpenGL 4.6 checks pass:
+
+- 1092 graphics compile/link configurations, 1215 unique stages, zero warnings.
+  New variants cover both added fixed cloud styles and disabled End effects.
+- All previous 921 GPU cases/comparisons and client material mapping checks pass.
+- 15 new GPU cases cover End shadow/disk toggles, localized stars, translation
+  invariance, transparent texture borders, water/lava/snow medium handling,
+  distinct formations, movement/storms, cycle/hour boundaries and lava parity.
+- The hourly cloud reset probe has zero pixel difference; cycle-boundary p99
+  differences stay below 0.00071 for the tested adjacent-time samples.
+- Lava Glow zero exactly restores V1.2 terrain output in the controlled fixture;
+  default glow produces about 1.724 times its extracted bloom energy. This is not
+  a universal brightness ratio. Existing regression assertions are retained.
+- Settings navigation checks pass for 12 pages and all 50 controls, with complete
+  hover help and numeric value labels. Standard-library release/package checks
+  compare the runtime source inventory, ZIP and separately installed copy.
+
+Isolated 960x540 GPU medians in milliseconds: End sky 0.01561 -> 0.03140,
+Overworld sky 0.05282 -> 0.05626, lava terrain 0.02852 -> 0.02878. These are
+controlled production-fragment workloads, not Minecraft frame times or an
+identical-FPS guarantee. Desktop scheduling affects p95. See
+[synthetic previews and measurement details](docs/visual-polish-validation.md).
+Reports: `validation-driver.json`, `validation-visual-polish.json` and existing
+GPU reports. Reproduce with `python tools/validate.py`,
+`python tools/visual_polish_checks.py` and the existing regression tools.
+
+The installed `XON-Shader-v1.3.zip` matches the reviewed runtime exactly. Saved
+options were copied from the active V1.2 pack; Iris selection was not changed.
+
+Select **XON-Shader-v1.3.zip** and Apply. In the End, rotate through the full sky,
+compare galaxy/star strengths and the black-hole toggle, and check the horizon
+behind islands. Outdoors, compare all cloud formations and watch Evolving for
+several minutes. Check flowing/pool lava at Glow 0/100% in the Nether/Overworld,
+with Bloom enabled, then compare frame times at identical settings. Live Iris
+reload, actual world appearance and full-game FPS remain unverified. No game UI,
+world edits, push or remote publication was performed for V1.3.
+
 # XON Shader 1.2 - settings clarity and colored-light saturation
 
 1 November 2026. The accepted 1.1 source remains in commit 0e7858c. Its runtime
