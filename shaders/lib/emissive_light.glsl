@@ -13,6 +13,7 @@ const uint XON_VOXEL_FIRST_EMITTER = 2u;
 // Reserve three additional open blocks for the outer aura to ease into darkness.
 const float XON_EMISSIVE_REACH = XON_EMISSIVE_RADIUS + 3.0;
 const float XON_EMISSIVE_STEP = 1.0 / (XON_EMISSIVE_REACH + 1.0);
+const float XON_EMISSIVE_COLOR_FLOOR = 0.01;
 
 uint xonVoxelEmitterId(float material) {
     int id = int(material + 0.5);
@@ -29,7 +30,19 @@ uint xonVoxelEmitterId(float material) {
     if (id == 10020) return 11u;
     if (id == 10023) return 12u;
     if (id == 10024) return 14u;
+    if (id == 10027) return 15u;
+    if (id == 10026) return 16u;
     return XON_VOXEL_EMPTY;
+}
+
+// Preserve luminance/hue and a faint color floor; already-pure colors must not desaturate.
+vec3 xonSaturateEmitterColor(vec3 color) {
+    if (XON_EMISSIVE_SATURATION == 1.00) return color;
+    float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    float minimum = min(color.r, min(color.g, color.b));
+    float saturationLimit = max(1.0, luminance * (1.0 - XON_EMISSIVE_COLOR_FLOOR) / max(luminance - minimum, 0.00001));
+    float saturation = min(XON_EMISSIVE_SATURATION, saturationLimit);
+    return max(vec3(luminance) + (color - luminance) * saturation, vec3(0.0));
 }
 
 // Linear light colour premultiplied by per-family strength.
@@ -47,6 +60,8 @@ vec3 xonVoxelEmitterColor(uint id) {
     if (id == 12u) return vec3(0.64, 0.32, 1.00) * 0.45;
     if (id == 13u) return vec3(0.42, 0.78, 0.62) * 0.26;
     if (id == 14u) return vec3(1.00, 0.56, 0.18) * 0.35;
+    if (id == 15u) return vec3(1.00, 0.42, 0.10) * 0.35;
+    if (id == 16u) return vec3(0.08, 0.85, 1.00) * 0.65;
     return vec3(0.0);
 }
 

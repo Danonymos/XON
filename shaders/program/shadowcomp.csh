@@ -32,7 +32,7 @@ void main() {
     uint data = texelFetch(xonVoxelTex, voxel, 0).r;
     vec4 light = vec4(0.0, 0.0, 0.0, -1.0);
     if (data >= XON_VOXEL_FIRST_EMITTER) {
-        light = vec4(xonVoxelEmitterColor(data), 1.0);
+        light = vec4(xonSaturateEmitterColor(xonVoxelEmitterColor(data)), 1.0);
     } else if (data == XON_VOXEL_EMPTY) {
         bool writeFirst = (frameCounter & 1) == 0;
         ivec3 previousVoxel = voxel + ivec3(floor(cameraPosition) - floor(previousCameraPosition));

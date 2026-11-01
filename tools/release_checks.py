@@ -12,6 +12,65 @@ import zipfile
 from build import ROOT, VERSION, PROGRAMS
 
 
+def check_settings():
+    properties = dict(line.split('=', 1) for line in
+                      (ROOT / 'shaders/shaders.properties').read_text(encoding='utf-8').splitlines()
+                      if line.startswith(('screen', 'sliders=')))
+    language_lines = [line.split('=', 1) for line in
+                      (ROOT / 'shaders/lang/en_US.lang').read_text(encoding='utf-8').splitlines() if '=' in line]
+    language = dict(language_lines)
+    if len(language) != len(language_lines):
+        raise AssertionError('Duplicate shader language keys')
+    settings = (ROOT / 'shaders/lib/settings.glsl').read_text(encoding='utf-8')
+    choices = dict(re.findall(r'^#define (\w+) \S+ // \[([^\]]+)\]', settings, re.M))
+    choices.update(dict(re.findall(r'^const \w+ (\w+) = [^;]+; // \[([^\]]+)\]', settings, re.M)))
+    booleans = set(re.findall(r'^(?://)?#define (XON_\w+)$', settings, re.M)) - {'XON_SETTINGS'}
+    pages = {key: value.split() for key, value in properties.items()
+             if key == 'screen' or key.startswith('screen.') and not key.endswith('.columns')}
+    visited, exposed = set(), set()
+
+    def visit(key, ancestors=()):
+        if key in ancestors:
+            raise AssertionError(f'Settings navigation cycle: {key}')
+        if key not in pages:
+            raise AssertionError(f'Missing settings page: {key}')
+        if key in visited:
+            return
+        visited.add(key)
+        columns = int(properties.get(key + '.columns', '0'))
+        if columns not in [1, 2] or (key != 'screen' and columns != 1):
+            raise AssertionError(f'Explicit readable columns missing: {key}')
+        if key != 'screen' and len(pages[key]) > 8:
+            raise AssertionError(f'Settings page needs scrolling at common GUI scales: {key}')
+        for token in pages[key]:
+            if token in ['<empty>', '<profile>']:
+                continue
+            if token.startswith('[') and token.endswith(']'):
+                child = 'screen.' + token[1:-1]
+                if not language.get(child) or not language.get(child + '.comment'):
+                    raise AssertionError(f'Missing settings page label/help: {child}')
+                visit(child, ancestors + (key,))
+            else:
+                exposed.add(token)
+                if token not in choices and token not in booleans:
+                    raise AssertionError(f'Unknown settings control: {token}')
+                if not language.get('option.' + token) or not language.get('option.' + token + '.comment'):
+                    raise AssertionError(f'Missing settings label/hover help: {token}')
+                for value in choices.get(token, '').split():
+                    if not language.get(f'value.{token}.{value}'):
+                        raise AssertionError(f'Missing readable settings value: {token}={value}')
+
+    visit('screen')
+    if visited != set(pages):
+        raise AssertionError(f'Unreachable settings pages: {set(pages) - visited}')
+    if exposed != set(choices) | booleans:
+        raise AssertionError(f'Settings lost from navigation: {(set(choices) | booleans) - exposed}')
+    if not set(properties['sliders'].split()) <= set(choices) & exposed:
+        raise AssertionError('Invalid numeric slider registration')
+    return {'pages': len(visited), 'controls': len(exposed), 'hover_help_complete': True,
+            'numeric_value_labels_complete': True, 'explicit_columns': True}
+
+
 def check(package):
     shader_root = ROOT / 'shaders'
     runtime = {p.relative_to(ROOT).as_posix(): p.read_bytes()
@@ -86,7 +145,9 @@ def check(package):
     for name in ['README.md', 'docs/PACK-README.md', 'CHANGELOG.md', f'docs/releases/{VERSION}.md']:
         if VERSION not in (ROOT / name).read_text(encoding='utf-8'):
             raise AssertionError(f'Current version missing from {name}')
+    settings_report = check_settings()
     report = {'passed': True, 'version': VERSION, 'runtime_files': len(expected),
+              'settings': settings_report,
               'graphics_entrypoints': entrypoints, 'compute_entrypoints': 3,
               'shader_files_checked': len(visited), 'python_files_compiled': len(python_files),
               'local_document_links_checked': links, 'license_included': True,

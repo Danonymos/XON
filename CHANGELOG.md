@@ -1,9 +1,29 @@
 # Changelog
 
-Player-facing changes from the first XON beta to the current **1.1** build.
+Player-facing changes from the first XON beta to the current **1.2** build.
 Versions describe the final behavior of each build; experimental implementations
 that were later corrected are identified below. Validation details and measured
 limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
+
+## 1.2 — Clear settings and richer colored light
+
+1 November 2026.
+
+- Reorganize settings into Lighting, Colored Block Light, Color & Bloom, Shadows,
+  Sky & Atmosphere, Water & Plants, Camera & Detail and Performance. Share a small
+  Light Rays page between sky and water. Keep all existing option identifiers.
+- Use an explicit two-column overview and single-column settings pages, each
+  with at most eight entries. Shorten labels and values; put defaults, purpose
+  and dependencies in hover help. Keep adjustment inside the native Iris control.
+- Add Light Saturation, default 135%, to the existing colored emitter injection.
+  Preserve linear luminance and hue; limit the gain before any channel becomes
+  negative. Already saturated colors receive less than the full 35% increase.
+  The 100% setting restores the existing emitters' 1.1 color response.
+- Give jack-o-lanterns a separate soft amber aura and soul lanterns a cyan-teal
+  aura. Preserve jack surface emission and soul-lantern core/frame shading.
+- Retain ordinary torch, regular-lantern and end-rod lighting, global grading,
+  existing aura reach/falloff, occlusion, voxel storage, passes and fetch counts.
+  New emitters and saturation arithmetic add work within the existing compute pass.
 
 ## 1.1 — Living emitters, luminous lanterns and soft bloom
 

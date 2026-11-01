@@ -7,11 +7,11 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/releases/1.1.md">1.1 release notes</a> ·
+  <a href="docs/releases/1.2.md">1.2 release notes</a> ·
   <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/build-1.1-35b8b0?style=flat-square" alt="Current build: 1.1">
+  <img src="https://img.shields.io/badge/build-1.2-35b8b0?style=flat-square" alt="Current build: 1.2">
   <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
   <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
@@ -26,7 +26,19 @@ the day, and edges receive built-in smoothing. Native resolution is the default.
 The gallery uses existing XON gameplay captures. It illustrates the pack's visual
 direction; it is not a controlled comparison or proof of the latest fixes.
 
-## What's new in 1.1
+## What's new in 1.2
+
+- **Readable settings.** Focused pages, wide controls, short labels and compact
+  values keep titles and settings clear. Hover for explanations, dependencies
+  and defaults; drag a slider or click a value button to adjust it.
+- **Richer colored block light.** A dedicated Light Saturation control defaults
+  to 135%, preserving linear luminance and limiting colors before channels go
+  negative. It affects cast light; world color and source glow remain separate.
+- **Colored lamp auras.** Jack-o-lanterns cast amber light and soul lanterns cast
+  cyan-teal light onto nearby surfaces, using the existing colored-light volume.
+  Ordinary torch, lantern and end-rod lighting retains its current response.
+
+### Retained from 1.1
 
 - **More depth in distant forests.** Soft sun/moon-oriented canopy shading blends
   with nearby detailed shadows, preserving distant foliage contrast without
@@ -84,7 +96,7 @@ direction; it is not a controlled comparison or proof of the latest fixes.
   camera-following sun/moon shadow rings while retaining real object shadows.
 
 Read the [complete changelog](CHANGELOG.md) for every version from the first beta
-through 1.1, including the underwater, material and lighting improvements.
+through 1.2, including the underwater, material and lighting improvements.
 
 ## The XON look
 
@@ -107,7 +119,7 @@ through 1.1, including the underwater, material and lighting improvements.
 ## Install
 
 1. Use a compatible **Minecraft: Java Edition + Iris + Sodium** installation.
-2. Get a packaged `XON-Shader-v1.1.zip` from [official releases](https://github.com/Danonymos/XON/releases).
+2. Get a packaged `XON-Shader-v1.2.zip` from [official releases](https://github.com/Danonymos/XON/releases).
    If a release has not been published yet, use the [source build](#build-from-source)
    or a successful [pack-build artifact](https://github.com/Danonymos/XON/actions/workflows/build.yml).
 3. Place the **shader-pack ZIP** directly in your instance's `shaderpacks` folder.
@@ -150,8 +162,9 @@ samples and half-resolution post effects. These choices control cost; they do
 not make shader rendering free or guarantee a particular frame rate.
 
 The current shader source passed **840 OpenGL compile/link configurations** and
-**903 GPU regression cases/comparisons** plus client material/state mapping checks,
-including emissive plants, lantern cores, bloom, occluder edges, indoor balance, celestial
+**921 GPU regression cases/comparisons** plus client material/state mapping checks,
+including bounded emissive saturation, amber/cyan lamp spill, emissive plants,
+lantern cores, bloom, occluder edges, indoor balance, celestial
 occlusion, terrain rings, ore propagation, cloud motion, AA, water, rays and hand
 protection. Those checks use controlled
 inputs on an RTX 5060 Ti. They do not certify every mod stack or replace live

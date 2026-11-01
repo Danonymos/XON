@@ -184,7 +184,7 @@ void main() {
     vec3 color = xonToLinear(surface.rgb);
     vec3 normal = isCrossPlant ? vec3(0.0, 1.0, 0.0) : xonSafeNormalize(xonWorldNormal);
     bool isLava = abs(xonMaterial - 10005.0) < 0.5;
-    float emission = float(abs(xonMaterial - 10002.0) < 0.5 || isLava);
+    float emission = float(abs(xonMaterial - 10002.0) < 0.5 || abs(xonMaterial - 10027.0) < 0.5 || isLava);
     float foliage = float(abs(xonMaterial - 10003.0) < 0.5 || isCrossPlant);
     float sunVisibility = 1.0;
     bool composedWater = false;

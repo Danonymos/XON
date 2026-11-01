@@ -1,4 +1,4 @@
-# XON Shader 1.1
+# XON Shader 1.2
 
 Warm light, clear water and a world in motion. XON is an Iris shader pack for
 Minecraft: Java Edition, with directional shadows, moving cloud shade, colored
@@ -8,13 +8,17 @@ ore illumination, layered water and built-in spatial edge smoothing.
 
 1. Use a compatible Minecraft Java + Iris + Sodium installation. The development
    target is Minecraft Java 26.3, Iris 1.11.7 and Sodium 0.9.2.
-2. Place XON-Shader-v1.1.zip directly in your instance's shaderpacks folder.
+2. Place XON-Shader-v1.2.zip directly in your instance's shaderpacks folder.
    Do not extract it or install it as a mod/resource pack.
 3. Open Video Settings → Shader Packs, select XON and Apply.
 4. Start with Balanced + Native. Speed lowers the effect budget.
 
 ## Highlights
 
+- Focused settings pages with wide controls, short labels and hover explanations.
+- Colored block-light saturation defaults to 135%, with luminance-preserving
+  color limits. Set Light Saturation to 100% for the previous color response.
+- Amber jack-o-lantern spill and cyan-teal soul-lantern spill on nearby blocks.
 - Soft distant-foliage shading that follows the sun/moon, with a broader shadow handoff.
 - Purple amethyst blocks, mint glow lichen, warm glow berries and cyan sculk veins.
 - Violet quartz stairs/slabs, extending the existing full-block quartz aura.
@@ -46,7 +50,8 @@ Corners and the volume boundary shorten its reach. Mip stabilization needs the
 existing game mip chain. Ground cloud shade is an artistic approximation. Spatial
 AA cannot recover missing subpixel/temporal information. GPU tests do not guarantee
 identical FPS or compatibility with every mod stack.
-Ordinary lamps use the existing scalar lightmap; this balance does not add
+Ordinary lamps use the existing scalar lightmap. Jack-o-lantern and soul-lantern
+auras additionally use the local colored-light volume. This does not add
 directional lamp tracing or new source-cast shadows.
 Bloom is a screen-space halo whose apparent world size depends on the view.
 The specific reported moving quartz/wood/stone-brick flicker needs a live recheck.

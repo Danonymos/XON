@@ -44,7 +44,7 @@ def run(installed_name=None, installed_dir=None):
     booleans = set(re.findall(r'^(?://)?#define (XON_\w+)$', settings, flags=re.M))
     menu_options = set()
     for line in properties.splitlines():
-        if line.startswith('screen.'):
+        if line.startswith('screen.') and not line.split('=', 1)[0].endswith('.columns'):
             for option in line.split('=', 1)[1].split():
                 if option.startswith(('[', '<')):
                     continue

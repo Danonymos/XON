@@ -1,3 +1,72 @@
+# XON Shader 1.2 - settings clarity and colored-light saturation
+
+1 November 2026. The accepted 1.1 source remains in commit 0e7858c. Its runtime
+ZIP is the immutable comparison baseline, SHA-256
+958993d2311c29ae30f1b7bca53dc14a09df9e061d8f31b365aa8e2194032302.
+
+The overview has eight short category links plus preset/resolution controls in
+two explicit columns. Every settings page uses one wide column with at most
+eight entries. All 45 existing controls remain accessible under their original
+IDs; the new Light Saturation control brings the total to 46. Page/option help
+explains purpose and dependencies, with short values and defaults in hover text.
+Native Iris sliders/buttons handle adjustment; no custom UI mod is introduced.
+Release checks validate navigation, cycles, coverage, value labels and sliders.
+A read-only width check against the installed client's default bitmap font
+measured a maximum 107-pixel option label, 54-pixel value and 97-pixel page label
+at 1x GUI scale. This is a text measurement, not a live layout certification.
+
+Cast colored-light saturation defaults to 1.35. The source chroma is scaled
+around Rec.709 linear luminance, preserving hue and source energy. Gain is capped
+to preserve a faint 1%-of-luminance channel floor; colors already below that
+floor retain their original saturation. No post-saturation renormalization or
+global grading change is applied. Tone mapping and receiver colors still affect
+the displayed result; this is not a universal 35% display-saturation increase.
+The first broad run caught sculk's faint channel reaching zero. The production
+floor resolved that failure; existing test assertions were not weakened.
+
+Jack-o-lantern material 10027 maps to amber emitter 15, preserving its original
+surface emission. Existing soul-lantern material 10026 maps to cyan emitter 16,
+preserving the texture-based core/frame mask. Ordinary regular lanterns, torches
+and end rods retain their lightmap response. The new auras require Colored Light.
+Source strengths, ordinary local-light math, grading, propagation, interpolation,
+falloff, wall blocking, storage and passes are otherwise retained. Saturation is
+evaluated only at emitter injection; added source capture/arithmetic has a cost.
+
+Final driver/GPU checks on the RTX 5060 Ti pass:
+
+- 840 graphics compile/link configurations, 936 unique stages, zero warnings.
+- All previous 903 GPU cases/comparisons and client mapping checks pass, plus
+  18 new aggregate GPU cases in tools/emissive_saturation_checks.py.
+- Five saturation settings each process 4096 HDR/neutral/primary input colors.
+  Linear luminance error stays below 0.0000003; hue, nonnegative channels,
+  saturation bounds and the retained color floor are checked.
+- At 100%, all 13 existing emitter families reproduce the 1.1 computed light
+  volume bit for bit. Default saturation retains identical alpha/falloff; the
+  maximum tested luminance difference after half-float storage is about 0.043%.
+- Real shadow capture, compute and production receiving-terrain probes show
+  amber jack light and cyan-blue soul light with ordinary warm light present,
+  in all three dimensions. A solid wall blocks the soul light.
+- Client-texture terrain comparisons retain exact 1.1 source/core/frame output
+  for jack/soul/regular lanterns, torches and end rods with colored light disabled.
+
+Reports are the existing regression JSON files and validation-emissive-saturation.json.
+Reproduce with python tools/validate.py, python tools/emissive_saturation_checks.py,
+python tools/emissive_material_checks.py and python tools/voxel_gpu_checks.py.
+The runtime ZIP, source inventory, installed copy and documentation are checked
+with tools/release_checks.py and tools/package_checks.py.
+
+The user selected the initial V1.2 review build while checks were running.
+The final corrected bytes are installed separately as XON-Shader-v1.2-final.zip
+with the active V1.2 preferences copied. The active ZIP was not overwritten.
+Computer Use was stopped by the user; no further UI interaction was attempted.
+The final pack has not been loaded by this work; live appearance, tooltip layout,
+resource-pack rendering and game FPS remain unverified. Select
+XON-Shader-v1.2-final.zip and Apply. Check each category and hover
+help, compare Light Saturation 100%/135% beside ores, crystals and lichen, and
+check amber jack light and cyan soul light on pale walls/floors. Compare shaded
+metal and ordinary lamps at the same camera/settings. No server commands or
+world edits were made; no commit, push or remote release was performed.
+
 # XON Shader 1.1 - emitter expansion, lanterns and occluder edges
 
 31 October 2026. Commit d5de206 saves the accepted 1.0.9 source before these

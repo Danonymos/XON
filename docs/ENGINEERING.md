@@ -1,6 +1,6 @@
 # Engineering notes
 
-Current architecture for **XON Shader 1.1**. See [VERIFICATION.md](../VERIFICATION.md)
+Current architecture for **XON Shader 1.2**. See [VERIFICATION.md](../VERIFICATION.md)
 for measured GPU checks and the distinction between driver tests and live gameplay.
 
 | Area | Source | Current design |
@@ -18,6 +18,19 @@ for measured GPU checks and the distinction between driver tests and live gamepl
 | Exposure and grade | `shaders/lib/grading.glsl`, `shaders/textures/xon-grade.png` | Private 0.90 base exposure, unchanged brightness control, existing 16-cubed LUT and two-fetch grading budget. |
 
 ## Work budgets
+
+Settings retain stable option IDs, explicit page columns and concise value
+translations. Release checks validate navigation, option coverage, slider values
+and hover help. The overview uses two columns; setting pages use one.
+
+Emitter saturation is evaluated only when injecting source colors in the compute
+pass. Chroma is scaled around Rec.709 linear luminance, with gain limited to
+retain a faint channel floor (1% of luminance); colors already below that floor
+retain their original saturation. The default requests 1.35; 1.00 returns the original
+color exactly. Source strengths, propagation and receiving math are retained.
+Jack-o-lantern material 10027 maps to voxel ID 15 (amber); existing soul-lantern
+material 10026 maps to ID 16 (cyan). Regular lanterns, torches and end rods retain
+scalar lamp lighting. Jack surface emission and soul core/frame masks are retained.
 
 Colored lighting retains one compute dispatch per frame and about 7.17 MiB of
 image texel storage. Its default extent takes roughly eight frames to settle.
@@ -48,7 +61,8 @@ to both sun and moon. Palette colors and saturation are baked into existing
 lighting constants and the LUT; `python tools/make_textures.py --grade-only`
 regenerates that LUT without rewriting the noise atlas.
 
-Ordinary lamps use the interpolated block-light coordinate. The cubic response
+Ordinary lamps use the interpolated block-light coordinate; jack/soul lanterns
+also contribute their new local colored auras. The cubic response
 blends its shoulder from 0.35 indoors to the original 0.72 outdoors, using the
 existing smooth skylight curve. Peak local energy blends from 0.80 to 0.90 of
 1.0.8; held-light energy shares that gain. No source vectors are inferred from
