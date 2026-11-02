@@ -1,20 +1,24 @@
-# XON Shader 1.3
+# XON Shader 1.4
 
 Warm light, clear water and a world in motion. XON is an Iris shader pack for
 Minecraft: Java Edition, with directional shadows, moving cloud shade, colored
-ore illumination, layered water and built-in spatial edge smoothing.
+ore illumination, layered water, volumetric light shafts and built-in spatial edge smoothing.
 
 ## Install
 
 1. Use a compatible Minecraft Java + Iris + Sodium installation. The development
    target is Minecraft Java 26.3, Iris 1.11.7 and Sodium 0.9.2.
-2. Place XON-Shader-v1.3.zip directly in your instance's shaderpacks folder.
+2. Place XON-Shader-v1.4.zip directly in your instance's shaderpacks folder.
    Do not extract it or install it as a mod/resource pack.
 3. Open Video Settings → Shader Packs, select XON and Apply.
 4. Start with Balanced + Native. Speed lowers the effect budget.
 
 ## Highlights
 
+- Volumetric light shafts with dual-lobe scattering that stream and wrap around building silhouettes.
+- Directional ground bounce and vertical skylight gradient giving backlit structures rich 3D depth.
+- Stratified height-density atmosphere and solar in-scattering aura preserving crystal-clear clarity.
+- Edge-preserving bilateral depth filter for rays in composite1, preventing beam leakage across silhouettes.
 - Blue-violet End galaxies with magenta clouds, pale star bands and dark dust lanes.
 - A luminous black hole with offline-traced disk images, redshift and Doppler brightness.
 - Cumulus, cloudlets and veils blending through a seamless 15-minute cloud cycle.

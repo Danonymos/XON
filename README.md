@@ -7,11 +7,11 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/releases/1.3.md">1.3 release notes</a> ·
+  <a href="docs/releases/1.4.md">1.4 release notes</a> ·
   <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/build-1.3-35b8b0?style=flat-square" alt="Current build: 1.3">
+  <img src="https://img.shields.io/badge/build-1.4-35b8b0?style=flat-square" alt="Current build: 1.4">
   <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
   <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
@@ -25,6 +25,24 @@ the day, and edges receive built-in smoothing. Native resolution is the default.
 
 The gallery uses existing XON gameplay captures. It illustrates the pack's visual
 direction; it is not a controlled comparison or proof of the latest fixes.
+
+## What's new in 1.4
+
+**Atmospheric vibe, volumetric light shafts and richer shadow works.** V1.4 overhauls
+sunlight shafts and atmospheric depth while keeping XON crystal clear, sharp and fast.
+
+- **Wrapping volumetric light shafts.** A dual-lobe Henyey-Greenstein + Rayleigh scattering
+  model allows sunlight rays to wrap, stream and cast dramatic silhouettes around buildings
+  and rooftops when backlit, even when the sun is occluded. 10 exponential steps with height
+  density clustering give silky smooth shafts with near-zero overhead.
+- **Edge-preserving bilateral filter.** An 8-tap bilateral depth filter in composite1
+  prevents light shafts from bleeding across building silhouettes onto dark facades.
+- **Richer shadows & directional ground bounce.** Shaded building facades facing sunlit
+  open terrain receive warm diffuse secondary ground bounce and vertical skylight gradients,
+  giving structures full 3D architectural depth instead of flat gray shade.
+- **Stratified atmospheric density & solar aura.** Density settles naturally in lower
+  valleys and courtyards ($e^{-y/H}$), leaving upper sky and close views crystal clear. A forward
+  in-scattering aura warms the air around backlit silhouettes facing the sun.
 
 ## What's new in 1.3
 
@@ -144,7 +162,7 @@ through 1.3, including the underwater, material and lighting improvements.
 ## Install
 
 1. Use a compatible **Minecraft: Java Edition + Iris + Sodium** installation.
-2. Get a packaged `XON-Shader-v1.3.zip` from [official releases](https://github.com/Danonymos/XON/releases).
+2. Get a packaged `XON-Shader-v1.4.zip` from [official releases](https://github.com/Danonymos/XON/releases).
    If a release has not been published yet, use the [source build](#build-from-source)
    or a successful [pack-build artifact](https://github.com/Danonymos/XON/actions/workflows/build.yml).
 3. Place the **shader-pack ZIP** directly in your instance's `shaderpacks` folder.

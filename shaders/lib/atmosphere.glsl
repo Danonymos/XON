@@ -21,14 +21,15 @@ vec3 xonSunlightColor(vec3 sun) {
     vec4 phases = xonTimePhases(sun);
     float goldenHour = smoothstep(-0.04, 0.22, sunHeight) * (1.0 - smoothstep(0.22, 0.62, sunHeight));
     float noon = smoothstep(0.18, 0.72, sunHeight);
-    vec3 dawnDusk = vec3(1.48, 1.02, 0.66);
-    vec3 afternoon = vec3(1.34, 1.15, 0.85);
-    vec3 midday = vec3(1.30, 1.17, 0.98);
+    // 30% warmer pale-gold, yellowish and amber solar palette
+    vec3 dawnDusk = vec3(1.56, 1.06, 0.62);
+    vec3 afternoon = vec3(1.42, 1.18, 0.78);
+    vec3 midday = vec3(1.35, 1.20, 0.90);
     vec3 designed = mix(mix(dawnDusk, afternoon, smoothstep(0.02, 0.35, sunHeight)), midday, noon);
-    designed = mix(designed, vec3(1.46, 1.075, 0.74), goldenHour * 0.45);
-    designed = mix(designed, vec3(1.44, 1.12, 0.91), clamp(phases.x * 0.65, 0.0, 0.85));
-    designed = mix(designed, vec3(1.40, 1.14, 0.80), clamp(phases.z * 0.60, 0.0, 0.85));
-    designed = mix(designed, vec3(1.54, 0.98, 0.62), clamp(phases.w * 0.70, 0.0, 0.85));
+    designed = mix(designed, vec3(1.50, 1.10, 0.68), goldenHour * 0.50);
+    designed = mix(designed, vec3(1.48, 1.14, 0.85), clamp(phases.x * 0.65, 0.0, 0.85));
+    designed = mix(designed, vec3(1.45, 1.16, 0.74), clamp(phases.z * 0.60, 0.0, 0.85));
+    designed = mix(designed, vec3(1.58, 0.98, 0.56), clamp(phases.w * 0.70, 0.0, 0.85));
     return mix(vec3(1.15), designed, XON_WARMTH);
 }
 
@@ -133,7 +134,7 @@ vec3 xonFog(vec3 color, vec3 viewPosition, float skylight) {
     }
 #if XON_DIMENSION == 0
 #ifndef XON_AIR_FOG
-    if (isEyeInWater == 0 && rainStrength < 0.001 && thunderStrength < 0.001 && borderFog < 0.0001) {
+    if (isEyeInWater == 0 && rainStrength < 0.001 && thunderStrength < 0.001 && borderFog < 0.0001 && XON_ATMOSPHERE_DENSITY < 0.001) {
         return color * exp(-distanceToEye * max(blindness, darknessFactor) * 0.16);
     }
 #endif
@@ -191,6 +192,23 @@ vec3 xonFog(vec3 color, vec3 viewPosition, float skylight) {
         float terrainFade = smoothstep(max(fogStart, far * 0.68),
                                        max(max(fogEnd, far), fogStart + 1.0), distanceToEye);
         amount = max(amount, max(terrainFade, borderFog));
+
+        // Modern Stratified Aerial Perspective & Solar In-Scattering Aura
+        if (XON_ATMOSPHERE_DENSITY > 0.001 && isEyeInWater == 0) {
+            float effectiveDist = max(distanceToEye - 20.0, 0.0);
+            float worldY = cameraPosition.y + worldOffset.y;
+            float minH = min(cameraPosition.y, worldY);
+            float heightScale = exp(-max(minH - 62.0, 0.0) * 0.016);
+            float aerialAmount = (1.0 - exp(-effectiveDist * 0.00095 * XON_ATMOSPHERE_DENSITY)) * heightScale * skylight;
+
+            vec3 sunDir = xonSunDirection();
+            float sunDot = dot(xonSafeNormalize(worldOffset), sunDir);
+            float mieGlow = pow(max(sunDot, 0.0), 10.0) * 0.35 + pow(max(sunDot, 0.0), 40.0) * 0.65;
+            vec3 inScattered = xonSunlightColor(sunDir) * (mieGlow * xonDaylight() * (1.0 - rainStrength * 0.85) * 0.45);
+
+            fog += inScattered;
+            amount = max(amount, aerialAmount);
+        }
 #endif
     }
     float visionFog = 1.0 - exp(-distanceToEye * max(blindness, darknessFactor) * 0.16);

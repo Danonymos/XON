@@ -6,7 +6,7 @@ import zipfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '1.3'
+VERSION = '1.4'
 
 PROGRAMS = {
     'gbuffers_basic': ('geometry', ['XON_BASIC']),

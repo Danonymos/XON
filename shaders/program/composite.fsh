@@ -49,15 +49,18 @@ void main() {
             daylight *= smoothstep(0.0, 0.14, sun.y);
         }
         float sunDot = dot(playerRay, sun);
-        if (underwater || sunDot > 0.55) {
-            float posDot = max(sunDot, 0.0);
-            float s2 = posDot * posDot;
-            float s4 = s2 * s2;
-            float s8 = s4 * s4;
+        // Wide-angle volumetric visibility: shafts remain active when viewing around building occluders
+        if (underwater || sunDot > -0.20) {
+            // Dual-lobe Henyey-Greenstein + Rayleigh scattering phase function
+            float g = mix(0.82, 0.65, clamp((XON_RAY_WRAP - 0.5) * 0.75, 0.0, 1.0));
+            float g2 = g * g;
+            float hgDenom = max(1.0 + g2 - 2.0 * g * sunDot, 0.01);
+            float hgPhase = (1.0 - g2) / (hgDenom * sqrt(hgDenom));
+            float rayleighPhase = 1.0 + 0.35 * sunDot * sunDot;
             float sunAlign = xonSaturate(sunDot * 0.5 + 0.5);
-            // Linear forward-isotropic phase without radial powers, ensuring diagonal beams follow shadow occluders rather than forming circular halos.
             float phase = underwater ? (0.65 + 0.35 * sunAlign)
-                                     : (s8 * 0.08 + s8 * s8 * s8 * 0.92) * smoothstep(0.55, 0.75, posDot);
+                                     : mix(rayleighPhase * 0.28, hgPhase * 0.09, 0.82) * smoothstep(-0.20, 0.12, sunDot);
+
             vec2 srcUV = xonSourceUV(xonUV);
             float depth = texture(depthtex0, srcUV).r;
             if (underwater) {
@@ -66,20 +69,23 @@ void main() {
             }
             vec4 depthView = gbufferProjectionInverse * vec4(xonUV * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
             depthView.xyz /= max(abs(depthView.w), 0.000001);
-            float maxRayDist = underwater ? min(shadowDistance * 0.75, 72.0) : shadowDistance * 0.76;
+            float maxRayDist = underwater ? min(shadowDistance * 0.75, 72.0) : shadowDistance * 0.85;
             float rayLength = min(length(depthView.xyz), maxRayDist);
             float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-            int sampleCount = underwater ? 12 : 4;
-            float stepLength = underwater ? (maxRayDist / 12.0) : rayLength * 0.25;
+            int sampleCount = underwater ? 12 : 10;
             vec3 rayOrigin = gbufferModelViewInverse[3].xyz;
             mat4 shadowMVP = shadowProjection * shadowModelView;
             vec3 shadowOrigin = (shadowMVP * vec4(rayOrigin, 1.0)).xyz;
             vec3 shadowStep = mat3(shadowMVP) * playerRay;
+            float totalWeight = 0.0;
+            float camY = cameraPosition.y;
+
             for (int stepIndex = 0; stepIndex < 12; ++stepIndex) {
                 if (stepIndex >= sampleCount) break;
-                float distanceAlongRay = (float(stepIndex) + 0.35 + jitter * 0.65) * stepLength;
+                float distanceAlongRay;
                 float weight = 1.0;
                 if (underwater) {
+                    float stepLength = maxRayDist / 12.0;
                     float start = float(stepIndex) * stepLength;
                     float end = min(start + stepLength, rayLength);
                     if (end <= start) break;
@@ -87,14 +93,27 @@ void main() {
                     float nearRamp = smoothstep(0.0, 4.5, distanceAlongRay);
                     weight = (end - start) * nearRamp * exp(-distanceAlongRay * 0.020);
                 } else {
-                    weight = exp(-distanceAlongRay * 0.018);
+                    float t0 = float(stepIndex) / float(sampleCount);
+                    float t1 = float(stepIndex + 1) / float(sampleCount);
+                    float sampleT = mix(t0, t1, 0.35 + jitter * 0.65);
+                    distanceAlongRay = rayLength * pow(sampleT, 1.32);
+                    float worldY = camY + playerRay.y * distanceAlongRay;
+                    float heightDensity = exp(-max(worldY - 64.0, 0.0) * 0.016);
+                    weight = (pow(t1, 1.32) - pow(t0, 1.32)) * exp(-distanceAlongRay * 0.014) * (0.45 + 0.55 * heightDensity);
                 }
                 vec3 shadowClip = shadowOrigin + shadowStep * distanceAlongRay;
                 float visibility = underwater ? xonWaterRayVisibilityClip(shadowClip) : xonRayVisibilityClip(shadowClip);
                 shafts += visibility * weight;
+                totalWeight += weight;
             }
-            shafts *= (underwater ? 0.0052 : stepLength * 0.007) * phase * exposure * daylight * XON_RAY_STRENGTH;
-            shafts = min(shafts, 0.20);
+            if (underwater) {
+                shafts *= 0.0052 * phase * exposure * daylight * XON_RAY_STRENGTH;
+            } else {
+                float normFactor = totalWeight > 0.0001 ? (shafts / totalWeight) : 0.0;
+                float distanceEnvelope = min(rayLength * 0.045, 1.25);
+                shafts = normFactor * distanceEnvelope * (0.17 * phase * exposure * daylight * XON_RAY_STRENGTH);
+            }
+            shafts = min(shafts, 0.28);
         }
     }
 #endif

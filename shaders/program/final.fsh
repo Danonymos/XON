@@ -117,7 +117,7 @@ void main() {
         color += effects.rgb * (0.208 * XON_BLOOM_STRENGTH);
 #endif
 #if defined XON_LIGHT_SHAFTS && defined XON_SHADOWS && XON_DIMENSION == 0
-        vec3 rayColor = isEyeInWater == 1 ? vec3(0.20, 0.40, 0.65) : xonSunlightColor();
+        vec3 rayColor = isEyeInWater == 1 ? vec3(0.20, 0.40, 0.65) : mix(xonSunlightColor(), vec3(1.32, 1.08, 0.78), 0.20 * XON_WARMTH);
         color += effects.a * rayColor;
 #endif
     }

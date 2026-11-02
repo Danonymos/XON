@@ -22,6 +22,9 @@ vec3 xonApplyGrade(vec3 displayColor) {
                     : 0.88 + (XON_SATURATION - 0.70) * (0.12 / 0.30);
     float luma = dot(result, vec3(0.2126, 0.7152, 0.0722));
     result = clamp(mix(vec3(luma), result, satFactor), 0.0, 1.0);
+    // Polished golden-hour environment warmth (~30% warmer pale-gold/amber tone)
+    vec3 goldenShift = vec3(0.024, 0.015, -0.014) * (luma * (1.0 - luma * 0.40)) * XON_GRADE_STRENGTH;
+    result = clamp(result + goldenShift, 0.0, 1.0);
     if (abs(XON_CONTRAST - 1.0) > 0.001) {
         result = clamp(0.5 + (result - 0.5) * XON_CONTRAST, 0.0, 1.0);
     }

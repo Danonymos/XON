@@ -41,8 +41,9 @@ def make_grade(target):
                 contrast = color + 0.120 * color * (1 - color) * (2 * color - 1)
                 saturation = luminance + (contrast - luminance) * 1.140
                 midtone = 4.0 * luminance * (1.0 - luminance)
-                warm = np.array([0.014, 0.009, -0.012]) * midtone * luminance
-                cool = np.array([-0.010, 0.005, 0.013]) * midtone * (1.0 - luminance)
+                # 30% warmer golden-hour palette: pale gold, yellow-amber highlights and softened cool shadows
+                warm = np.array([0.026, 0.016, -0.018]) * midtone * (0.35 + 0.65 * luminance)
+                cool = np.array([-0.002, 0.003, 0.004]) * midtone * (1.0 - luminance)
                 lut[green, blue * 16 + red] = np.clip(saturation + warm + cool, 0, 1)
     Image.fromarray(np.uint8(np.rint(lut * 255))).save(target / 'xon-grade.png')
 

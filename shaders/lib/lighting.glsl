@@ -57,22 +57,34 @@ vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPositio
     }
     // Surface form follows the light, avoiding camera-dependent shine on matte blocks.
     float edgeRim = facing * (1.0 - facing) * direct * (1.0 - foliage) * 0.16;
-    // Subtle blue shade is baked into the fill palette, avoiding another per-pixel grading operation.
-    vec3 ambientBase = mix(vec3(0.245, 0.390, 0.540) * XON_DAY_FILL_GAIN, vec3(0.275, 0.375, 0.505) * XON_DAY_FILL_GAIN, golden * 0.55);
-    ambientBase = mix(ambientBase, vec3(0.245, 0.405, 0.575) * XON_DAY_FILL_GAIN, clamp(phases.x * 0.55, 0.0, 0.75));
-    ambientBase = mix(ambientBase, vec3(0.235, 0.370, 0.545) * XON_DAY_FILL_GAIN, clamp(phases.z * 0.50, 0.0, 0.75));
-    ambientBase = mix(ambientBase, vec3(0.285, 0.315, 0.515) * XON_DAY_FILL_GAIN, clamp(phases.w * 0.65, 0.0, 0.80));
-    vec3 hemisphereTint = mix(vec3(1.08, 1.00, 0.88), vec3(0.97, 1.00, 1.04), normal.y * 0.5 + 0.5);
+    // Warmer ambient fill palette (~30% warmer) to eliminate cold blue cast while keeping contrast
+    vec3 ambientBase = mix(vec3(0.305, 0.400, 0.485) * XON_DAY_FILL_GAIN, vec3(0.335, 0.395, 0.455) * XON_DAY_FILL_GAIN, golden * 0.55);
+    ambientBase = mix(ambientBase, vec3(0.305, 0.415, 0.515) * XON_DAY_FILL_GAIN, clamp(phases.x * 0.55, 0.0, 0.75));
+    ambientBase = mix(ambientBase, vec3(0.300, 0.390, 0.485) * XON_DAY_FILL_GAIN, clamp(phases.z * 0.50, 0.0, 0.75));
+    ambientBase = mix(ambientBase, vec3(0.345, 0.335, 0.465) * XON_DAY_FILL_GAIN, clamp(phases.w * 0.65, 0.0, 0.80));
+    vec3 hemisphereTint = mix(vec3(1.12, 1.02, 0.84), vec3(0.98, 1.00, 1.02), normal.y * 0.5 + 0.5);
     float skyHemisphere = 0.58 + 0.42 * max(normal.y, 0.0);
-    vec3 ambientClear = ambientBase * hemisphere * hemisphereTint * skyHemisphere;
-    vec3 ambientRain = (vec3(0.38, 0.46, 0.61) * XON_DAY_FILL_GAIN) * hemisphere;
+    // Vertical skylight dome gradient distinguishes upward roofline from ground-facing foundations
+    vec3 skyHemisphereTint = mix(vec3(0.96, 0.92, 0.82), vec3(0.89, 0.96, 1.06), max(normal.y, 0.0));
+    vec3 ambientClear = ambientBase * hemisphere * hemisphereTint * skyHemisphere * skyHemisphereTint;
+    vec3 ambientRain = (vec3(0.40, 0.46, 0.56) * XON_DAY_FILL_GAIN) * hemisphere;
     vec3 ambient = mix(xonNightColor(), mix(ambientClear, ambientRain, rainStrength), day);
     // Compensate lunar energy while folding daytime gain into the existing light multiplier.
     vec3 key = mix(xonNightColor() * (0.68 / XON_DAY_KEY_GAIN), xonSunlightColor(sun), day);
     // Subtle bounce into shaded faces only ((1.0 - direct) keeps sunlit surfaces untouched).
     float archUpfill = max(-normal.y, 0.0) * 0.10 + (1.0 - abs(normal.y)) * 0.035;
-    vec3 bounce = (key * (0.035 * XON_DAY_KEY_GAIN + archUpfill * (0.5 * XON_DAY_KEY_GAIN)) + ambient * 0.08) * (sky * (1.0 - direct) * day * (1.0 - rainStrength * 0.5));
-    vec3 celestialLight = (direct + sss + edgeRim) * key * (1.80 * XON_SUN_STRENGTH * XON_DAY_KEY_GAIN);
+    // Directional ground bounce from sunlit terrain into shaded vertical facades:
+    float bounceFacing = max(dot(normal.xz, -keyDirection.xz), 0.0) * (1.0 - abs(normal.y));
+    vec3 groundBounceTint = mix(vec3(1.15, 0.95, 0.65), vec3(0.85, 1.05, 0.65), 0.35);
+    vec3 directionalBounce = key * groundBounceTint * (bounceFacing * 0.16 * XON_GROUND_BOUNCE * XON_DAY_KEY_GAIN);
+    vec3 bounce = (key * (0.035 * XON_DAY_KEY_GAIN + archUpfill * (0.5 * XON_DAY_KEY_GAIN)) + ambient * 0.08 + directionalBounce) * (sky * (1.0 - direct) * day * (1.0 - rainStrength * 0.5));
+    // Backlit silhouette grazing rim: subtle edge definition against the bright sky when backlit
+    vec3 playerDir = xonSafeNormalize(playerPosition);
+    float backAlign = max(dot(-playerDir, keyDirection), 0.0);
+    float rimFalloff = pow(1.0 - max(dot(normal, -playerDir), 0.0), 3.5);
+    float backlightRim = backAlign * rimFalloff * openSky * (1.0 - direct) * (1.0 - foliage) * (1.0 - rainStrength * 0.80) * 0.14;
+    vec3 backlightLight = key * backlightRim;
+    vec3 celestialLight = (direct + sss + edgeRim) * key * (1.80 * XON_SUN_STRENGTH * XON_DAY_KEY_GAIN) + backlightLight;
     vec3 illumination = sky * ambient + bounce + celestialLight;
 #if defined XON_CLOUD_LIBRARY && !defined XON_HAND
     float skyExposure = smoothstep(0.35, 0.92, lightLevels.y);
@@ -98,7 +110,7 @@ vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPositio
         illumination += vec3(0.65, 0.73, 0.92) * flash;
     }
     // Strictly target dark/unlit areas: shadowDeficit is 0.0 wherever illumination is already >= minShadowLight (zero impact on bright/lit areas).
-    vec3 dayShadowFill = (vec3(0.218, 0.322, 0.414) * XON_CAVE_FILL_GAIN) * shadowForm;
+    vec3 dayShadowFill = (vec3(0.265, 0.335, 0.375) * XON_CAVE_FILL_GAIN) * shadowForm;
     vec3 nightShadowFill = vec3(0.102, 0.145, 0.222) * shadowForm;
     vec3 minShadowLight = mix(nightShadowFill, dayShadowFill, day) * XON_DARK_LIFT;
     vec3 shadowDeficit = max(minShadowLight - illumination, vec3(0.0));

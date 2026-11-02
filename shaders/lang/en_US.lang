@@ -87,7 +87,7 @@ value.XON_BRIGHTNESS.1.20=120%
 value.XON_BRIGHTNESS.1.30=130%
 
 option.XON_WARMTH=Sunlight Warmth
-option.XON_WARMTH.comment=Golden warmth of direct sunlight. Sky shadows retain their cool palette. Default: 65%.
+option.XON_WARMTH.comment=Golden warmth of direct sunlight and environment. Default: 85%.
 value.XON_WARMTH.0.00=Off
 value.XON_WARMTH.0.35=35%
 value.XON_WARMTH.0.65=65%
@@ -351,3 +351,30 @@ value.XON_LOCAL_LIGHT_STRENGTH.0.80=80%
 value.XON_LOCAL_LIGHT_STRENGTH.0.90=90%
 value.XON_LOCAL_LIGHT_STRENGTH.1.00=100%
 value.XON_LOCAL_LIGHT_STRENGTH.1.10=110%
+
+option.XON_GROUND_BOUNCE=Ground Bounce
+option.XON_GROUND_BOUNCE.comment=Warm diffuse bounce from sunlit terrain into shaded building facades and walls, giving backlit structures rich 3D depth. Default: 100%.
+value.XON_GROUND_BOUNCE.0.00=Off
+value.XON_GROUND_BOUNCE.0.50=50%
+value.XON_GROUND_BOUNCE.0.75=75%
+value.XON_GROUND_BOUNCE.1.00=100%
+value.XON_GROUND_BOUNCE.1.25=125%
+value.XON_GROUND_BOUNCE.1.50=150%
+
+option.XON_ATMOSPHERE_DENSITY=Atmosphere Density
+option.XON_ATMOSPHERE_DENSITY.comment=Stratified atmospheric density and aerial perspective. Low terrain and building bases gain natural depth while peaks, sky and close views stay crystal clear. Default: 100%.
+value.XON_ATMOSPHERE_DENSITY.0.00=Off
+value.XON_ATMOSPHERE_DENSITY.0.50=50%
+value.XON_ATMOSPHERE_DENSITY.0.75=75%
+value.XON_ATMOSPHERE_DENSITY.1.00=100%
+value.XON_ATMOSPHERE_DENSITY.1.25=125%
+value.XON_ATMOSPHERE_DENSITY.1.50=150%
+
+option.XON_RAY_WRAP=Ray Silhouette Wrap
+option.XON_RAY_WRAP.comment=Controls how wide sunlight shafts wrap and stream around occluders and building silhouettes when looking towards the sun. Default: Balanced.
+value.XON_RAY_WRAP.0.50=Tight
+value.XON_RAY_WRAP.0.75=Focused
+value.XON_RAY_WRAP.1.00=Balanced
+value.XON_RAY_WRAP.1.25=Wide
+value.XON_RAY_WRAP.1.50=Cinematic
+

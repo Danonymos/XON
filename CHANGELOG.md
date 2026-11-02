@@ -1,9 +1,52 @@
 # Changelog
 
-Player-facing changes from the first XON beta to the current **1.3** build.
+Player-facing changes from the first XON beta to the current **1.4** build.
 Versions describe the final behavior of each build; experimental implementations
 that were later corrected are identified below. Validation details and measured
 limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
+
+## 1.4 — Volumetric atmosphere, wrapping light shafts and richer shadow works
+
+2 November 2026.
+
+### Volumetric light shafts and silhouette wrapping
+
+- Overhaul sunlight shafts with a dual-lobe Henyey-Greenstein and Rayleigh scattering
+  model. Beams wrap and stream naturally around building corners, eaves and rooftops
+  when backlit, even when the sun is occluded.
+- Expand outdoor raymarching to 10 exponential steps with height-stratified air density,
+  clustering samples near player structures and occluders.
+- Add an edge-preserving bilateral depth filter for shafts in composite1, preventing
+  light rays from leaking across sharp building silhouettes while smoothing ray noise.
+- Add Ray Silhouette Wrap under Light Rays to control the angular spread of wrapping beams.
+
+### Richer shadows and backlit contrast
+
+- Introduce directional ground bounce from sunlit terrain into shaded vertical walls,
+  giving backlit buildings and facades rich 3D sculptural volume instead of flat gray shade.
+- Add vertical skylight dome gradient to shaded structures, blending from warm ground
+  bounce at the foundation to cool azure sky hemisphere at roof cornices.
+- Add subtle backlit grazing rim illumination on silhouette edges against bright skies.
+- Add Ground Bounce slider under Lighting.
+
+### Warmer environment and golden-hour color grading
+
+- Turn environment color grading and solar warmth ~30% warmer, introducing pale-golden,
+  yellowish and subtle amber-red tones into midtones and highlights.
+- Soften cold blue shadow casts in the ambient fill palette and cave fill, replacing
+  the icy cast with clean, warm, readable shade.
+- Update the 16-cube color grade LUT and grade curve for a cohesive, polished golden-hour feel.
+
+### Atmospheric density and aerial perspective
+
+- Add stratified exponential height-density atmosphere, concentrating atmospheric presence
+  in lower terrain and building courtyards while keeping upper peaks, sky and interior views
+  crystal clear.
+- Add forward atmospheric in-scattering (solar aura) in the air volume around backlit
+  silhouettes when looking towards the sun.
+- Introduce chromatic Rayleigh aerial perspective, gently tinting distant terrain and
+  structures with directional sky luminance.
+- Add Atmosphere Density slider under Sky & Atmosphere.
 
 ## 1.3 — Galactic End skies, evolving clouds and luminous lava
 
