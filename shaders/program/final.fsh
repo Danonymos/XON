@@ -24,6 +24,14 @@ const float eyeBrightnessHalflife = 6.0;
 const int noiseTextureResolution = 256;
 */
 
+#if XON_AA == 2
+/*
+const int colortex6Format = RGBA16F;
+const bool colortex6Clear = false;
+const vec4 colortex6ClearColor = vec4(0.0, 0.0, 0.0, 0.0);
+*/
+#endif
+
 uniform sampler2D colortex0;
 uniform sampler2D colortex4;
 uniform sampler2D depthtex0;
@@ -32,6 +40,19 @@ uniform sampler2D colortex5;
 #endif
 in vec2 xonUV;
 layout(location = 0) out vec4 xonOutput;
+
+vec2 xonFinalSourceUV(vec2 uv) {
+#if XON_AA == 2
+    vec2 border = 0.5 / vec2(viewWidth, viewHeight);
+    return clamp(uv, border, 1.0 - border);
+#else
+    return xonSourceUV(uv);
+#endif
+}
+
+float xonReadHand(vec2 uv) {
+    return step(0.75, texture(colortex4, xonSourceUV(uv)).r);
+}
 
 #include "/lib/antialiasing.glsl"
 
@@ -83,15 +104,15 @@ vec3 xonMotionBlur(vec3 center, float depth, float handMask, out float motionPix
     // Pre-check whether the motion vector endpoints touch the first-person hand so 98% of screen pixels skip per-tap colortex4 fetches.
     vec2 endPosUV = xonSourceUV(clamp(xonUV + velocity * 0.85, 0.0, 1.0));
     vec2 endNegUV = xonSourceUV(clamp(xonUV - velocity * 0.85, 0.0, 1.0));
-    bool nearHand = (texture(colortex4, endPosUV).r + texture(colortex4, endNegUV).r) > 0.01;
+    bool nearHand = max(texture(colortex4, endPosUV).r, texture(colortex4, endNegUV).r) > 0.75;
     vec3 result = center * 0.42;
     float totalWeight = 0.42;
     for (int tap = 0; tap < 6; ++tap) {
         float offset = (float(tap) - 2.5) * (1.70 / 6.0);
         vec2 tapUV = xonUV + velocity * offset + coverage[tap] * pixel * stability;
         if (any(lessThan(tapUV, vec2(0.0))) || any(greaterThan(tapUV, vec2(1.0)))) continue;
-        vec2 sourceUV = xonSourceUV(tapUV);
-        if (nearHand && texture(colortex4, sourceUV).r > 0.01) continue;
+        vec2 sourceUV = xonFinalSourceUV(tapUV);
+        if (nearHand && xonReadHand(tapUV) > 0.01) continue;
         float weight = shutter[tap];
         result += texture(colortex0, sourceUV).rgb * weight;
         totalWeight += weight;
@@ -104,9 +125,9 @@ vec3 xonMotionBlur(vec3 center, float depth, float handMask, out float motionPix
 
 void main() {
     vec2 sourceUV = xonSourceUV(xonUV);
-    vec3 color = texture(colortex0, sourceUV).rgb;
+    vec3 color = texture(colortex0, xonFinalSourceUV(xonUV)).rgb;
     float depth = texture(depthtex0, sourceUV).r;
-    float handMask = texture(colortex4, sourceUV).r;
+    float handMask = xonReadHand(xonUV);
     float motionPixels;
     color = xonMotionBlur(color, depth, handMask, motionPixels);
     color = xonEdgeAA(color, depth, motionPixels, handMask);

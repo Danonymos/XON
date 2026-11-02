@@ -7,11 +7,11 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/releases/1.5.md">1.5 release notes</a> ·
+  <a href="docs/releases/1.6-test.md">1.6 AA test notes</a> ·
   <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/build-1.5-35b8b0?style=flat-square" alt="Current build: 1.5">
+  <img src="https://img.shields.io/badge/build-1.6_test-35b8b0?style=flat-square" alt="Current build: 1.6-test">
   <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
   <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
@@ -25,6 +25,22 @@ the day, and edges receive built-in smoothing. Native resolution is the default.
 
 The gallery uses existing XON gameplay captures. It illustrates the pack's visual
 direction; it is not a controlled comparison or proof of the latest fixes.
+
+## Test build 1.6: smoother block edges
+
+This test adds GPU-vendor-independent temporal anti-aliasing, with eight subpixel
+jitter positions, checked frame history and a sharp cubic reconstruction. No DLSS,
+DLAA, RTX hardware or additional mod is required for this AA implementation.
+
+Choose **Camera & Detail → Anti-Aliasing → Temporal**; Balanced, Vibrant and
+Cinematic select it. **Fast** is a lighter spatial fallback selected by Speed.
+**Off** is available for comparisons or external AA. Start with **Native** resolution
+and external upscaling disabled to evaluate XON's AA by itself.
+
+The test retains 1.5 lighting, colors and POM. Synthetic edge comparisons improve
+on average, but some moving angles still favor the old spatial filter. Live play,
+ghosting, texture sharpness and AMD/Intel hardware testing remain outstanding.
+See the [test notes](docs/releases/1.6-test.md) and [verification record](VERIFICATION.md).
 
 ## What's new in 1.5
 
@@ -214,8 +230,8 @@ the shader ZIP inside it.
 Native renders the world at full resolution. Experimental **Boost 85% / 75%**
 reduces world shading resolution and reconstructs it; the game UI stays native.
 Boost can look softer and does not accelerate CPU simulation or chunk generation.
-AA is built in, with no on/off or quality selector. Camera blur and nearby
-anisotropic surface filtering remain separate controls.
+Anti-aliasing has Temporal, Fast and Off choices under Camera & Detail. Camera
+blur and nearby anisotropic surface filtering remain separate controls.
 
 ## Performance and verification
 
@@ -233,8 +249,8 @@ current scope and historical regression results, plus the
 
 Colored light follows open voxel paths rather than spherical ray tracing. The
 local volume and corners can shorten its reach. Cloud ground shade is an artistic
-approximation, not a traced projection of the visible sky clouds. Spatial AA
-reduces shimmer but cannot recover missing subpixel information like temporal AA.
+approximation, not a traced projection of the visible sky clouds. Fast AA is spatial;
+Temporal adds frame history and can trade some sharpness for edge stability.
 Ordinary block lighting uses Minecraft's scalar lightmap; its softer falloff does
 not add directional source tracing or new lamp-cast shadows.
 

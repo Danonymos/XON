@@ -1,6 +1,7 @@
 """Compile XON on the installed Windows OpenGL driver without third-party modules."""
 
 from pathlib import Path
+from build import PROGRAMS
 import ctypes as ct
 from ctypes import wintypes as wt
 import hashlib
@@ -182,7 +183,7 @@ def validate():
                                     'XON_BLOOM': False,
                                     'XON_REFRACTION': False, 'XON_COLOR_GRADE': False,
                                     'XON_CLOUD_STYLE': 0},
-                    'speed': {'XON_SHADOWS': False, 'XON_COLORED_EMISSIVE_LIGHTING': False,
+                    'speed': {'XON_AA': 1, 'XON_SHADOWS': False, 'XON_COLORED_EMISSIVE_LIGHTING': False,
                               'XON_END_BLACK_HOLE': False, 'XON_END_AURORA': '0.00', 'XON_END_STARS': '0.50',
                               'XON_LIGHT_SHAFTS': False,
                               'XON_BLOOM': False, 'XON_REFRACTION': False, 'XON_CLOUD_STYLE': 0,
@@ -199,6 +200,10 @@ def validate():
                     'cloud_veils': {'XON_CLOUD_FORMATION': 3},
                     'end_effects_off': {'XON_END_BLACK_HOLE': False, 'XON_END_AURORA': '0.00', 'XON_END_STARS': '0.00'}}
         variants.update({
+            'aa_off': {'XON_AA': 0},
+            'aa_fast': {'XON_AA': 1},
+            'aa_fast_boost75': {'XON_AA': 1, 'XON_RENDER_MODE': 2},
+            'aa_temporal_no_blur': {'XON_MOTION_BLUR': False},
             'pbr_lab': {'XON_ADVANCED_MATERIALS': 1},
             'pbr_old': {'XON_ADVANCED_MATERIALS': 1, 'XON_MATERIAL_FORMAT': 0},
             'pbr_no_parallax': {'XON_ADVANCED_MATERIALS': 1, 'XON_PARALLAX': 0},
@@ -212,8 +217,8 @@ def validate():
             count = 0
             entrypoints = sorted(path for path in SHADERS.rglob('*.vsh')
                                  if path.parent in [SHADERS, SHADERS / 'world-1', SHADERS / 'world1'])
-            if len(entrypoints) != 84:
-                raise ValueError(f'Expected 84 runtime entrypoints, found {len(entrypoints)}')
+            if len(entrypoints) != len(PROGRAMS) * 3:
+                raise ValueError(f'Expected {len(PROGRAMS) * 3} runtime entrypoints, found {len(entrypoints)}')
             for vertex_path in entrypoints:
                 fragment_path = vertex_path.with_suffix('.fsh')
                 if not fragment_path.is_file():

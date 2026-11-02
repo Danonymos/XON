@@ -17,7 +17,7 @@ screen.XON_WATER.comment=Water waves, underwater effects and wind in plants and 
 screen.XON_RAYS=Light Rays
 screen.XON_RAYS.comment=Outdoor and underwater sunlight shafts. Both require Cast Shadows; underwater rays also require Sun Rays.
 screen.XON_CAMERA=Camera & Detail
-screen.XON_CAMERA.comment=Texture filtering, sharpening, camera blur and block outlines. Edge smoothing is always built in.
+screen.XON_CAMERA.comment=Anti-aliasing, texture filtering, sharpening, camera blur and block outlines.
 screen.XON_PERFORMANCE=Performance
 screen.XON_PERFORMANCE.comment=Quick access to costly effects. These are the same controls used on the other pages. Start with the Speed preset for fewer effects.
 
@@ -63,12 +63,18 @@ value.XON_CONTRAST.1.15=115%
 value.XON_CONTRAST.1.25=125%
 
 option.XON_SHARPNESS=Sharpening
-option.XON_SHARPNESS.comment=Adds contrast to fine texture detail. Native defaults to Off; Boost resolution adds automatic sharpening. Default: Off.
+option.XON_SHARPNESS.comment=Adds contrast to fine texture detail. Temporal AA includes a mild automatic sharpen; Boost with Fast AA also adds sharpening. Default: Off.
 value.XON_SHARPNESS.0.00=Off
 value.XON_SHARPNESS.0.15=15%
 value.XON_SHARPNESS.0.25=25%
 value.XON_SHARPNESS.0.40=40%
 value.XON_SHARPNESS.0.60=60%
+
+option.XON_AA=Anti-Aliasing
+option.XON_AA.comment=Temporal combines eight jitter positions with checked frame history to stabilize distant edges. Fast uses a cheaper spatial filter without history. Off is for comparison or external AA. Works across GPU vendors. Default: Temporal; Speed: Fast.
+value.XON_AA.0=Off
+value.XON_AA.1=Fast
+value.XON_AA.2=Temporal
 
 option.XON_HAND_LIGHT=Held Light
 option.XON_HAND_LIGHT.comment=Casts warm local light around you when holding a torch, lantern, glowstone, or other luminous item in either hand. Default: ON.

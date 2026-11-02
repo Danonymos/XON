@@ -32,8 +32,8 @@ def run(installed_name=None, installed_dir=None):
             raise AssertionError(f'Default changed: {expression}')
     properties = (ROOT / 'shaders/shaders.properties').read_text()
     language = (ROOT / 'shaders/lang/en_US.lang').read_text()
-    if any(name in settings + properties + language for name in ['XON_EDGE_AA', 'XON_AA_MODE']):
-        raise AssertionError('Built-in AA must not have a player-facing toggle or quality selector')
+    if '#define XON_AA 2 // [0 1 2]' not in settings or 'XON_AA' not in properties.split('screen.XON_CAMERA=', 1)[1].splitlines()[0]:
+        raise AssertionError('Temporal AA default or accessible AA selector is missing')
     final = (ROOT / 'shaders/program/final.fsh').read_text()
     if 'color = xonEdgeAA(color, depth, motionPixels, handMask);' not in final:
         raise AssertionError('Built-in edge smoothing is missing from the final pass')

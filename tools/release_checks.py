@@ -97,8 +97,8 @@ def check(package):
         compute = (shader_root / folder / 'shadowcomp.csh').read_text(encoding='utf-8')
         if not compute.startswith('#version 430 compatibility\n') or f'#define XON_DIMENSION {dimension}\n' not in compute:
             raise AssertionError(f'Incorrect compute wrapper for dimension {dimension}')
-    if entrypoints != 84:
-        raise AssertionError(f'Expected 84 graphics entrypoints, got {entrypoints}')
+    if entrypoints != len(PROGRAMS) * 3:
+        raise AssertionError(f'Expected {len(PROGRAMS) * 3} graphics entrypoints, got {entrypoints}')
 
     include_pattern = re.compile(r'^\s*#include\s+"([^"]+)"', re.M)
     visited = set()
@@ -118,6 +118,13 @@ def check(package):
     for path in shader_root.rglob('*'):
         if path.suffix in ['.vsh', '.fsh', '.csh', '.glsl']:
             includes(path.resolve())
+            # Iris parses clear-color directives itself and does not expand GLSL vector splats.
+            for name, arguments in re.findall(r'const\s+vec4\s+(\w+ClearColor)\s*=\s*vec4\(([^)]*)\)', path.read_text(encoding='utf-8')):
+                components = arguments.split(',')
+                if len(components) != 4:
+                    raise AssertionError(f'Iris requires four clear-color components in {path.relative_to(ROOT)}: {name}')
+                for component in components:
+                    float(component.strip())
     python_files = list((ROOT / 'tools').rglob('*.py'))
     for path in python_files:
         py_compile.compile(str(path), doraise=True)

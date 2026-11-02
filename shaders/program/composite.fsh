@@ -41,7 +41,8 @@ void main() {
     // The shadow map, rather than the eye lightmap, decides whether sunlight reaches each sample.
     if (underwater) exposure = 1.0;
     if (exposure > 0.001 && daylight > 0.001 && XON_RAY_STRENGTH > 0.0 && (isEyeInWater == 0 || underwater)) {
-        vec4 view = gbufferProjectionInverse * vec4(xonUV * 2.0 - 1.0, 1.0, 1.0);
+        vec2 rayUV = xonUV - xonJitter(frameCounter) / (vec2(viewWidth, viewHeight) * XON_RENDER_SCALE);
+        vec4 view = gbufferProjectionInverse * vec4(rayUV * 2.0 - 1.0, 1.0, 1.0);
         vec3 playerRay = mat3(gbufferModelViewInverse) * xonSafeNormalize(view.xyz);
         vec3 sun = underwater ? xonKeyDirection() : xonSunDirection();
         if (underwater) {
@@ -67,7 +68,7 @@ void main() {
                 float solidDepth = texture(depthtex1, srcUV).r;
                 if (solidDepth > depth) depth = solidDepth;
             }
-            vec4 depthView = gbufferProjectionInverse * vec4(xonUV * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+            vec4 depthView = gbufferProjectionInverse * vec4(rayUV * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
             depthView.xyz /= max(abs(depthView.w), 0.000001);
             float maxRayDist = underwater ? min(shadowDistance * 0.75, 72.0) : shadowDistance * 0.85;
             float rayLength = min(length(depthView.xyz), maxRayDist);

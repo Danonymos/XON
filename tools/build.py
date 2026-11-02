@@ -6,7 +6,7 @@ import zipfile
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '1.5'
+VERSION = '1.6-test'
 
 PROGRAMS = {
     'gbuffers_basic': ('geometry', ['XON_BASIC']),
@@ -36,6 +36,7 @@ PROGRAMS = {
     'deferred': ('deferred', []),
     'composite': ('composite', []),
     'composite1': ('composite1', []),
+    'composite2': ('composite2', []),
     'shadow': ('shadow', []),
 }
 
@@ -50,9 +51,9 @@ def generate_programs():
                 header += f'#define XON_DIMENSION {dimension}\n'
                 header += ''.join(f'#define {flag}\n' for flag in flags)
                 if stage == 'fsh' and name != 'final':
-                    targets = '0,4' if 'XON_HAND' in flags else {'deferred': '7', 'composite': '5', 'composite1': '5'}.get(name, '0')
+                    targets = '0,4' if source == 'geometry' else {'deferred': '7', 'composite': '5', 'composite1': '5', 'composite2': '0,6'}.get(name, '0')
                     header += f'/* RENDERTARGETS: {targets} */\n'
-                stage_source = 'final' if stage == 'vsh' and name in ['deferred', 'composite', 'composite1'] else source
+                stage_source = 'final' if stage == 'vsh' and name in ['deferred', 'composite', 'composite1', 'composite2'] else source
                 header += f'#include "/program/{stage_source}.{stage}"\n'
                 (target / f'{name}.{stage}').write_text(header, encoding='utf-8', newline='\n')
         csh_header = f'#version 430 compatibility\n#define XON_DIMENSION {dimension}\n#include "/program/shadowcomp.csh"\n'

@@ -43,9 +43,7 @@ in float xonDist;
 #endif
 
 layout(location = 0) out vec4 xonScene;
-#ifdef XON_HAND
 layout(location = 1) out float xonHandMask;
-#endif
 
 #if defined XON_TERRAIN || defined XON_WATER
 vec2 xonPortalHash(vec2 p) {
@@ -151,6 +149,21 @@ vec4 xonSampleAnisotropic(vec2 uv) {
 }
 
 void main() {
+    xonHandMask = 0.0;
+#ifdef XON_HAND
+    xonHandMask = 1.0;
+#elif XON_AA == 2
+#if defined XON_ENTITY || defined XON_WATER || defined XON_CLOUD || defined XON_UNLIT || defined XON_BASIC
+    xonHandMask = 0.25;
+#elif defined XON_TERRAIN
+    bool movingSurface = abs(xonMaterial - 10003.0) < 0.5 || abs(xonMaterial - 10004.0) < 0.5
+                      || abs(xonMaterial - 10024.0) < 0.5 || abs(xonMaterial - 10005.0) < 0.5
+                      || abs(xonMaterial - 10021.0) < 0.5;
+    xonHandMask = movingSurface ? 0.25 : 0.0;
+#else
+    xonHandMask = 0.25;
+#endif
+#endif
 #if XON_RENDER_MODE > 0
     if (any(greaterThanEqual(gl_FragCoord.xy, vec2(viewWidth, viewHeight) * XON_RENDER_SCALE))) discard;
 #endif

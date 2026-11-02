@@ -1,9 +1,28 @@
 # Changelog
 
-Player-facing changes from the first XON beta to the current **1.5** build.
+Player-facing changes from the first XON beta to the current **1.6-test** build.
 Versions describe the final behavior of each build; experimental implementations
 that were later corrected are identified below. Validation details and measured
 limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
+
+## 1.6-test — Temporal anti-aliasing
+
+2 November 2026. Test build; not a published stable release.
+
+- Add temporal AA with eight centered jitter positions, camera reprojection,
+  sharp cubic history reconstruction and local variance/color clamping.
+- Reject stale history after camera cuts, projection changes, resizing, frame gaps,
+  invalid frame times and newly revealed surfaces. Keep first-person hands unjittered
+  and out of reusable history. Use less history on animated/translucent surfaces.
+- Add Temporal, Fast and Off controls under Camera & Detail. Balanced, Vibrant and
+  Cinematic use Temporal; Speed uses Fast without the temporal pass. Fast edge
+  smoothing no longer fades out just because camera blur is active.
+- Run the temporal resolve before motion blur, retaining full-resolution output
+  and the existing Native/Boost controls. No DLSS/DLAA or vendor SDK is required.
+- Retain 1.5 brightness, palette, material decoding and POM behavior.
+- Validate 2,088 graphics compile/link configurations and repeated-frame GPU
+  coverage/guard checks. Synthetic results are not full-game FPS or cross-vendor
+  certification; live sharpness, ghosting and mod compatibility need testing.
 
 ## 1.5 — PBR materials, cleaner parallax and balanced light
 

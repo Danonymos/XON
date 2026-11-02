@@ -8,7 +8,18 @@ float xonEdgeLuma(vec3 color) {
 
 vec3 xonEdgeAA(vec3 center, float centerDepth, float motionPixels, float handMask) {
     float handBoundary = fwidth(handMask);
-    if (motionPixels >= 0.45 || handMask > 0.01 || handBoundary > 0.01) return center;
+    if (handMask > 0.01 || handBoundary > 0.01) return center;
+#if XON_AA == 2
+    vec2 pixel = 1.0 / vec2(viewWidth, viewHeight);
+    vec3 cN = texture(colortex0, xonFinalSourceUV(xonUV + vec2(0.0, pixel.y))).rgb;
+    vec3 cS = texture(colortex0, xonFinalSourceUV(xonUV - vec2(0.0, pixel.y))).rgb;
+    vec3 cE = texture(colortex0, xonFinalSourceUV(xonUV + vec2(pixel.x, 0.0))).rgb;
+    vec3 cW = texture(colortex0, xonFinalSourceUV(xonUV - vec2(pixel.x, 0.0))).rgb;
+    vec3 low = min(center, min(min(cN, cS), min(cE, cW)));
+    vec3 high = max(center, max(max(cN, cS), max(cE, cW)));
+    float sharpness = 0.12 + XON_SHARPNESS * 0.55;
+    return clamp(center + (center - (cN + cS + cE + cW) * 0.25) * sharpness, low, high);
+#else
 #if XON_RENDER_MODE == 0
     if (centerDepth >= 0.999999 && XON_SHARPNESS <= 0.001) return center;
 #endif
@@ -21,7 +32,7 @@ vec3 xonEdgeAA(vec3 center, float centerDepth, float motionPixels, float handMas
     vec3 cS = texture(colortex0, uvS).rgb;
     vec3 cE = texture(colortex0, uvE).rgb;
     vec3 cW = texture(colortex0, uvW).rgb;
-    float motionFade = 1.0 - smoothstep(0.35, 0.45, motionPixels);
+    float motionFade = 1.0;
     vec3 lowRGB = min(center, min(min(cN, cS), min(cE, cW)));
     vec3 highRGB = max(center, max(max(cN, cS), max(cE, cW)));
 #if XON_RENDER_MODE > 0
@@ -31,6 +42,9 @@ vec3 xonEdgeAA(vec3 center, float centerDepth, float motionPixels, float handMas
 #endif
     vec3 detail = center - (cN + cS + cE + cW) * 0.25;
     center = clamp(center + detail * (sharpness * motionFade), lowRGB, highRGB);
+#if XON_AA == 0
+    return center;
+#endif
     if (centerDepth >= 0.999999) return center;
 
     float north = xonEdgeLuma(cN);
@@ -72,6 +86,7 @@ vec3 xonEdgeAA(vec3 center, float centerDepth, float motionPixels, float handMas
     float distanceBlend = mix(0.66, 0.82, smoothstep(8.0, 96.0, eyeDepth));
     float edgeBlend = smoothstep(0.002, 0.018, curvature) * distanceBlend * motionFade;
     return mix(center, filtered, edgeBlend);
+#endif
 }
 
 #endif

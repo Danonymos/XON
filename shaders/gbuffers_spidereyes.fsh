@@ -2,5 +2,5 @@
 #define XON_DIMENSION 0
 #define XON_UNLIT
 #define XON_EMISSIVE
-/* RENDERTARGETS: 0 */
+/* RENDERTARGETS: 0,4 */
 #include "/program/geometry.fsh"

@@ -1,3 +1,71 @@
+# XON Shader 1.6-test - Temporal anti-aliasing
+
+2 November 2026. Private AA test on branch test/1.6-aa; the prepared 1.5 commit
+remains on main. No new commit, push, tag or publication is part of this test.
+
+## Changes and checks
+
+Temporal AA adds eight centered jitter positions, nearest-surface camera
+reprojection, sharp cubic history reconstruction, and RGB bounds/variance
+clamping. It resolves before motion blur into full-resolution scene color and
+persistent RGBA16F history. The history-only corner texel carries exact size and
+frame metadata so resize/frame-gap checks require no extra buffer or CPU hook.
+Camera cuts, large FOV changes, invalid/long frames and depth mismatches reject
+history. Hands remain unjittered and non-reusable; animated/translucent surfaces
+receive reduced history weights because per-object motion vectors are absent.
+
+Temporal is the default in Balanced/Vibrant/Cinematic; Speed chooses Fast spatial
+AA. Fast stays active during camera motion. Off is available for external-AA
+comparisons. This implementation adds no vendor SDK or AA-specific hardware
+requirement. Its extra history pair is about 32 MiB at 1080p before overhead.
+
+On NVIDIA RTX 5060 Ti / OpenGL 4.6 / driver 621.01:
+
+- Driver compile/link: 2,088 configurations, 87 pairs x 24 variants, 2,310 unique
+  stages, zero warnings/failures. AA Off/Fast/Temporal, all dimensions, Boost,
+  motion blur off and the PBR variants are covered.
+- tools/temporal_aa_checks.py: 46 checks pass using the production resolve,
+  final shader and real RGBA16F ping-pong history. Thirty edge comparisons cover
+  six slopes, two stationary phases and motion at 0.125/0.35/1.3 pixels per frame,
+  each over 40 frames. The reference is analytic linear-radiance pixel coverage
+  followed by the production exposure/tone curve; the baseline is saved 1.5.
+  Mean edge MSE is 0.002813 versus 0.005027 (about 44% lower). Not every moving
+  angle improves. Guards, hand preservation, reduced reactive history influence,
+  stale-color clamping and Native/Boost inactive-region isolation also pass.
+- tools/temporal_aa_timing.py: 32 synthetic GPU timer queries per pass at 1080p,
+  with valid half-float history/targets and bloom/grading/blur disabled. Temporal
+  resolve median is 0.168 ms stationary / 0.191 ms with two-axis camera motion;
+  its final pass is about 0.037 ms, versus 0.050 ms for the saved 1.5 final.
+  These exclude geometry/extra mask writes, CPU work, game integration and live
+  load changes. They are not full-game frame times or a promised FPS delta.
+- tools/pbr_checks.py: 137 material/POM checks pass again with Primes HD inputs.
+- tools/brightness_checks.py: 1,152 diffuse samples pass again. The 1.5 lighting,
+  grading, atmosphere and PBR/POM library content is unchanged; LUT bytes match.
+
+Reports: validation-driver.json, validation-temporal-aa.json,
+validation-temporal-aa-timing.json, validation-pbr.json, validation-brightness.json.
+The comparison image is synthetic, not a Minecraft capture.
+
+## Live scope
+
+The first live attempt failed before GLSL compilation: Iris rejected the scalar
+vec4(0.0) clear-color directive and threw an ArrayIndexOutOfBoundsException.
+The history clear color now lists all four components explicitly. Release checks
+reject abbreviated clear-color constructors, including a regression replay of the
+original offending directive. The corrected ZIP loaded in the live Overworld at
+11:19:17 with no subsequent render-thread errors in the inspected log.
+
+Detailed Minecraft appearance, ghosting, mod interaction, game FPS and AMD/Intel
+hardware validation are outstanding. Standard GLSL and no vendor SDK make this
+portable by design, not certified on GPUs unavailable to this test. Avoid
+stacking XON Temporal with another temporal AA/upscaler when comparing.
+Select XON-Shader-v1.6-test.zip, Balanced + Native + Temporal, with external
+upscaling off; compare diagonal roofs, distant block silhouettes, fences, leaves,
+moving entities, held items, water and POM bark, including turns and teleports.
+Historical results below retain the scope of their original release.
+
+---
+
 # XON Shader 1.5 - PBR, parallax quality and exposure calibration
 
 2 November 2026. V1.5 adds optional LabPBR 1.3/OldPBR surface materials to the

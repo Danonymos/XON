@@ -1,20 +1,25 @@
-# XON Shader 1.5
+# XON Shader 1.6-test
 
 Warm light, clear water and a world in motion. XON is an Iris shader pack for
 Minecraft: Java Edition, with directional shadows, moving cloud shade, colored
-ore illumination, layered water, volumetric light shafts and built-in spatial edge smoothing.
+ore illumination, layered water, volumetric light shafts and built-in anti-aliasing.
 
 ## Install
 
 1. Use a compatible Minecraft Java + Iris + Sodium installation. The development
    target is Minecraft Java 26.3, Iris 1.11.7 and Sodium 0.9.2.
-2. Place XON-Shader-v1.5.zip directly in your instance's shaderpacks folder.
+2. Place XON-Shader-v1.6-test.zip directly in your instance's shaderpacks folder.
    Do not extract it or install it as a mod/resource pack.
 3. Open Video Settings → Shader Packs, select XON and Apply.
 4. Start with Balanced + Native. Speed lowers the effect budget.
 
 ## Highlights
 
+- Temporal anti-aliasing with eight jitter positions, sharp history reconstruction,
+  depth/visibility checks and protection for held items. Uses standard GLSL across GPU vendors.
+- Camera & Detail → Anti-Aliasing offers Temporal (default), Fast (Speed preset) and Off.
+- Evaluate Balanced + Native + Temporal with external upscaling disabled first.
+- This is a test build: live appearance, FPS and AMD/Intel hardware remain unverified.
 - Optional LabPBR 1.3 and OldPBR materials for resource packs such as Primes HD Textures.
 - Cleaner POM with filtered height/color sampling, adaptive tracing and refined intersections.
 - Atlas bounds, distance fades and nearly edge-on fading keep surface relief controlled.
@@ -48,7 +53,7 @@ and adds GPU work. Flat or missing height maps remain flat.
 - Pale golden light, teal-blue shade, deeper blue nights and a gentler base exposure.
 - Shadow-aware moon glints and block-surface relief aligned with the active light.
 - Exact foliage work skips, without extra passes, images or texture lookups.
-- Built-in edge smoothing in every preset, with no AA toggle or quality selector.
+- Temporal AA in Balanced/Vibrant/Cinematic; Fast spatial AA in Speed.
 - Motion filtering that shares the six camera-blur samples and protects held items.
 - Gentler distant mip detail while preserving nearby textures and cutout coverage.
 - Colored ore light with a three-block eased outer aura; default extent is about
@@ -60,15 +65,19 @@ and adds GPU work. Flat or missing height maps remain flat.
 ## Performance and limits
 
 Native is the default. Boost 85%/75% lowers world shading resolution and may look
-softer. AA stays built in; camera blur and extra nearby surface filtering are
-separate settings. Speed disables colored voxel lighting and expensive effects.
+softer. Temporal AA adds one full-resolution pass and a persistent RGBA16F history
+buffer pair (about 32 MiB at 1080p, before driver overhead). Fast omits that pass;
+camera blur and extra nearby surface filtering are separate settings.
+Speed disables colored voxel lighting and expensive effects.
 It also omits the End galaxy and black hole. Sky & Atmosphere contains the new
 Cloud Formations and End Sky pages; Lava Glow is under Colored Block Light.
 
 Colored light follows open voxel paths in a bounded player-centered volume.
 Corners and the volume boundary shorten its reach. Mip stabilization needs the
-existing game mip chain. Ground cloud shade is an artistic approximation. Spatial
-AA cannot recover missing subpixel/temporal information. GPU tests do not guarantee
+existing game mip chain. Ground cloud shade is an artistic approximation. Temporal
+AA can soften detail or leave trails; animated surfaces use less history because
+there are no per-object motion vectors. Fast cannot recover temporal information.
+Avoid stacking XON Temporal with another temporal AA/upscaler. GPU tests do not guarantee
 identical FPS or compatibility with every mod stack.
 Ordinary lamps use the existing scalar lightmap. Jack-o-lantern and soul-lantern
 auras additionally use the local colored-light volume. This does not add

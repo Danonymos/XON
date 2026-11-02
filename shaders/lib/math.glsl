@@ -43,7 +43,24 @@ vec2 xonSourceUV(vec2 uv) {
                  vec2(XON_RENDER_SCALE) - halfPixel);
 }
 
+vec2 xonJitter(int frame) {
+#if XON_AA == 2
+    // A centered eight-frame Halton cycle keeps coverage independent of GPU vendor.
+    const vec2 samples[8] = vec2[8](
+        vec2(0.0, -1.0 / 6.0), vec2(-0.25, 1.0 / 6.0),
+        vec2(0.25, -7.0 / 18.0), vec2(-0.375, -1.0 / 18.0),
+        vec2(0.125, 5.0 / 18.0), vec2(-0.125, -5.0 / 18.0),
+        vec2(0.375, 1.0 / 18.0), vec2(-0.4375, 7.0 / 18.0));
+    return samples[frame % 8] + vec2(0.0546875, 0.0);
+#else
+    return vec2(0.0);
+#endif
+}
+
 vec4 xonScaleClip(vec4 clipPosition) {
+#if XON_AA == 2 && !defined XON_HAND
+    clipPosition.xy += xonJitter(frameCounter) * (2.0 / (vec2(viewWidth, viewHeight) * XON_RENDER_SCALE)) * clipPosition.w;
+#endif
 #if XON_RENDER_MODE > 0
     clipPosition.xy = clipPosition.xy * XON_RENDER_SCALE
                     + clipPosition.w * (XON_RENDER_SCALE - 1.0);
