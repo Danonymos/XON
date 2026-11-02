@@ -378,3 +378,44 @@ value.XON_RAY_WRAP.1.00=Balanced
 value.XON_RAY_WRAP.1.25=Wide
 value.XON_RAY_WRAP.1.50=Cinematic
 
+screen.XON_MATERIAL=Materials & PBR
+screen.XON_MATERIAL.comment=Support for PBR, LabPBR, normal mapping, parallax occlusion depth and specular reflections.
+
+option.XON_ADVANCED_MATERIALS=Advanced Materials
+option.XON_ADVANCED_MATERIALS.comment=Enables PBR texture support (LabPBR and OldPBR) for resource packs like Primes HD. Enables 3D surface depth, normal mapping and reflections. Default: Off.
+
+option.XON_MATERIAL_FORMAT=Material Format
+option.XON_MATERIAL_FORMAT.comment=PBR texture standard used by your resource pack. LabPBR is the modern standard used by Primes HD Texture. Default: LabPBR.
+value.XON_MATERIAL_FORMAT.0=OldPBR
+value.XON_MATERIAL_FORMAT.1=LabPBR
+
+option.XON_PARALLAX=Parallax Occlusion (POM)
+option.XON_PARALLAX.comment=Traces 3D surface depth and displacement from texture height maps. Requires Advanced Materials. Default: On.
+value.XON_PARALLAX.0=Off
+value.XON_PARALLAX.1=On
+
+option.XON_PARALLAX_DEPTH=Parallax Depth
+option.XON_PARALLAX_DEPTH.comment=Visual depth and extrusion of parallax surface relief. Requires Parallax Occlusion. Default: 0.20.
+value.XON_PARALLAX_DEPTH.0.05=5%
+value.XON_PARALLAX_DEPTH.0.10=10%
+value.XON_PARALLAX_DEPTH.0.15=15%
+value.XON_PARALLAX_DEPTH.0.20=20%
+value.XON_PARALLAX_DEPTH.0.25=25%
+value.XON_PARALLAX_DEPTH.0.30=30%
+value.XON_PARALLAX_DEPTH.0.40=40%
+value.XON_PARALLAX_DEPTH.0.50=50%
+
+option.XON_PARALLAX_QUALITY=Parallax Quality
+option.XON_PARALLAX_QUALITY.comment=Base raymarch depth steps. Shallow views adapt up to 8x this count, capped at 512; surface hits receive five refinement steps. Higher values cost more GPU time. Default: 64 base steps.
+value.XON_PARALLAX_QUALITY.16=16 steps
+value.XON_PARALLAX_QUALITY.32=32 steps
+value.XON_PARALLAX_QUALITY.64=64 steps
+value.XON_PARALLAX_QUALITY.128=128 steps
+value.XON_PARALLAX_QUALITY.256=256 steps
+
+option.XON_SPECULAR_HIGHLIGHT=Specular Highlights
+option.XON_SPECULAR_HIGHLIGHT.comment=Physically-based Cook-Torrance GGX specular highlights on smooth and metallic surfaces. Requires Advanced Materials. Default: GGX.
+value.XON_SPECULAR_HIGHLIGHT.0=Off
+value.XON_SPECULAR_HIGHLIGHT.1=GGX
+value.XON_SPECULAR_HIGHLIGHT.2=Polished
+

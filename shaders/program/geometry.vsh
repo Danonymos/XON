@@ -1,4 +1,9 @@
 #include "/lib/settings.glsl"
+#ifdef XON_ADVANCED_MATERIALS
+#if !defined XON_BASIC && !defined XON_UNLIT && !defined XON_CLOUD
+#define XON_PBR_SURFACE
+#endif
+#endif
 #include "/lib/uniforms.glsl"
 #include "/lib/math.glsl"
 
@@ -10,6 +15,16 @@ out vec3 xonViewPosition;
 out vec3 xonPlayerPosition;
 out vec3 xonWorldNormal;
 flat out float xonMaterial;
+
+#ifdef XON_PBR_SURFACE
+in vec4 at_tangent;
+out vec3 xonTangent;
+out vec3 xonBinormal;
+out vec3 xonViewVector;
+out vec4 xonAtlasAM;
+out vec2 xonLocalUV;
+out float xonDist;
+#endif
 
 #if defined XON_TERRAIN || defined XON_WATER
 in vec4 mc_Entity;
@@ -44,6 +59,14 @@ void main() {
     xonVertexColor = gl_Color;
     xonWorldNormal = vec3(0.0, 1.0, 0.0);
     xonMaterial = 0.0;
+#ifdef XON_PBR_SURFACE
+    xonTangent = vec3(1.0, 0.0, 0.0);
+    xonBinormal = vec3(0.0, 0.0, 1.0);
+    xonViewVector = vec3(0.0);
+    xonAtlasAM = vec4(0.0);
+    xonLocalUV = vec2(0.0);
+    xonDist = 0.0;
+#endif
     gl_Position = xonScaleClip(vec4((ndc1 + vec3(lineOffset, 0.0)) * linePosStart.w, linePosStart.w));
 #else
     vec4 viewPosition = gl_ModelViewMatrix * gl_Vertex;
@@ -65,6 +88,39 @@ void main() {
     xonMaterial = 0.0;
 #if defined XON_TERRAIN || defined XON_WATER
     xonMaterial = mc_Entity.x;
+#endif
+
+#ifdef XON_PBR_SURFACE
+    vec3 vNormal = xonSafeNormalize(gl_NormalMatrix * gl_Normal);
+    vec3 tangent = gl_NormalMatrix * at_tangent.xyz;
+    tangent -= vNormal * dot(tangent, vNormal);
+    float tanLenSq = dot(tangent, tangent);
+    if (tanLenSq > 0.001 && abs(at_tangent.w) > 0.0001) {
+        vec3 vTangent = tangent * inversesqrt(tanLenSq);
+        vec3 vBinormal = cross(vTangent, vNormal) * sign(at_tangent.w);
+        mat3 tbnView = mat3(vTangent.x, vBinormal.x, vNormal.x,
+                            vTangent.y, vBinormal.y, vNormal.y,
+                            vTangent.z, vBinormal.z, vNormal.z);
+        xonViewVector = tbnView * viewPosition.xyz;
+        xonTangent = xonSafeNormalize(mat3(gbufferModelViewInverse) * vTangent);
+        xonBinormal = xonSafeNormalize(mat3(gbufferModelViewInverse) * vBinormal);
+    } else {
+        xonViewVector = vec3(0.0);
+        xonTangent = vec3(0.0);
+        xonBinormal = vec3(0.0);
+    }
+    xonDist = length(viewPosition.xyz);
+
+#if defined XON_TERRAIN || defined XON_WATER
+    vec2 midCoord = (gl_TextureMatrix[0] * mc_midTexCoord).st;
+    vec2 texMinMidCoord = xonTexCoord - midCoord;
+    xonAtlasAM.pq = abs(texMinMidCoord) * 2.0;
+    xonAtlasAM.st = min(xonTexCoord, midCoord - texMinMidCoord);
+    xonLocalUV = sign(texMinMidCoord) * 0.5 + 0.5;
+#else
+    xonAtlasAM = vec4(0.0, 0.0, 1.0, 1.0);
+    xonLocalUV = xonTexCoord;
+#endif
 #endif
 #ifdef XON_TERRAIN
 #ifdef XON_WAVING_FOLIAGE

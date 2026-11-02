@@ -1,4 +1,9 @@
 #include "/lib/settings.glsl"
+#ifdef XON_ADVANCED_MATERIALS
+#if !defined XON_BASIC && !defined XON_UNLIT && !defined XON_CLOUD
+#define XON_PBR_SURFACE
+#endif
+#endif
 #include "/lib/uniforms.glsl"
 #include "/lib/math.glsl"
 #include "/lib/atmosphere.glsl"
@@ -9,6 +14,9 @@
 #if defined XON_COLORED_EMISSIVE_LIGHTING && !defined XON_UNLIT && !defined XON_BASIC && !defined XON_CLOUD && !defined XON_WATER && !defined XON_HAND
 #define XON_EMISSIVE_SAMPLING
 #include "/lib/emissive_light.glsl"
+#endif
+#ifdef XON_PBR_SURFACE
+#include "/lib/pbr.glsl"
 #endif
 
 uniform sampler2D gtexture;
@@ -25,6 +33,14 @@ in vec3 xonViewPosition;
 in vec3 xonPlayerPosition;
 in vec3 xonWorldNormal;
 flat in float xonMaterial;
+#ifdef XON_PBR_SURFACE
+in vec3 xonTangent;
+in vec3 xonBinormal;
+in vec3 xonViewVector;
+in vec4 xonAtlasAM;
+in vec2 xonLocalUV;
+in float xonDist;
+#endif
 
 layout(location = 0) out vec4 xonScene;
 #ifdef XON_HAND
@@ -58,11 +74,7 @@ float xonPortalLightField(vec2 x, float time) {
 }
 #endif
 
-vec4 xonSampleAnisotropic(vec2 uv) {
-#if defined XON_TERRAIN || (XON_ANISOTROPIC > 0 && defined XON_WATER && !defined XON_HAND)
-    vec2 du = dFdx(uv);
-    vec2 dv = dFdy(uv);
-#endif
+vec4 xonSampleAnisotropic(vec2 uv, vec2 du, vec2 dv) {
 #ifdef XON_TERRAIN
     vec2 atlasSize = vec2(textureSize(gtexture, 0));
     vec2 texelU = du * atlasSize;
@@ -72,8 +84,13 @@ vec4 xonSampleAnisotropic(vec2 uv) {
     // Preserve cutout coverage; only minified opaque terrain gets the small stability bias.
     if (abs(xonMaterial - 10003.0) < 0.5 || abs(xonMaterial - 10004.0) < 0.5
         || abs(xonMaterial - 10006.0) < 0.5 || abs(xonMaterial - 10024.0) < 0.5) mipBlend = 0.0;
+#ifdef XON_PBR_SURFACE
+    vec4 base = uv == xonTexCoord ? texture(gtexture, uv, mipBlend * 0.32) : xonSamplePBRTexture(gtexture, uv, du, dv, true);
+    if (mipBlend > 0.001 && base.a < 0.99) return textureGrad(gtexture, uv, du, dv);
+#else
     vec4 base = texture(gtexture, uv, mipBlend * 0.32);
     if (mipBlend > 0.001 && base.a < 0.99) return textureGrad(gtexture, uv, du, dv);
+#endif
 #else
     vec4 base = texture(gtexture, uv);
 #endif
@@ -129,6 +146,10 @@ vec4 xonSampleAnisotropic(vec2 uv) {
 #endif
 }
 
+vec4 xonSampleAnisotropic(vec2 uv) {
+    return xonSampleAnisotropic(uv, dFdx(uv), dFdy(uv));
+}
+
 void main() {
 #if XON_RENDER_MODE > 0
     if (any(greaterThanEqual(gl_FragCoord.xy, vec2(viewWidth, viewHeight) * XON_RENDER_SCALE))) discard;
@@ -166,7 +187,16 @@ void main() {
     vec4 texel = vec4(1.0);
     vec4 surface = xonVertexColor;
 #else
-    vec4 texel = xonSampleAnisotropic(xonTexCoord);
+    vec2 pbrCoord = xonTexCoord;
+    vec2 dcdx = dFdx(xonTexCoord);
+    vec2 dcdy = dFdy(xonTexCoord);
+#ifdef XON_PBR_SURFACE
+#if XON_PARALLAX == 1 && (defined XON_TERRAIN || defined XON_WATER)
+    float parallaxFade = smoothstep(16.0, 32.0, xonDist);
+    pbrCoord = xonGetParallaxCoord(xonTexCoord, xonLocalUV, xonAtlasAM, xonViewVector, parallaxFade);
+#endif
+#endif
+    vec4 texel = xonSampleAnisotropic(pbrCoord, dcdx, dcdy);
     vec4 surface = vec4(texel.rgb * xonVertexColor.rgb, texel.a);
 #endif
 #ifndef XON_TERRAIN
@@ -188,6 +218,22 @@ void main() {
     float foliage = float(abs(xonMaterial - 10003.0) < 0.5 || isCrossPlant);
     float sunVisibility = 1.0;
     bool composedWater = false;
+#ifdef XON_PBR_SURFACE
+    float pbrSmoothness = 0.0;
+    float pbrMetalness = 0.0;
+    float pbrF0 = 0.04;
+    float pbrEmission = 0.0;
+    float pbrAO = 1.0;
+    vec3 pbrNormalMap = vec3(0.0, 0.0, 1.0);
+    xonGetMaterials(pbrSmoothness, pbrMetalness, pbrF0, pbrEmission, pbrAO, pbrNormalMap, pbrCoord, dcdx, dcdy);
+
+    if (!isCrossPlant && dot(xonTangent, xonTangent) > 0.5 && dot(xonBinormal, xonBinormal) > 0.5
+        && (abs(pbrNormalMap.x) > 0.0001 || abs(pbrNormalMap.y) > 0.0001)) {
+        normal = xonSafeNormalize(xonTangent * pbrNormalMap.x + xonBinormal * pbrNormalMap.y + normal * pbrNormalMap.z);
+    }
+    color *= clamp(mix(1.0, pbrAO, XON_AO_STRENGTH), 0.0, 1.0);
+    color *= 1.0 - pbrMetalness * pbrSmoothness * 0.85;
+#endif
 #ifdef XON_TERRAIN
     float rawAO = xonVertexColor.a < 0.05 ? 1.0 : clamp(xonVertexColor.a, 0.28, 1.0);
     if (emission < 0.5) {
@@ -221,6 +267,24 @@ void main() {
 #endif
     if (!independentMaterial) {
         color = xonLighting(color, normal, xonViewPosition, xonPlayerPosition, xonLightLevels, emission, foliage, sunVisibility);
+#ifdef XON_PBR_SURFACE
+#if XON_SPECULAR_HIGHLIGHT > 0
+#if XON_DIMENSION == 0
+        if (pbrSmoothness > 0.02) {
+            vec3 sunCol = mix(xonNightColor() * 0.74, xonSunlightColor(), xonDaylight());
+            vec3 specHighlight = xonGetPBRSpecular(normal, xonPlayerPosition, pbrSmoothness, pbrMetalness, pbrF0,
+                                                   xonToLinear(surface.rgb), sunCol, sunVisibility * smoothstep(0.55, 0.97, xonLightLevels.y) * (1.0 - rainStrength * 0.90));
+#if XON_SPECULAR_HIGHLIGHT == 2
+            specHighlight *= 1.6;
+#endif
+            color += specHighlight;
+        }
+#endif
+#endif
+        if (pbrEmission > 0.0) {
+            color += xonToLinear(surface.rgb) * (pbrEmission * 2.0);
+        }
+#endif
 #ifdef XON_EMISSIVE_SAMPLING
         // Peak matches a strong but sub-torch block light; the voxel field supplies colour and falloff.
         if (xonVoxelEmitterId(xonMaterial) == XON_VOXEL_EMPTY) {

@@ -1,7 +1,7 @@
 #ifndef XON_GRADE_LIBRARY
 #define XON_GRADE_LIBRARY
 
-const float XON_BASE_EXPOSURE = 0.90;
+const float XON_BASE_EXPOSURE = 0.83;
 
 #ifdef XON_COLOR_GRADE
 uniform sampler2D xonGradeLUT;

@@ -198,6 +198,16 @@ def validate():
                     'cloudlets': {'XON_CLOUD_FORMATION': 2},
                     'cloud_veils': {'XON_CLOUD_FORMATION': 3},
                     'end_effects_off': {'XON_END_BLACK_HOLE': False, 'XON_END_AURORA': '0.00', 'XON_END_STARS': '0.00'}}
+        variants.update({
+            'pbr_lab': {'XON_ADVANCED_MATERIALS': 1},
+            'pbr_old': {'XON_ADVANCED_MATERIALS': 1, 'XON_MATERIAL_FORMAT': 0},
+            'pbr_no_parallax': {'XON_ADVANCED_MATERIALS': 1, 'XON_PARALLAX': 0},
+            'pbr_no_specular': {'XON_ADVANCED_MATERIALS': 1, 'XON_SPECULAR_HIGHLIGHT': 0},
+            'pbr_vibrant': {'XON_ADVANCED_MATERIALS': 1, 'XON_SPECULAR_HIGHLIGHT': 2,
+                            'XON_PARALLAX_QUALITY': 256},
+            'pbr_no_shadows': {'XON_ADVANCED_MATERIALS': 1, 'XON_SHADOWS': False},
+            'pbr_boost75': {'XON_ADVANCED_MATERIALS': 1, 'XON_RENDER_MODE': 2},
+        })
         for label, options in variants.items():
             count = 0
             entrypoints = sorted(path for path in SHADERS.rglob('*.vsh')

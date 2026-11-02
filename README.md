@@ -7,11 +7,11 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/releases/1.4.md">1.4 release notes</a> ·
+  <a href="docs/releases/1.5.md">1.5 release notes</a> ·
   <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/build-1.4-35b8b0?style=flat-square" alt="Current build: 1.4">
+  <img src="https://img.shields.io/badge/build-1.5-35b8b0?style=flat-square" alt="Current build: 1.5">
   <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
   <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
@@ -25,6 +25,25 @@ the day, and edges receive built-in smoothing. Native resolution is the default.
 
 The gallery uses existing XON gameplay captures. It illustrates the pack's visual
 direction; it is not a controlled comparison or proof of the latest fixes.
+
+## What's new in 1.5
+
+**More surface depth, cleaner materials and balanced brightness.** V1.5 adds optional
+LabPBR 1.3 and OldPBR support for resource packs such as Primes HD Textures, while
+keeping the warm colors and atmospheric effects introduced in 1.4.
+
+- **Materials with depth.** Normal mapping, material ambient occlusion and POM reveal
+  bark grooves, stone joints and other relief where the resource pack supplies height data.
+- **Cleaner parallax.** Filtered height/color sampling, adaptive tracing and refined
+  intersections reduce ridge striping. Atlas bounds and distance/grazing fades keep
+  displacement controlled.
+- **Restrained highlights.** GGX sun/moon highlights follow material reflectance,
+  skylight and shadows. Non-emissive surfaces retain their lighting and corner shading.
+- **Quieter brightness, familiar colors.** Lower base exposure is calibrated against
+  1.3 while preserving 1.4's sunlight palette, grading texture, gradients and atmosphere.
+- **Optional PBR.** Enable **Shader Settings → Materials & PBR → Advanced Materials**
+  with a compatible resource pack. It defaults to Off; Cinematic enables it. PBR
+  texture sampling is compiled out when disabled, and enabling it adds GPU work.
 
 ## What's new in 1.4
 
@@ -139,7 +158,7 @@ renders and measured costs. These are synthetic views, not Minecraft captures.
   camera-following sun/moon shadow rings while retaining real object shadows.
 
 Read the [complete changelog](CHANGELOG.md) for every version from the first beta
-through 1.3, including the underwater, material and lighting improvements.
+through 1.5, including the underwater, material and lighting improvements.
 
 ## The XON look
 
@@ -162,7 +181,7 @@ through 1.3, including the underwater, material and lighting improvements.
 ## Install
 
 1. Use a compatible **Minecraft: Java Edition + Iris + Sodium** installation.
-2. Get a packaged `XON-Shader-v1.4.zip` from [official releases](https://github.com/Danonymos/XON/releases).
+2. Get a packaged `XON-Shader-v1.5.zip` from [official releases](https://github.com/Danonymos/XON/releases).
    If a release has not been published yet, use the [source build](#build-from-source)
    or a successful [pack-build artifact](https://github.com/Danonymos/XON/actions/workflows/build.yml).
 3. Place the **shader-pack ZIP** directly in your instance's `shaderpacks` folder.
@@ -204,15 +223,12 @@ XON uses bounded shadow maps, a compact local light volume, shared filtering
 samples and half-resolution post effects. These choices control cost; they do
 not make shader rendering free or guarantee a particular frame rate.
 
-The current shader source passed **1092 OpenGL compile/link configurations** and
-**947 GPU regression cases/comparisons** plus client material/state mapping checks,
-including bounded emissive saturation, amber/cyan lamp spill, emissive plants,
-lantern cores, bloom, occluder edges, indoor balance, celestial
-occlusion, terrain rings, ore propagation, cloud motion, AA, water, rays and hand
-protection. Those checks use controlled
-inputs on an RTX 5060 Ti. They do not certify every mod stack or replace live
-Minecraft visual and FPS testing. See [the verification record](VERIFICATION.md)
-for methodology, timings and remaining checks, plus the
+The 1.5 source passed **1,680 OpenGL compile/link configurations**, **137 PBR/material
+pixel checks** and **36 parallax quality comparisons**. Exposure calibration covers
+**1,152 diffuse samples**; the 1.4 lighting colors and grading texture are retained.
+These are controlled checks on an RTX 5060 Ti, rather than certification of every
+mod stack or full-game FPS. See [the verification record](VERIFICATION.md) for the
+current scope and historical regression results, plus the
 [distant-foliage update measurements](docs/distant-shading-validation.md).
 
 Colored light follows open voxel paths rather than spherical ray tracing. The

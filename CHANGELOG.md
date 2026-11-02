@@ -1,9 +1,61 @@
 # Changelog
 
-Player-facing changes from the first XON beta to the current **1.4** build.
+Player-facing changes from the first XON beta to the current **1.5** build.
 Versions describe the final behavior of each build; experimental implementations
 that were later corrected are identified below. Validation details and measured
 limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
+
+## 1.5 — PBR materials, cleaner parallax and balanced light
+
+2 November 2026.
+
+### PBR resource-pack support
+
+- Add optional LabPBR 1.3 and OldPBR materials for packs such as Primes HD Textures.
+  Read normal maps, material ambient occlusion, height, smoothness, reflectance
+  and per-pixel emission, with tinted metal highlights.
+- Add Cook-Torrance GGX sun/moon highlights that respect skylight and shadow
+  visibility. Covered interiors keep their ordinary lighting and corner shading.
+- Add a Materials & PBR settings page with format, parallax depth/quality and
+  Off/GGX/Polished highlight controls. Advanced Materials defaults to Off;
+  Cinematic enables it. PBR sampling is compiled out when disabled.
+
+### Cleaner surface depth
+
+- Add Parallax Occlusion Mapping (POM) for terrain with height maps, keeping
+  ray samples inside the material's atlas tile.
+- Reduce bark-ridge striping and broken surface detail with continuous height
+  sampling, filtered displaced color and normals, adaptive ray steps and five
+  intersection refinements. The correction applies across supported materials.
+- Fade relief between 16 and 32 blocks and at nearly edge-on views to reduce
+  distant instability and excessive displacement.
+- Expose depth from 0.05 to 0.50 and base quality from 16 to 256 steps. Shallow
+  views adapt up to eight times the base count, capped at 512; higher settings
+  add GPU work. Flat or missing height maps keep flat surfaces.
+
+### Lighting balance and fixes
+
+- Lower base exposure from 0.90 to 0.83, calibrated against 1.3 brightness while
+  retaining 1.4's warm palette, grading texture, gradients, ground bounce and
+  atmospheric effects. The player Brightness control keeps its existing default.
+- Fix Advanced Materials compilation failures in basic, line and lightning
+  passes that previously caused Iris to disable the entire shader pack.
+- Keep resource-pack emission separate from XON's whole-block emitter flag.
+  RGB specular maps and LabPBR's non-emissive alpha value do not create glow;
+  the blue porosity/subsurface channel is not interpreted as emission.
+- Preserve geometric normals for missing/flat maps and invalid tangents, and
+  retain architectural cavity ambient occlusion on non-emissive surfaces.
+
+### Validation
+
+- Pass 1,680 native OpenGL compile/link configurations across 84 program pairs
+  and 20 variants, including PBR enabled, with zero shader warnings or failures.
+- Pass 137 material/POM pixel checks and 36 stepped-height quality comparisons
+  covering six Primes materials, three viewing angles and two texture footprints.
+  Mean intersection error falls about 94% in those controlled comparisons.
+- Calibrate exposure over 1,152 diffuse samples; mean display luminance is within
+  0.1% of 1.3 while retaining 1.4 lighting colors and LUT. Full-scene appearance
+  and FPS are separate live checks; these measurements are not universal ratios.
 
 ## 1.4 — Volumetric atmosphere, wrapping light shafts and richer shadow works
 

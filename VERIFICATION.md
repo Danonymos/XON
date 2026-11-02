@@ -1,3 +1,86 @@
+# XON Shader 1.5 - PBR, parallax quality and exposure calibration
+
+2 November 2026. V1.5 adds optional LabPBR 1.3/OldPBR surface materials to the
+accepted 1.4 atmosphere and lighting. Advanced Materials defaults to Off;
+Cinematic enables it. The final distributable remains XON-Shader-v1.5.zip.
+
+## Corrections and scope
+
+The live Iris log reproduced undefined pbrCoord/dcdx/dcdy variables in the basic
+pass when PBR was enabled, causing the entire pack to be disabled. Basic, line,
+unlit and cloud passes now exclude the PBR surface decoder. PBR-on compile
+variants are included in the driver suite. The corrected initial PBR build loaded
+in the live Overworld with Advanced Materials enabled and no shader compile errors.
+
+PBR emission is additive and separate from the internal whole-block emitter flag.
+LabPBR alpha 255 and RGB specular maps remain non-emissive; the blue channel is
+not decoded as emission. Celestial specular requires skylight and is disabled in
+the Nether/End. Missing/flat normals and invalid tangents retain geometric normals.
+Architectural cavity shading remains independent of texture emission.
+
+The reported oak-bark striping was reproduced with nearest-bound texture sampling
+and a stepped height map. Continuous height sampling, filtered displaced color
+and close-range normals, adaptive steps and five binary refinements reduce that
+artifact. Ray coordinates remain tile-bounded, with distance and grazing fades.
+POM does not change geometry or silhouettes, and is limited to terrain/water
+passes with usable atlas bounds. Porosity, subsurface scattering and traced
+environment reflections are not implemented by the new material decoder.
+
+## Final driver and pixel results
+
+On NVIDIA RTX 5060 Ti, OpenGL 4.6 driver 621.01:
+
+- tools/validate.py: 1,680 linked graphics configurations, 1,866 unique stages,
+  zero warnings/failures. Coverage is 84 pairs across 20 variants and all three
+  dimensions, including LabPBR, OldPBR, POM/specular off, maximum selected quality,
+  shadows off and Boost with PBR enabled.
+- tools/pbr_checks.py: 137 production terrain/material pixel checks passed.
+  These cover retained 1.4 diffuse lighting, flat/missing maps, RGB and alpha
+  emission sentinels, indoor specular rejection, AO, invalid tangents, analytic
+  depth/ramp intersections, all five base quality levels, fades and atlas bounds.
+  Primes HD quartz, oak planks and stone also produce measurable displacement.
+- tools/pom_quality_checks.py: 36 real-height-map comparisons passed across oak
+  log, spruce log, oak planks, stone bricks, bricks and cobblestone; three view
+  directions and two texture footprints. A dense CPU bilinear surface trace is
+  the reference. Mean UV intersection error falls from 0.23457 to 0.01310 texels
+  (about 94%). Nearest/linear atlas binding produces the same corrected UVs.
+- tools/brightness_checks.py: 1,152 diffuse samples passed. Base exposure 0.83
+  yields mean display luminance 0.99971 times the 1.3 fixture. Production 1.4
+  lighting output and LUT pixels are retained. Tone mapping and LUT evaluation
+  are reproduced on the CPU after GPU diffuse shading; bloom/rays are excluded.
+- Standard-library release checks verify ZIP/source parity, 84 graphics and
+  three compute wrappers, include graphs, Python syntax, documentation links and
+  all 59 settings controls. Installed-package parity is checked separately.
+
+Reports remain local: validation-driver.json, validation-pbr.json,
+validation-pom-quality.json, validation-brightness.json and validation-package.json.
+Historical suites and totals below describe their own releases; they were not
+all rerun for 1.5. Synthetic previews and the error reduction do not certify
+every resource pack, full-scene appearance or game FPS. The final polished POM
+build was installed, but its live visual confirmation remains outstanding.
+
+## Reproduction and player check
+
+```sh
+python tools/validate.py
+python tools/pbr_checks.py --resource-pack "path/to/Primes HD Textures [256x].zip"
+python tools/pom_quality_checks.py --resource-pack "path/to/Primes HD Textures [256x].zip" --baseline "path/to/pre-polish-v1.5.zip"
+python tools/brightness_checks.py
+python tools/build.py
+python tools/release_checks.py
+python tools/package_checks.py --installed-dir "path/to/shaderpacks"
+```
+
+Comparison suites require the preserved 1.3/1.4 packs beside the checkout and a
+private pre-polish 1.5 ZIP for the POM quality baseline. Primes assets are read
+from the user's resource-pack archive and are not included in this repository.
+
+Select XON-Shader-v1.5.zip and Apply, enable Advanced Materials with LabPBR and
+POM, then inspect oak bark, plank grooves and stone joints from front and shallow
+angles while moving slowly. Check lantern-lit quartz and wood for retained cavity
+shade, compare the 1.4 color palette at lower exposure, and compare frame times
+at identical settings. Test POM off, both material formats and the target GPU.
+
 # XON Shader 1.3 - End sky draw-state correction (no version bump)
 
 1 November 2026. Live screenshots revealed a pale upper-sky veil/hard split and
