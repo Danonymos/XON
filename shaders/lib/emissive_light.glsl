@@ -9,6 +9,7 @@ const ivec3 XON_VOXEL_HALF = XON_VOXEL_SIZE / 2;
 const uint XON_VOXEL_EMPTY = 0u;
 const uint XON_VOXEL_SOLID = 1u;
 const uint XON_VOXEL_FIRST_EMITTER = 2u;
+const uint XON_VOXEL_OCCLUDER = 255u;
 
 // Reserve three additional open blocks for the outer aura to ease into darkness.
 const float XON_EMISSIVE_REACH = XON_EMISSIVE_RADIUS + 3.0;
@@ -80,6 +81,37 @@ uniform sampler3D xonLightTex1;
 vec4 xonFetchLight(ivec3 voxel) {
     if (!xonVoxelInBounds(voxel)) return vec4(0.0, 0.0, 0.0, -1.0);
     return (frameCounter & 1) == 0 ? texelFetch(xonLightTex0, voxel, 0) : texelFetch(xonLightTex1, voxel, 0);
+}
+
+float xonIndoorOcclusion(vec3 playerPos, vec3 normal) {
+    vec3 position = playerPos + fract(cameraPosition) + vec3(XON_VOXEL_HALF);
+    ivec3 receiver = ivec3(floor(position - normal * 0.01));
+    // Start outside the receiver's coarse cell, including inset/slab/carpet surfaces.
+    float receiverFace = dot(vec3(receiver) + 0.5 - position, normal) + dot(abs(normal), vec3(0.5));
+    position += normal * max(receiverFace, 0.0);
+    vec3 edge = min(position, vec3(XON_VOXEL_SIZE) - position);
+    float volumeFade = smoothstep(2.0, 6.0, min(edge.x, min(edge.y, edge.z)));
+    if (volumeFade <= 0.0) return 1.0;
+    ivec3 base = ivec3(floor(position));
+    float blocked = 0.0;
+    float total = 0.0;
+    for (int z = -1; z <= 1; ++z) {
+        for (int y = -1; y <= 1; ++y) {
+            for (int x = -1; x <= 1; ++x) {
+                ivec3 voxel = base + ivec3(x, y, z);
+                vec3 delta = vec3(voxel) + 0.5 - position;
+                float distanceSq = dot(delta, delta);
+                float facing = dot(normal, delta);
+                if (distanceSq >= 2.25 || facing <= 0.0 || all(equal(voxel, receiver))) continue;
+                // Compact support vanishes where the grid stencil changes; camera motion cannot pop the kernel.
+                float weight = 1.0 - distanceSq * (1.0 / 2.25);
+                weight *= weight * facing * inversesqrt(max(distanceSq, 0.0001));
+                total += weight;
+                if (xonVoxelInBounds(voxel) && xonFetchLight(voxel).a < -1.5) blocked += weight;
+            }
+        }
+    }
+    return 1.0 - 0.72 * volumeFade * blocked / max(total, 0.0001);
 }
 
 // Trilinear blend over open voxels only (solid voxels store alpha -1), so walls do not

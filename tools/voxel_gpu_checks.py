@@ -345,6 +345,8 @@ void main() {
             values = []
             for selected in terrain:
                 renderer.setup(selected)
+                for name, value in [('far', 1024), ('fogStart', 800), ('fogEnd', 1024)]:
+                    renderer.uniform1f(renderer.location(name), value)
                 renderer.uniform1i(renderer.location('frameCounter'), renderer.frame - 1)
                 renderer.uniform1f(renderer.location('testMaterial'), material)
                 renderer.uniform3f(renderer.location('testPosition'), 1.5, -0.5, 0.5)

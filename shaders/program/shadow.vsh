@@ -23,7 +23,9 @@ void xonVoxelize(vec4 shadowView) {
     uint data = xonVoxelEmitterId(mc_Entity.x);
     if (data == XON_VOXEL_EMPTY && (mc_Entity.x == 10003.0 || mc_Entity.x == 10004.0 || mc_Entity.x == 10006.0)) return;
     // Only opaque full-layer blocks occlude; glass, leaves and plants let light through.
-    if (data == XON_VOXEL_EMPTY && renderStage == MC_RENDER_STAGE_TERRAIN_SOLID) data = XON_VOXEL_SOLID;
+    if (data == XON_VOXEL_EMPTY && renderStage == MC_RENDER_STAGE_TERRAIN_SOLID) {
+        data = mc_Entity.x == 10028.0 ? XON_VOXEL_OCCLUDER : XON_VOXEL_SOLID;
+    }
     if (data == XON_VOXEL_EMPTY) return;
     vec3 blockCenterView = shadowView.xyz + mat3(gl_ModelViewMatrix) * (at_midBlock / 64.0);
     ivec3 voxel = xonWorldToVoxel((shadowModelViewInverse * vec4(blockCenterView, 1.0)).xyz);

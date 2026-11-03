@@ -7,11 +7,11 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/releases/1.6-test.md">1.6 AA test notes</a> ·
+  <a href="docs/releases/1.7.md">1.7 release notes</a> ·
   <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/build-1.6_test-35b8b0?style=flat-square" alt="Current build: 1.6-test">
+  <img src="https://img.shields.io/badge/version-1.7-35b8b0?style=flat-square" alt="Current version: 1.7">
   <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
   <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
@@ -26,9 +26,31 @@ the day, and edges receive built-in smoothing. Native resolution is the default.
 The gallery uses existing XON gameplay captures. It illustrates the pack's visual
 direction; it is not a controlled comparison or proof of the latest fixes.
 
-## Test build 1.6: smoother block edges
+## What's new in 1.7
 
-This test adds GPU-vendor-independent temporal anti-aliasing, with eight subpixel
+**More depth in indoor lighting, with cleaner contact shadows.** Lamp-lit rooms
+gain stronger face contrast and soft shade around solid walls, beams and corners.
+Lamp strength, light propagation ranges and the warm XON palette are retained.
+
+- **Shape-aware contact shade.** Only verified full-cube blockers contribute to
+  the additional local occlusion. Partial and unknown shapes keep their existing
+  light-propagation behavior without casting false full-block contact shadows.
+- **Cleaner floors, walls and ceilings.** Sampling starts outside the receiver's
+  coarse cell, correcting blotchy self-shadow patterns on carpet, slabs and inset
+  surfaces. This correction applies across face directions.
+- **Consistent lighting.** Ordinary lamps and colored spill share face contrast.
+  Emissive cores, foliage, night vision and open outdoor lighting retain their
+  intended response. The additional geometry occlusion needs Colored Block Light;
+  Speed retains its lighter rendering path.
+
+See the [release notes](docs/releases/1.7.md),
+[Modrinth changelog](docs/releases/1.7-modrinth.md) and
+[verification record](VERIFICATION.md). The final shape correction has GPU
+regression coverage; its live Minecraft visual recheck remains outstanding.
+
+## Retained from 1.6: smoother block edges
+
+Temporal anti-aliasing uses eight subpixel
 jitter positions, checked frame history and a sharp cubic reconstruction. No DLSS,
 DLAA, RTX hardware or additional mod is required for this AA implementation.
 
@@ -37,7 +59,8 @@ Cinematic select it. **Fast** is a lighter spatial fallback selected by Speed.
 **Off** is available for comparisons or external AA. Start with **Native** resolution
 and external upscaling disabled to evaluate XON's AA by itself.
 
-The test retains 1.5 lighting, colors and POM. Synthetic edge comparisons improve
+Temporal AA accompanies the new indoor shading while retaining PBR and POM.
+Synthetic edge comparisons improve
 on average, but some moving angles still favor the old spatial filter. Live play,
 ghosting, texture sharpness and AMD/Intel hardware testing remain outstanding.
 See the [test notes](docs/releases/1.6-test.md) and [verification record](VERIFICATION.md).
@@ -174,7 +197,7 @@ renders and measured costs. These are synthetic views, not Minecraft captures.
   camera-following sun/moon shadow rings while retaining real object shadows.
 
 Read the [complete changelog](CHANGELOG.md) for every version from the first beta
-through 1.5, including the underwater, material and lighting improvements.
+through 1.7, including the underwater, material and lighting improvements.
 
 ## The XON look
 
@@ -197,7 +220,7 @@ through 1.5, including the underwater, material and lighting improvements.
 ## Install
 
 1. Use a compatible **Minecraft: Java Edition + Iris + Sodium** installation.
-2. Get a packaged `XON-Shader-v1.5.zip` from [official releases](https://github.com/Danonymos/XON/releases).
+2. Get a packaged `XON-Shader-v1.7.zip` from [official releases](https://github.com/Danonymos/XON/releases).
    If a release has not been published yet, use the [source build](#build-from-source)
    or a successful [pack-build artifact](https://github.com/Danonymos/XON/actions/workflows/build.yml).
 3. Place the **shader-pack ZIP** directly in your instance's `shaderpacks` folder.
@@ -239,7 +262,12 @@ XON uses bounded shadow maps, a compact local light volume, shared filtering
 samples and half-resolution post effects. These choices control cost; they do
 not make shader rendering free or guarantee a particular frame rate.
 
-The 1.5 source passed **1,680 OpenGL compile/link configurations**, **137 PBR/material
+The 1.7 lighting source passed **2,088 OpenGL compile/link configurations**,
+**233 lighting comparisons**, **29 occlusion checks** and **55 shape/capture checks**.
+The full-cube blocker map was checked against 485 selectors in the installed
+Minecraft 26.3 models. These are GPU and asset checks, not live visual approval.
+
+Earlier 1.5 material validation passed **137 PBR/material
 pixel checks** and **36 parallax quality comparisons**. Exposure calibration covers
 **1,152 diffuse samples**; the 1.4 lighting colors and grading texture are retained.
 These are controlled checks on an RTX 5060 Ti, rather than certification of every

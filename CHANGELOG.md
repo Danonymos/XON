@@ -1,13 +1,34 @@
 # Changelog
 
-Player-facing changes from the first XON beta to the current **1.6-test** build.
+Player-facing changes from the first XON beta to the current **1.7** build.
 Versions describe the final behavior of each build; experimental implementations
 that were later corrected are identified below. Validation details and measured
 limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
 
-## 1.6-test — Temporal anti-aliasing
+## 1.7 — Balanced indoor lighting and cleaner contact shadows
 
-2 November 2026. Test build; not a published stable release.
+3 November 2026.
+
+- Add stronger indoor face contrast and soft geometry-aware contact shade around
+  solid walls, beams, pillars and corners, preserving lamp strength and light ranges.
+- Apply consistent form shading to ordinary block light and colored spill while
+  preserving emissive cores, foliage, night vision and the open outdoor response.
+- Fix blotchy self-shadow patterns on carpet, slabs and other inset/partial surfaces
+  by moving occlusion sampling outside the receiver's coarse voxel cell.
+- Distinguish verified full-cube blockers from partial and unknown shapes. Check
+  485 full-cube selectors against installed Minecraft 26.3 models; preserve existing
+  colored-light propagation and keep unsupported shapes from casting false cube shade.
+- Reuse the existing local light volume, with smooth boundary fades and no additional
+  pass or volume allocation. Geometry occlusion requires Colored Block Light;
+  Speed retains its lighter path. Local sampling adds GPU work.
+- Retain the temporal AA introduced in 1.6 and the existing PBR/POM support.
+- Pass 2,088 graphics compile/link configurations, 233 lighting comparisons,
+  29 occlusion checks and 55 shape/capture/propagation checks. The final shape fix
+  still needs a live Minecraft visual recheck; full-game FPS is not established.
+
+## 1.6 — Temporal anti-aliasing
+
+2 November 2026. Initially prepared as the 1.6-test build.
 
 - Add temporal AA with eight centered jitter positions, camera reprojection,
   sharp cubic history reconstruction and local variance/color clamping.

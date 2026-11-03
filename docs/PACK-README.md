@@ -1,4 +1,4 @@
-# XON Shader 1.6-test
+# XON Shader 1.7
 
 Warm light, clear water and a world in motion. XON is an Iris shader pack for
 Minecraft: Java Edition, with directional shadows, moving cloud shade, colored
@@ -8,18 +8,25 @@ ore illumination, layered water, volumetric light shafts and built-in anti-alias
 
 1. Use a compatible Minecraft Java + Iris + Sodium installation. The development
    target is Minecraft Java 26.3, Iris 1.11.7 and Sodium 0.9.2.
-2. Place XON-Shader-v1.6-test.zip directly in your instance's shaderpacks folder.
+2. Place XON-Shader-v1.7.zip directly in your instance's shaderpacks folder.
    Do not extract it or install it as a mod/resource pack.
 3. Open Video Settings → Shader Packs, select XON and Apply.
 4. Start with Balanced + Native. Speed lowers the effect budget.
 
 ## Highlights
 
+- More depth in indoor lamp lighting, with stronger face contrast and soft contact
+  shade around solid walls, pillars, beams and corners.
+- Shape-aware occlusion and corrected receiver sampling prevent false full-block
+  contact shadows and repeating self-shadow patches on partial or inset surfaces.
+- Existing lamp strength, propagation ranges, source glow and warm colors are retained.
+- Additional geometry occlusion uses Colored Block Light; Speed keeps its lighter path.
 - Temporal anti-aliasing with eight jitter positions, sharp history reconstruction,
   depth/visibility checks and protection for held items. Uses standard GLSL across GPU vendors.
 - Camera & Detail → Anti-Aliasing offers Temporal (default), Fast (Speed preset) and Off.
 - Evaluate Balanced + Native + Temporal with external upscaling disabled first.
-- This is a test build: live appearance, FPS and AMD/Intel hardware remain unverified.
+- The final partial-shape correction has GPU coverage; its live visual recheck,
+  full-game FPS and AMD/Intel hardware testing remain outstanding.
 - Optional LabPBR 1.3 and OldPBR materials for resource packs such as Primes HD Textures.
 - Cleaner POM with filtered height/color sampling, adaptive tracing and refined intersections.
 - Atlas bounds, distance fades and nearly edge-on fading keep surface relief controlled.
@@ -82,6 +89,9 @@ identical FPS or compatibility with every mod stack.
 Ordinary lamps use the existing scalar lightmap. Jack-o-lantern and soul-lantern
 auras additionally use the local colored-light volume. This does not add
 directional lamp tracing or new source-cast shadows.
+Indoor geometry occlusion reuses that volume, accepts verified full-cube blockers,
+and fades near its boundary. Partial/unknown shapes do not cast this extra contact
+shade. It adds local sampling work without another pass or volume allocation.
 Bloom is a screen-space halo whose apparent world size depends on the view.
 The specific reported moving quartz/wood/stone-brick flicker needs a live recheck.
 Detailed cast shadows retain their bounded range; distant foliage uses approximate

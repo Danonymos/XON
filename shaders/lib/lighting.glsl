@@ -9,6 +9,13 @@ const float XON_END_FILL_GAIN = 0.90;
 const float XON_INDOOR_LOCAL_GAIN = 0.80;
 const float XON_OUTDOOR_LOCAL_GAIN = 0.90;
 
+float xonLocalLightForm(vec3 normal, float skylight, float foliage, float emission) {
+    float indoor = (1.0 - smoothstep(0.20, 0.85, skylight)) * (1.0 - foliage) * (1.0 - emission) * (1.0 - nightVision);
+    // Six axis-aligned faces average to unity; this is form shading, not a recovered lamp direction.
+    float form = normal.y * 0.16 + (abs(normal.x) - abs(normal.z)) * 0.10;
+    return 1.0 + form * indoor;
+}
+
 vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPosition, vec2 lightLevels,
                  float emission, float foliage, out float sunVisibility) {
     sunVisibility = 1.0;
@@ -130,7 +137,7 @@ vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPositio
     // Warm falloff and a restrained ivory core keep nearby pale blocks from turning orange.
     float localStrength = mix(XON_LOCAL_LIGHT_STRENGTH * XON_INDOOR_LOCAL_GAIN, XON_LOCAL_LIGHT_STRENGTH * XON_OUTDOOR_LOCAL_GAIN, sky);
     vec3 localLightColor = mix(torchColor, vec3(2.30, 1.72, 1.04), block * 0.35 * XON_BLOCKLIGHT_WARMTH);
-    illumination += block * localLightColor * localStrength;
+    illumination += block * localLightColor * localStrength * xonLocalLightForm(normal, lightLevels.y, foliage, emission);
 #ifdef XON_HAND_LIGHT
     int maxHeld = max(heldBlockLightValue, heldBlockLightValue2);
     if (maxHeld > 0) {

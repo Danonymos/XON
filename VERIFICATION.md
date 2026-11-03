@@ -1,3 +1,74 @@
+# XON Shader 1.7 - Indoor lighting and partial-shape correction
+
+3 November 2026. The official 1.7 source incorporates the final private
+"V1.6 fixed lighting" build, preserving the preceding temporal AA implementation.
+The runtime package is XON-Shader-v1.7.zip. Publication and pushing remain manual.
+
+## Diagnosis and implementation
+
+Uniform local fill flattened indoor faces. The first private adjustment added
+face contrast and deeper existing cavity shading, but the user reported little
+visible difference. Geometry-aware local occlusion in the next revision improved
+the lighting according to the user, while gameplay screenshots exposed repeating
+shadow patches on floors and other partial/inset surfaces.
+
+The final correction separates verified full-cube blockers from coarse partial
+occupancy and moves receiving samples outside the owner voxel. It applies across
+all six face directions. Partial/unknown shapes retain their previous colored
+light transport behavior; only the additional contact occlusion excludes them.
+Ordinary lamp strength, propagation ranges, emitter colors, source glow and
+volume allocation remain unchanged. The added occlusion uses Colored Block Light,
+the existing AO strength control and the existing local volume; Speed omits it.
+No source-specific lamp-shadow ray tracing is implemented.
+
+## Automated evidence
+
+On NVIDIA RTX 5060 Ti / OpenGL 4.6 / driver 621.01:
+
+- 2,088 graphics compile/link configurations across 87 pairs and 24 variants;
+  zero shader warnings or failures. All dimensions, PBR and AA choices are covered.
+- 233 production-terrain lighting comparisons: balanced face energy/contrast,
+  contact shade, smooth light/doorway response, retained emissive cores, foliage,
+  night vision, unlit/held-light response and unchanged transport settings.
+- 29 geometry-occlusion checks: open-surface parity, readable wall/corner shade,
+  continuous world-space sampling, camera motion and volume-boundary fades.
+- 55 shape/capture checks: reproduce the rejected revision's flat-surface visibility
+  falling to about 0.28; corrected flat/inset receivers return visibility 1 across
+  six directions, four heights, varied positions and both occupancy classes.
+  Partial neighboring blockers are excluded while verified full cubes retain shade.
+  Actual shadow capture and compute preserve distinct markers and identical
+  colored-light RGB and propagated positive levels for both solid classes.
+- 485 full-cube selectors checked against installed Minecraft 26.3 block models.
+- The existing voxel GPU suite passes after its synthetic terrain fixture supplies
+  valid fog distances. Its original assertions are retained; unset fog distances
+  had previously hidden both compared surfaces behind full fog.
+- Runtime/source/package and documentation checks cover the 1.7 release artifact.
+
+The tests are `tools/validate.py`, `tools/indoor_lighting_checks.py`,
+`tools/indoor_occlusion_checks.py`, `tools/indoor_shape_checks.py`,
+`tools/indoor_block_shapes.py` and `tools/voxel_gpu_checks.py`.
+GPU tools require Windows/OpenGL, NumPy and Pillow. Shape-map checks read the
+installed client JAR; comparison suites additionally use preserved private
+pre-change/first-patch/r2 ZIPs in the checkout's parent directory. These local
+inputs and generated reports are not part of the source commit or runtime pack.
+Lighting/occlusion tools take `--baseline`; the shape replay expects the saved
+XON-Shader-v1.6-indoor-lighting-r2.zip. The client path can be supplied to the
+shape-map tool with `--minecraft-jar`.
+
+## Remaining live scope
+
+The final partial-shape correction has automated GPU coverage, but no final
+Minecraft visual approval is recorded. Revisit the supplied interiors, thin-block
+edges, floors, wall recesses and ceilings, with the same settings and camera.
+Compare open daylight, night vision, held lights and all three dimensions.
+Full-game FPS, AMD/Intel hardware and arbitrary mod/resource-pack geometry are
+not certified. The blocker map is conservative and based on installed vanilla
+26.3 models; unknown shapes do not cast the extra cube contact shade.
+
+Historical verification records follow with their original scope.
+
+---
+
 # XON Shader 1.6-test - Temporal anti-aliasing
 
 2 November 2026. Private AA test on branch test/1.6-aa; the prepared 1.5 commit

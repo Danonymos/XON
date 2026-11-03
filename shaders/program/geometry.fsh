@@ -250,11 +250,13 @@ void main() {
 #ifdef XON_TERRAIN
     float rawAO = xonVertexColor.a < 0.05 ? 1.0 : clamp(xonVertexColor.a, 0.28, 1.0);
     if (emission < 0.5) {
+        float indoorContact = (1.0 - smoothstep(0.20, 0.85, xonLightLevels.y))
+                            * smoothstep(0.10, 0.75, xonLightLevels.x) * (1.0 - foliage) * (1.0 - nightVision);
         // Architectural cavity shading: recessed castle blocks take cool shadow depth while flat/lit blocks never overexpose.
-        float aoCurve = isCrossPlant ? mix(0.92, 1.0, rawAO) : pow(rawAO, 1.18 * XON_AO_STRENGTH);
+        float aoCurve = isCrossPlant ? mix(0.92, 1.0, rawAO) : pow(rawAO, (1.18 + 0.52 * indoorContact) * XON_AO_STRENGTH);
         float cavity = xonSaturate((0.90 - rawAO) * 1.45) * (1.0 - float(isCrossPlant));
         vec3 aoTint = mix(vec3(1.0), vec3(0.86, 0.92, 1.04), cavity);
-        color *= clamp(aoCurve, 0.36, 1.0) * aoTint;
+        color *= clamp(aoCurve, mix(0.36, 0.30, indoorContact), 1.0) * aoTint;
     }
 #endif
 #ifdef XON_EMISSIVE_SAMPLING
@@ -301,8 +303,20 @@ void main() {
 #ifdef XON_EMISSIVE_SAMPLING
         // Peak matches a strong but sub-torch block light; the voxel field supplies colour and falloff.
         if (xonVoxelEmitterId(xonMaterial) == XON_VOXEL_EMPTY) {
-            color += emissiveAlbedo * xonEmissiveLight(xonPlayerPosition, normal) * 1.45;
+            color += emissiveAlbedo * xonEmissiveLight(xonPlayerPosition, normal) * 1.45
+                   * xonLocalLightForm(normal, xonLightLevels.y, foliage, emission);
         }
+#ifdef XON_TERRAIN
+        float indoorOcclusion = (1.0 - smoothstep(0.20, 0.85, xonLightLevels.y))
+                              * smoothstep(0.10, 0.75, xonLightLevels.x) * min(XON_AO_STRENGTH, 1.0)
+                              * (1.0 - emission) * (1.0 - foliage) * (1.0 - nightVision);
+#ifdef XON_PBR_SURFACE
+        indoorOcclusion *= 1.0 - smoothstep(0.0, 0.10, pbrEmission);
+#endif
+        if (indoorOcclusion > 0.001) {
+            color *= mix(1.0, xonIndoorOcclusion(xonPlayerPosition, xonSafeNormalize(xonWorldNormal)), indoorOcclusion);
+        }
+#endif
 #endif
 #ifdef XON_TERRAIN
         if (emission < 0.5 && abs(xonMaterial - 10019.0) > 0.5 && !isCrossPlant) {

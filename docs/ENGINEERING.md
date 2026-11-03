@@ -1,6 +1,33 @@
 # Engineering notes
 
-Current architecture for **XON Shader 1.3**. See [VERIFICATION.md](../VERIFICATION.md)
+## Indoor lighting in 1.7
+
+`xonLocalLightForm` adds world-normal face contrast to scalar block lighting and
+colored spill. The six axis-aligned gains average to unity; the factor fades with
+skylight and excludes foliage, emissive surfaces and night vision. Existing local
+strength, lightmap falloff and colored-light reach settings are unchanged.
+
+Terrain adds contact occlusion inside the existing local volume while Colored
+Block Light is enabled. A compact 3x3x3 candidate stencil samples only the outward
+hemisphere within 1.5 blocks; the kernel vanishes at its support boundary and
+fades at the volume edge. Receiver sampling starts outside the coarse owner cell,
+including inset surfaces. This is local contact shading, without source vectors
+or individual lamp-shadow tracing. It adds local sampling work but no pass/image.
+
+`block.10028` identifies verified full-cube shapes, including explicitly matched
+full-block states. `tools/indoor_block_shapes.py` generates/checks its 485 selectors
+against installed Minecraft 26.3 model inheritance. Unknown and partial shapes
+are excluded from extra contact occlusion. Voxel marker 255 and light alpha -2
+identify verified opaque cubes; ordinary solid marker 1 retains alpha -1. Both
+block flood-fill transport exactly as before, and negative alpha remains excluded
+from colored-light interpolation. Source emitter IDs/colors are unchanged.
+
+The local tests and remaining live checks are recorded in
+[VERIFICATION.md](../VERIFICATION.md). Historical architecture notes follow.
+
+## Earlier architecture notes
+
+Architecture notes originating with **XON Shader 1.3**. See [VERIFICATION.md](../VERIFICATION.md)
 for measured GPU checks and the distinction between driver tests and live gameplay.
 
 | Area | Source | Current design |
