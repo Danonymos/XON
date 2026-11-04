@@ -170,9 +170,9 @@ vec3 xonCloudSky(vec3 direction, bool detailed) {
         float cirrus = xonCirrusDensity(cirrusPos) * (0.70 + formation.z * 0.65) * horizonFade
                      * (1.0 - smoothstep(1800.0, 3600.0, cirrusDist)) * (1.0 - storm * 0.65);
         if (cirrus > 0.002) {
-            vec3 cirrusDay = mix(vec3(0.96, 0.98, 1.06), sunColor * 1.38, 0.42 + dusk * 0.45);
+            vec3 cirrusDay = mix(vec3(1.04, 0.98, 0.94), sunColor * 1.38, 0.42 + dusk * 0.45);
             vec3 cirrusDusk = mix(vec3(1.02, 0.52, 0.70), vec3(1.65, 0.84, 0.42), xonSaturate(cDot * 0.7 + 0.3));
-            vec3 cirrusColor = mix(vec3(0.08, 0.13, 0.24), mix(cirrusDay, cirrusDusk, dusk * 0.75), day);
+            vec3 cirrusColor = mix(vec3(0.08, 0.10, 0.16), mix(cirrusDay, cirrusDusk, dusk * 0.75), day);
             cirrusColor += sunColor * hgPhase * day * 0.48;
             sky = mix(sky, cirrusColor, cirrus);
         }
@@ -207,18 +207,18 @@ vec3 xonCloudSky(vec3 direction, bool detailed) {
     directLight = smoothstep(0.08, 0.92, directLight);
 
     // Painterly fantasy-realistic palette with distinct Early Morning, Noon, Warm Afternoon, Evening Sunset, and Night moods.
-    vec3 dayShadow = mix(vec3(0.24, 0.39, 0.62), vec3(0.36, 0.24, 0.52), dusk * 0.75);
-    dayShadow = mix(dayShadow, vec3(0.32, 0.42, 0.66), clamp(phases.x * 0.60, 0.0, 0.75));
-    dayShadow = mix(dayShadow, vec3(0.28, 0.36, 0.58), clamp(phases.z * 0.55, 0.0, 0.75));
-    dayShadow = mix(dayShadow, vec3(0.38, 0.22, 0.50), clamp(phases.w * 0.70, 0.0, 0.80));
-    vec3 undersideColor = mix(vec3(0.028, 0.046, 0.088), dayShadow, day);
+    vec3 dayShadow = mix(vec3(0.32, 0.40, 0.55), vec3(0.43, 0.27, 0.45), dusk * 0.75);
+    dayShadow = mix(dayShadow, vec3(0.40, 0.43, 0.57), clamp(phases.x * 0.60, 0.0, 0.75));
+    dayShadow = mix(dayShadow, vec3(0.37, 0.38, 0.50), clamp(phases.z * 0.55, 0.0, 0.75));
+    dayShadow = mix(dayShadow, vec3(0.46, 0.25, 0.44), clamp(phases.w * 0.70, 0.0, 0.80));
+    vec3 undersideColor = mix(vec3(0.030, 0.036, 0.060), dayShadow, day);
     vec3 twilightCrown = mix(vec3(1.18, 0.54, 0.62), vec3(1.62, 0.86, 0.42), xonSaturate(cDot * 0.65 + 0.35));
     vec3 morningCrown = mix(vec3(1.15, 0.78, 0.90), vec3(1.52, 1.05, 0.78), xonSaturate(cDot * 0.60 + 0.40));
     vec3 dayHighlight = mix(sunColor * 1.18, mix(twilightCrown, morningCrown, clamp(sun.x * 1.5 + 0.5, 0.0, 1.0)), dusk * 0.62);
-    vec3 sunlitColor = mix(vec3(0.14, 0.21, 0.34), dayHighlight, day);
+    vec3 sunlitColor = mix(vec3(0.14, 0.165, 0.235), dayHighlight, day);
 
     vec3 cloud = mix(undersideColor, sunlitColor, directLight);
-    cloud += mix(vec3(0.015, 0.025, 0.048), vec3(0.06, 0.11, 0.20), day) * center.y * (1.0 - storm * 0.5);
+    cloud += mix(vec3(0.014, 0.019, 0.031), vec3(0.085, 0.11, 0.155), day) * center.y * (1.0 - storm * 0.5);
     cloud *= 1.0 - rainStrength * 0.46 - thunderStrength * 0.12;
 
     float silverLining = (c4 * c4 * c4 * 0.85 + hgPhase * 0.45) * sunTransmittance * (1.0 - density * 0.48);
