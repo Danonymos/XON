@@ -7,11 +7,11 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/releases/1.7.md">1.7 release notes</a> ·
+  <a href="docs/releases/1.8.md">1.8 release notes</a> ·
   <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.7-35b8b0?style=flat-square" alt="Current version: 1.7">
+  <img src="https://img.shields.io/badge/version-1.8-35b8b0?style=flat-square" alt="Current version: 1.8">
   <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
   <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
@@ -26,7 +26,34 @@ the day, and edges receive built-in smoothing. Native resolution is the default.
 The gallery uses existing XON gameplay captures. It illustrates the pack's visual
 direction; it is not a controlled comparison or proof of the latest fixes.
 
-## What's new in 1.7
+## What's new in 1.8
+
+**Distinct light sources, smooth pools and more space for shade.** Lamps and
+glowing plants now have their own colors, strengths and ranges. Their local
+light replaces much of the broad warm fill, with readable ambient light between
+sources and bright lamp cores.
+
+- Soft mint lichen and compact orange berries; amber lanterns and yellow torches;
+  cyan-white sea lanterns, white end rods and blue soul lights.
+- Candle counts, wet sea-pickle counts, anchor charges and copper weathering
+  select different profiles. Unlit switches retain their ordinary unlit state.
+- Ore transport and controls remain separate. The 1.7 partial-block contact-shadow
+  correction, warmer outdoor palette and darker outdoor nights are retained.
+- Corrected thin-surface light sampling removes carpet-edge bands and decorative
+  self-light patches. Final tuning lowers lamp spill by 15% and deepens indoor
+  gap fill by up to 15%, preserving bright cores and open outdoor sunlight.
+- One existing compute dispatch, with a separate lamp history pair and eight
+  additional surface-volume fetches. Colored Light is required; Speed keeps the
+  scalar fallback. No individual ray-traced lamp shadows are added.
+- Shared light evaluation and a small per-frame contact cache reduce repeated
+  shading work while preserving the 1.8 lighting. See the
+  [optimization measurements](docs/lighting-optimization.md) for cost and output checks.
+
+See the [1.8 notes](docs/releases/1.8.md),
+[Modrinth changelog](docs/releases/1.8-modrinth.md) and
+[lamp validation](docs/lamp-lighting-validation.md) for measured costs and limits.
+
+## Retained from 1.7
 
 **More depth in indoor lighting, with cleaner contact shadows.** Lamp-lit rooms
 gain stronger face contrast and soft shade around solid walls, beams and corners.
@@ -197,14 +224,14 @@ renders and measured costs. These are synthetic views, not Minecraft captures.
   camera-following sun/moon shadow rings while retaining real object shadows.
 
 Read the [complete changelog](CHANGELOG.md) for every version from the first beta
-through 1.7, including the underwater, material and lighting improvements.
+through 1.8, including the underwater, material and lighting improvements.
 
 ## The XON look
 
 | Feature | In the world |
 | --- | --- |
 | Light and atmosphere | Directional sunlight and moonlight, warm bounce, cool readable shade and five time-of-day moods. |
-| Colored emissive light | Ore and crystal glow with local colored spill onto walls and floors in all three dimensions. |
+| Colored emissive light | Distinct lamp, plant and crystal pools, with independent ore spill in all three dimensions. |
 | Sky and terrain | Evolving cumulus, cloudlets and veils, moving ground cloud shade and waving foliage. |
 | Water | Layered waves, refraction, depth absorption, caustics and shadow-shaped underwater sunlight shafts. |
 | Materials and dimensions | Glowing lava fissures, natural pale amethyst tips, restrained froglights and a galactic End sky with a lensed black hole. |
@@ -220,7 +247,7 @@ through 1.7, including the underwater, material and lighting improvements.
 ## Install
 
 1. Use a compatible **Minecraft: Java Edition + Iris + Sodium** installation.
-2. Get a packaged `XON-Shader-v1.7.zip` from [official releases](https://github.com/Danonymos/XON/releases).
+2. Get a packaged `XON-Shader-v1.8.zip` from [official releases](https://github.com/Danonymos/XON/releases).
    If a release has not been published yet, use the [source build](#build-from-source)
    or a successful [pack-build artifact](https://github.com/Danonymos/XON/actions/workflows/build.yml).
 3. Place the **shader-pack ZIP** directly in your instance's `shaderpacks` folder.
@@ -237,7 +264,7 @@ the shader ZIP inside it.
 | --- | --- |
 | Development target | Minecraft Java 26.3, Iris 1.11.7 and Sodium 0.9.2. |
 | Dimensions | Overworld, Nether and End; unknown modded dimensions use the Overworld fallback. |
-| Colored ore lighting | Requires Iris custom images and compute-shader support; disabled by Speed. |
+| Colored lamp/ore lighting | Requires Iris custom images and compute-shader support; disabled by Speed. |
 | Distant texture stabilization | Uses the game's existing mip chain. |
 | Other environments | Older versions, OptiFine, Bedrock, macOS, VR, Vulkan, Distant Horizons and Voxy are not certified. |
 
@@ -245,7 +272,7 @@ the shader ZIP inside it.
 
 | Preset | Intended use |
 | --- | --- |
-| **Balanced** | The default visual upgrade, with bounded shadows, colored ore light and half-resolution effects. |
+| **Balanced** | The default visual upgrade, with bounded shadows, colored local light and half-resolution effects. |
 | **Speed** | Removes costly shadow, voxel-lighting and post-effect work while keeping directional lighting, ore surface glow, color grading and built-in edge smoothing. |
 | **Vibrant Fantasy** | Richer color, stronger bloom and more pronounced atmosphere. |
 | **Cinematic Ultra** | More expensive shadows and surface filtering for machines with headroom. |
@@ -262,7 +289,11 @@ XON uses bounded shadow maps, a compact local light volume, shared filtering
 samples and half-resolution post effects. These choices control cost; they do
 not make shader rendering free or guarantee a particular frame rate.
 
-The 1.7 lighting source passed **2,088 OpenGL compile/link configurations**,
+The 1.8 lamp validation covers **75 profiles**, source capture in all three
+dimensions, separate ore transport and a six-lantern 20×20 room. The lamp history
+adds **6.75 MiB** of image texels. See [current measurements](docs/lamp-lighting-validation.md).
+
+The preceding 1.7 lighting source passed **2,088 OpenGL compile/link configurations**,
 **233 lighting comparisons**, **29 occlusion checks** and **55 shape/capture checks**.
 The full-cube blocker map was checked against 485 selectors in the installed
 Minecraft 26.3 models. These are GPU and asset checks, not live visual approval.
@@ -279,8 +310,9 @@ Colored light follows open voxel paths rather than spherical ray tracing. The
 local volume and corners can shorten its reach. Cloud ground shade is an artistic
 approximation, not a traced projection of the visible sky clouds. Fast AA is spatial;
 Temporal adds frame history and can trade some sharpness for edge stability.
-Ordinary block lighting uses Minecraft's scalar lightmap; its softer falloff does
-not add directional source tracing or new lamp-cast shadows.
+Known lamp pools blend with Minecraft's scalar lightmap. Unsupported or uncaptured
+sources retain the scalar fallback. The dominant-source, block-path approximation
+does not recover exact source directions or individual lamp-cast shadows.
 
 ## Build from source
 

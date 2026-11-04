@@ -1,7 +1,7 @@
 screen.XON_LIGHT=Lighting
 screen.XON_LIGHT.comment=Sun, moon, ordinary lamps, held light and dark-area visibility.
 screen.XON_EMISSIVE=Colored Block Light
-screen.XON_EMISSIVE.comment=Colored spill from ores, crystals, quartz, sculk, glowing plants, jack-o-lanterns and soul lanterns. Surface glow is controlled separately below.
+screen.XON_EMISSIVE.comment=Source-specific light pools from lamps, fire, glowing plants and crystals, plus independent ore light. Surface glow is controlled separately below.
 screen.XON_COLOR=Color & Bloom
 screen.XON_COLOR.comment=Overall brightness, world color, the XON grade and soft highlight halos.
 screen.XON_SHADOW_SETTINGS=Shadows
@@ -118,7 +118,7 @@ value.XON_DARK_LIFT.1.50=150%
 value.XON_DARK_LIFT.1.80=180%
 
 option.XON_BLOCKLIGHT_WARMTH=Lamp Warmth
-option.XON_BLOCKLIGHT_WARMTH.comment=Warmth of ordinary block and held lights, from neutral ivory to amber. Independent of colored block-light saturation. Default: 100%.
+option.XON_BLOCKLIGHT_WARMTH.comment=Warmth of the broad block-light fill and held lights. Local source pools keep their individual colors. Default: 100%.
 value.XON_BLOCKLIGHT_WARMTH.0.60=60%
 value.XON_BLOCKLIGHT_WARMTH.0.80=80%
 value.XON_BLOCKLIGHT_WARMTH.1.00=100%
@@ -189,10 +189,10 @@ value.XON_ORE_GLOW.1.50=150%
 value.XON_ORE_GLOW.2.00=200%
 
 option.XON_COLORED_EMISSIVE_LIGHTING=Colored Light
-option.XON_COLORED_EMISSIVE_LIGHTING.comment=Colored light cast onto nearby blocks by ores, amethyst, quartz, sculk accents, lichen, ripe berries, amber jack-o-lanterns and cyan soul lanterns. All dimensions; adds GPU work. Default: On.
+option.XON_COLORED_EMISSIVE_LIGHTING.comment=Source-specific lamp and plant light with smooth pools and readable shade, plus independent colored ore light. All dimensions; adds GPU work and local volume memory. Default: On.
 
-option.XON_EMISSIVE_RADIUS=Light Reach
-option.XON_EMISSIVE_RADIUS.comment=Approximate reach along open voxel paths, including the three-block soft outer aura. Walls, corners and the local volume can shorten it. Requires Colored Light. Default: 7 blocks (base 4 + aura 3).
+option.XON_EMISSIVE_RADIUS=Ore Light Reach
+option.XON_EMISSIVE_RADIUS.comment=Ore reach along open voxel paths, including a three-block soft aura. Lamps and plants have individual preset ranges. Walls and the local volume can shorten reach. Requires Colored Light. Default: 7 blocks (base 4 + aura 3).
 value.XON_EMISSIVE_RADIUS.2.0=5 blocks
 value.XON_EMISSIVE_RADIUS.2.5=5.5 blocks
 value.XON_EMISSIVE_RADIUS.3.0=6 blocks
@@ -201,8 +201,8 @@ value.XON_EMISSIVE_RADIUS.4.0=7 blocks
 value.XON_EMISSIVE_RADIUS.4.5=7.5 blocks
 value.XON_EMISSIVE_RADIUS.5.0=8 blocks
 
-option.XON_EMISSIVE_INTENSITY=Light Brightness
-option.XON_EMISSIVE_INTENSITY.comment=Brightness of colored light on surrounding surfaces. Source surface glow and ordinary lamp intensity are separate. Requires Colored Light. Default: 100%.
+option.XON_EMISSIVE_INTENSITY=Ore Light Brightness
+option.XON_EMISSIVE_INTENSITY.comment=Brightness of colored ore spill. Lamp & Held Strength controls lamps and glowing plants; surface glow is separate. Requires Colored Light. Default: 100%.
 value.XON_EMISSIVE_INTENSITY.0.50=50%
 value.XON_EMISSIVE_INTENSITY.0.75=75%
 value.XON_EMISSIVE_INTENSITY.1.00=100%
@@ -210,8 +210,8 @@ value.XON_EMISSIVE_INTENSITY.1.25=125%
 value.XON_EMISSIVE_INTENSITY.1.50=150%
 value.XON_EMISSIVE_INTENSITY.2.00=200%
 
-option.XON_EMISSIVE_SATURATION=Light Saturation
-option.XON_EMISSIVE_SATURATION.comment=Color richness of cast colored block light only. 135% targets 35% richer saturation while preserving linear luminance; already saturated hues stop at the nonnegative color limit. 100% restores the 1.1 color response. Requires Colored Light. Default: 135%.
+option.XON_EMISSIVE_SATURATION=Ore Light Saturation
+option.XON_EMISSIVE_SATURATION.comment=Color richness of ore spill, preserving linear luminance and nonnegative colors. Lamps and plants keep their calibrated source colors. Requires Colored Light. Default: 135%.
 value.XON_EMISSIVE_SATURATION.1.00=100%
 value.XON_EMISSIVE_SATURATION.1.15=115%
 value.XON_EMISSIVE_SATURATION.1.25=125%
@@ -350,7 +350,7 @@ value.XON_SUN_STRENGTH.1.00=100%
 value.XON_SUN_STRENGTH.1.10=110%
 
 option.XON_LOCAL_LIGHT_STRENGTH=Lamp & Held Strength
-option.XON_LOCAL_LIGHT_STRENGTH.comment=Ordinary block and held light strength. Colored Block Light has separate brightness and saturation. Default: 80%.
+option.XON_LOCAL_LIGHT_STRENGTH.comment=Strength of local lamp and glowing-plant pools, broad block-light fill and held lights. Ore spill has separate brightness and saturation. Default: 80%.
 value.XON_LOCAL_LIGHT_STRENGTH.0.60=60%
 value.XON_LOCAL_LIGHT_STRENGTH.0.70=70%
 value.XON_LOCAL_LIGHT_STRENGTH.0.80=80%

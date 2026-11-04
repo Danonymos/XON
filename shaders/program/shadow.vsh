@@ -18,7 +18,8 @@ void xonVoxelize(vec4 shadowView) {
     if ((gl_VertexID & 3) != 0) return;
     bool terrain = renderStage == MC_RENDER_STAGE_TERRAIN_SOLID
                 || renderStage == MC_RENDER_STAGE_TERRAIN_CUTOUT
-                || renderStage == MC_RENDER_STAGE_TERRAIN_CUTOUT_MIPPED;
+                || renderStage == MC_RENDER_STAGE_TERRAIN_CUTOUT_MIPPED
+                || renderStage == MC_RENDER_STAGE_TERRAIN_TRANSLUCENT;
     if (!terrain) return;
     uint data = xonVoxelEmitterId(mc_Entity.x);
     if (data == XON_VOXEL_EMPTY && (mc_Entity.x == 10003.0 || mc_Entity.x == 10004.0 || mc_Entity.x == 10006.0)) return;
@@ -34,6 +35,13 @@ void xonVoxelize(vec4 shadowView) {
 #endif
 
 void main() {
+#ifdef XON_COLORED_EMISSIVE_LIGHTING
+    if (renderStage == MC_RENDER_STAGE_TERRAIN_TRANSLUCENT
+        && ((gl_VertexID & 3) != 0 || xonVoxelEmitterId(mc_Entity.x) == XON_VOXEL_EMPTY)) {
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+        return;
+    }
+#endif
     xonShadowUV = (gl_TextureMatrix[0] * gl_MultiTexCoord0).xy;
     vec4 shadowView = gl_ModelViewMatrix * gl_Vertex;
 #ifdef XON_COLORED_EMISSIVE_LIGHTING
@@ -44,6 +52,10 @@ void main() {
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
     return;
 #endif
+    if (renderStage == MC_RENDER_STAGE_TERRAIN_TRANSLUCENT) {
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+        return;
+    }
 #ifdef XON_WAVING_FOLIAGE
     bool isLeaves = abs(mc_Entity.x - 10003.0) < 0.5;
     bool isCrossPlant = abs(mc_Entity.x - 10004.0) < 0.5 || abs(mc_Entity.x - 10024.0) < 0.5;

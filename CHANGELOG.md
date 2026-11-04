@@ -1,9 +1,32 @@
 # Changelog
 
-Player-facing changes from the first XON beta to the current **1.7** build.
+Player-facing changes from the first XON beta to the current **1.8** build.
 Versions describe the final behavior of each build; experimental implementations
 that were later corrected are identified below. Validation details and measured
 limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
+
+## 1.8 — Better lighting, richer shadows and improved performance
+
+4 November 2026.
+
+- Give supported lamps and glowing plants individual colors, intensities and
+  ranges, with smooth falloff and bright source cores.
+- Add softer mint lichen, compact orange glow berries, yellow torches, amber
+  lanterns, blue soul lights, cyan-white sea lanterns and white end rods.
+- Vary light strength and reach with candle counts, wet sea pickles, anchor
+  charges, copper weathering and amethyst sizes.
+- Improve indoor depth and light-to-shade transitions, reducing uniform room
+  brightness while keeping shaded areas readable.
+- Correct carpet-edge dark bands, uneven floor lighting and rectangular patches
+  on quartz and other thin or inset surfaces.
+- Improve lighting and shadow efficiency through shared calculations and cached
+  contact-shadow data, retaining the lighting detail and PBR/POM quality settings.
+- Keep ore lighting independent, with its existing colors and separate controls.
+- Retain the warm outdoor atmosphere, darker nights and existing visual presets.
+- Pass 2,088 shader compile/link configurations and 453 GPU regression checks.
+  See the [lighting validation](https://github.com/Danonymos/XON/blob/main/docs/lamp-lighting-validation.md)
+  and [optimization results](https://github.com/Danonymos/XON/blob/main/docs/lighting-optimization.md)
+  for measurements and testing scope.
 
 ## 1.7 — Balanced indoor lighting and cleaner contact shadows
 

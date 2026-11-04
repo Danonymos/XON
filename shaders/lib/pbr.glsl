@@ -35,7 +35,8 @@ vec2 xonPBRAtlasCoord(vec2 localUV, vec4 atlasAM) {
 }
 
 vec2 xonGetParallaxCoord(vec2 texCoord, vec2 localUV, vec4 atlasAM, vec3 viewVector, float parallaxFade) {
-    if (viewVector != viewVector || length(viewVector) < 0.0001 || parallaxFade >= 1.0 || viewVector.z >= -0.00001
+    float viewLength = length(viewVector);
+    if (viewVector != viewVector || viewLength < 0.0001 || parallaxFade >= 1.0 || viewVector.z >= -0.00001
         || atlasAM.p <= 0.00001 || atlasAM.q <= 0.00001) {
         return texCoord;
     }
@@ -44,7 +45,7 @@ vec2 xonGetParallaxCoord(vec2 texCoord, vec2 localUV, vec4 atlasAM, vec3 viewVec
     vec2 dcdy = dFdy(texCoord);
     vec2 coord = localUV;
 
-    float viewFacing = -viewVector.z / length(viewVector);
+    float viewFacing = -viewVector.z / viewLength;
     float grazingFade = smoothstep(0.04, 0.16, viewFacing);
     if (grazingFade <= 0.001) return texCoord;
     vec2 scaledDir = viewVector.xy * (XON_PARALLAX_DEPTH / -viewVector.z)
@@ -65,8 +66,8 @@ vec2 xonGetParallaxCoord(vec2 texCoord, vec2 localUV, vec4 atlasAM, vec3 viewVec
     if (height >= 0.999) return texCoord;
     float previousHeight = height;
 
-    for (int i = 0; i < 512; ++i) {
-        if (i >= quality || currentStep <= height) break;
+    for (int i = 0; i < quality; ++i) {
+        if (currentStep <= height) break;
         previousHeight = height;
         coord += stepDir;
         vec2 atlasCoord = xonPBRAtlasCoord(coord, atlasAM);

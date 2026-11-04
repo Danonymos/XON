@@ -1,5 +1,77 @@
 # Engineering notes
 
+## Source-specific lamp lighting in 1.8
+
+`lib/lamp_light.glsl` defines 75 source/state profiles separately from the eight
+ore families. `tools/lamp_source_checks.py` validates the state selectors against
+installed client assets. New materials use IDs 10030–10096 alongside retained
+plant/lantern/crystal IDs. Occupancy codes 129–203 identify lamp families; 255
+remains the verified full-cube blocker. The regenerated blocker map has 471
+selectors because newly assigned lamps no longer belong to that map.
+
+One existing compute dispatch updates independent ore and lamp history pairs.
+Lamp RGB stores shaped radiance; alpha packs `family * 16 + remainingLevel` as
+an exactly representable half-float integer. Six-neighbor open-path propagation
+decrements the level; profile-specific quintic easing shapes the visible pool.
+The strongest luminance candidate wins, with remaining level breaking ties.
+Eight open-cell fetches interpolate radiance and predicted block-light coverage.
+This avoids unbounded additive accumulation but approximates mixed-source transport.
+
+Decorative quartz, amethyst-block, sculk and wire auras do not claim native
+block-light coverage. Quartz/amethyst/sculk metadata stops at the visible aura range.
+Where the prediction accounts for the lightmap, a smooth coverage ratio replaces
+much of the scalar warm fill with the lamp pool. Weak predictions, unknown sources
+and volume edges blend back to the scalar fallback. Ambient visibility remains,
+and night vision bypasses fill reduction. Lamp & Held Strength scales the new
+pools; the existing emissive radius/intensity/saturation settings now label their
+ore-only scope. The actual ore transport is unchanged.
+
+Both light samplers now start outside the receiver's coarse owner cell, matching
+the existing contact-occlusion correction. Geometric normals select cells; PBR
+normals retain surface form shading without changing that selection. This avoids
+partial-height dark bands and texture-dependent voxel selection. Decorative
+quartz/crystal/sculk materials reject their own aura while receiving other light.
+Lamp spill uses a 0.85 linear multiplier. Indoor gaps have a separate bounded
+0.85 base-fill gain that fades out around bright pools, outdoors and night vision.
+
+The extra RGBA16F pair costs 6.75 MiB. A 1.69 MiB R32UI contact-plane cache brings
+total local-volume texels to 15.61 MiB.
+There is no additional dispatch or screen pass; surface shading adds eight fetches
+and compute adds bounded neighbor work. History takes up to 15 frames to settle,
+reprojects using integer camera deltas and rejects teleports above 16 blocks.
+Translucent terrain is submitted for capture but clipped before sun-shadow rasterization.
+Block-entity-only sources lacking terrain geometry keep scalar lighting; no
+unsafe source position is inferred from animated models. See
+[Iris capture directives](https://shaders.properties/current/reference/shadersproperties/ordering/)
+and [measurements](lamp-lighting-validation.md).
+
+### 1.8 optimization
+
+`xonSampleLocalLights` shares coordinates, interpolation weights and bounds work
+between the two light fields. Zero interpolation weights skip fetches exactly.
+Production geometry gathers once, classifies materials once, and keeps fewer
+intermediate values live across lighting/PBR work. Independent emissive materials
+skip unused light evaluation. Small addition-order differences stay at float
+rounding scale in the parity suite; source fields and POM hits match bit for bit.
+
+Contact shading rejects whole non-facing/out-of-radius layers for axis-aligned
+faces. Arbitrary normals retain the complete original kernel. The compute pass
+also caches 27 occupancy bits per voxel: nine bits for each 3×3 axis plane.
+A cooperative 10×10×10 shared tile supplies occupancy to each 8×8×8 workgroup,
+including its halo, using 4,000 bytes of shared memory. At an exact axis boundary,
+an empty plane proves visibility is exactly 1. Occupied planes supply their
+blocker bits directly to the unchanged weights, avoiding repeated texture reads.
+Other positions use the original stencil. Near-axis camera-roundtrip normals
+retain the same weights at an exact boundary. The mask is rebuilt every frame,
+with no history delay or quality/sample reduction. Compute work rises slightly while
+fragment work falls.
+
+The sampling boundary gates prove the following stencil is in bounds, removing
+redundant per-fetch checks. Translucent shadow vertices that cannot capture a
+source return before transforms. The POM ray loop uses its existing adaptive
+quality bound directly, retains all refinements, and reuses its vector length.
+See [pixel, cache-oracle and timing results](lighting-optimization.md).
+
 ## Indoor lighting in 1.7
 
 `xonLocalLightForm` adds world-normal face contrast to scalar block lighting and

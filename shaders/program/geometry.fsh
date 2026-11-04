@@ -227,7 +227,9 @@ void main() {
     vec3 color = xonToLinear(surface.rgb);
     vec3 normal = isCrossPlant ? vec3(0.0, 1.0, 0.0) : xonSafeNormalize(xonWorldNormal);
     bool isLava = abs(xonMaterial - 10005.0) < 0.5;
-    float emission = float(abs(xonMaterial - 10002.0) < 0.5 || abs(xonMaterial - 10027.0) < 0.5 || isLava);
+    float emission = max(float(abs(xonMaterial - 10002.0) < 0.5 || abs(xonMaterial - 10027.0) < 0.5 || isLava),
+                         xonLampSurfaceEmission(xonMaterial, texel.rgb));
+    bool isFroglight = abs(xonMaterial - 10022.0) < 0.5 || (xonMaterial > 10045.5 && xonMaterial < 10048.5);
     float foliage = float(abs(xonMaterial - 10003.0) < 0.5 || isCrossPlant);
     float sunVisibility = 1.0;
     bool composedWater = false;
@@ -259,10 +261,6 @@ void main() {
         color *= clamp(aoCurve, mix(0.36, 0.30, indoorContact), 1.0) * aoTint;
     }
 #endif
-#ifdef XON_EMISSIVE_SAMPLING
-    vec3 emissiveAlbedo = color;
-#endif
-
 #if defined XON_CLOUD
 #ifdef XON_CLOUD_LIGHTING
     float day = xonDaylight();
@@ -275,13 +273,35 @@ void main() {
     // These materials replace surface lighting entirely below.
     bool independentMaterial = false;
 #if defined XON_TERRAIN || defined XON_WATER
-    independentMaterial = isLava || abs(xonMaterial - 10021.0) < 0.5 || abs(xonMaterial - 10022.0) < 0.5;
+    independentMaterial = isLava || abs(xonMaterial - 10021.0) < 0.5 || isFroglight;
 #endif
 #if defined XON_WATER && defined XON_REFRACTION && !defined XON_HAND
     independentMaterial = independentMaterial || abs(xonMaterial - 10001.0) < 0.5;
 #endif
     if (!independentMaterial) {
-        color = xonLighting(color, normal, xonViewPosition, xonPlayerPosition, xonLightLevels, emission, foliage, sunVisibility);
+#ifdef XON_EMISSIVE_SAMPLING
+        vec3 lightSamplingNormal = xonSafeNormalize(xonWorldNormal);
+        uint emitter = xonVoxelEmitterId(xonMaterial);
+        uint receiverFamily = emitter >= XON_LAMP_FIRST ? emitter - 128u : 0u;
+        vec3 oreLight;
+        vec4 lampLight;
+        xonSampleLocalLights(xonPlayerPosition, lightSamplingNormal, receiverFamily,
+                             emitter == XON_VOXEL_EMPTY, emission < 0.5, oreLight, lampLight);
+        float lampCoverage = smoothstep(0.35, 0.80, lampLight.a / max(xonLightLevels.x, 1.0 / 15.0)) * (1.0 - nightVision);
+        float lampShade = lampCoverage * (1.0 - smoothstep(0.20, 0.85, xonLightLevels.y))
+                        * (1.0 - smoothstep(0.02, 0.20, xonLuminance(lampLight.rgb)));
+        float localForm = xonLocalLightForm(normal, xonLightLevels.y, foliage, emission);
+        vec3 localSpill = color * lampLight.rgb * (1.45 * XON_LAMP_POOL_GAIN * XON_LOCAL_LIGHT_STRENGTH / 0.80) * localForm;
+        localSpill += color * oreLight * 1.45 * localForm;
+#else
+        float lampCoverage = 0.0;
+#endif
+        vec2 lightingLevels = xonLightLevels;
+        lightingLevels.x *= mix(1.0, mix(0.56, 0.68, xonLightLevels.y), lampCoverage);
+        color = xonLighting(color, normal, xonViewPosition, xonPlayerPosition, lightingLevels, emission, foliage, sunVisibility);
+#ifdef XON_EMISSIVE_SAMPLING
+        color *= mix(1.0, XON_LAMP_SHADE_GAIN, lampShade);
+#endif
 #ifdef XON_PBR_SURFACE
 #if XON_SPECULAR_HIGHLIGHT > 0
 #if XON_DIMENSION == 0
@@ -301,11 +321,7 @@ void main() {
         }
 #endif
 #ifdef XON_EMISSIVE_SAMPLING
-        // Peak matches a strong but sub-torch block light; the voxel field supplies colour and falloff.
-        if (xonVoxelEmitterId(xonMaterial) == XON_VOXEL_EMPTY) {
-            color += emissiveAlbedo * xonEmissiveLight(xonPlayerPosition, normal) * 1.45
-                   * xonLocalLightForm(normal, xonLightLevels.y, foliage, emission);
-        }
+        color += localSpill;
 #ifdef XON_TERRAIN
         float indoorOcclusion = (1.0 - smoothstep(0.20, 0.85, xonLightLevels.y))
                               * smoothstep(0.10, 0.75, xonLightLevels.x) * min(XON_AO_STRENGTH, 1.0)
@@ -314,7 +330,7 @@ void main() {
         indoorOcclusion *= 1.0 - smoothstep(0.0, 0.10, pbrEmission);
 #endif
         if (indoorOcclusion > 0.001) {
-            color *= mix(1.0, xonIndoorOcclusion(xonPlayerPosition, xonSafeNormalize(xonWorldNormal)), indoorOcclusion);
+            color *= mix(1.0, xonIndoorOcclusion(xonPlayerPosition, lightSamplingNormal), indoorOcclusion);
         }
 #endif
 #endif
@@ -362,10 +378,10 @@ void main() {
 #ifdef XON_BLOOM
         color *= 1.0 + 0.55 * XON_LAVA_GLOW * smoothstep(0.18, 0.78, heat);
 #endif
-    } else if (xonMaterial > 10024.5 && xonMaterial < 10026.5) {
+    } else if ((xonMaterial > 10024.5 && xonMaterial < 10026.5) || (xonMaterial > 10071.5 && xonMaterial < 10075.5)) {
         float coreMask = xonLanternCoreMask(xonMaterial, texel.rgb);
         color = mix(color, xonToLinear(texel.rgb) * 5.0, coreMask);
-    } else if (abs(xonMaterial - 10019.0) < 0.5) {
+    } else if (abs(xonMaterial - 10019.0) < 0.5 || (xonMaterial > 10076.5 && xonMaterial < 10080.5)) {
         // Amethyst & crystal clusters: preserve exact vanilla pale lilac-white tips and lavender base without orange torch tint or solid purple override.
         float crystalGlow = xonOreEmission(xonMaterial, texel.rgb);
         vec3 baseLinear = clamp(xonToLinear(texel.rgb), 0.001, 1.0);
@@ -397,7 +413,7 @@ void main() {
         vec3 highlightBoost = pow(vanillaLinear, vec3(1.55)) * (highlightZone * highlightZone * 1.75);
         vec3 deepShadowTint = mix(vec3(1.0), vec3(0.72, 0.42, 1.08), shadowZone * 0.65);
         color = contrastedVanilla * exposure * deepShadowTint + highlightBoost;
-    } else if (abs(xonMaterial - 10022.0) < 0.5) {
+    } else if (isFroglight) {
         // Froglights (Ochre, Verdant, Pearlescent): preserve aged colored borders and soft pastel centers without white HDR/bloom blowout.
         vec3 srgb = clamp(texel.rgb, 0.001, 1.0);
         float texLuma = dot(srgb, vec3(0.299, 0.587, 0.114));

@@ -7,7 +7,8 @@ import zipfile
 import numpy as np
 from indoor_block_shapes import CLIENT, run as check_map
 from validate import Driver, SHADERS, expand, variant_source
-from voxel_gpu_checks import VoxelRenderer, HALF
+from voxel_gpu_checks import HALF
+from lamp_gpu_checks import LampRenderer
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -15,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def run():
     check_map(CLIENT)
     driver = Driver()
-    renderer = VoxelRenderer(driver)
+    renderer = LampRenderer(driver)
     stages, programs, checks = [], [], []
 
     def program(parts):
@@ -60,6 +61,7 @@ void main(){result=vec4(vec3(xonIndoorOcclusion(testPosition,testNormal)),1);}
     def upload(field):
         renderer.upload(1, field)
         renderer.upload(2, field)
+        renderer.upload_contact(field[..., 3] < -1.5)
 
     try:
         with zipfile.ZipFile(ROOT.parent / 'XON-Shader-v1.6-indoor-lighting-r2.zip') as archive:
@@ -111,12 +113,14 @@ void main(){result=vec4(vec3(xonIndoorOcclusion(testPosition,testNormal)),1);}
         caster = program([(variant_source(SHADERS / 'shadow.vsh', {}), '.vsh'),
                           (variant_source(SHADERS / 'shadow.fsh', {}), '.fsh')])
         compute = program([(expand(SHADERS / 'shadowcomp.csh'), '.csh')])
-        for material, code, alpha in [(0, 1, -1), (10028, 255, -2), (10025, 1, -1)]:
+        for material, code, alpha in [(0, 1, -1), (10028, 255, -2), (10025, 131, 0)]:
             renderer.reset()
             cell = renderer.capture(caster, material)
             assert renderer.read(0)[cell] == code
             renderer.step(compute)
             assert renderer.current()[cell][3] == alpha
+            if material == 10025:
+                assert renderer.lamp_field()[cell][3] == 63
             checks.append({'case': 'actual shadow capture and compute marker', 'material': material,
                            'occupancy': code, 'alpha': alpha})
         transported = []
