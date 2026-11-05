@@ -33,23 +33,23 @@ container before installing the actual shader ZIP inside it.
 5. Wait for the pack workflow and inspect the artifact. Check the target commit
    contains the intended shader changes before creating its release tag.
 
-## Publish 1.8 through GitHub
+## Publish 1.8.1 through GitHub
 
 1. Open https://github.com/Danonymos/XON/releases/new after pushing the prepared commits.
-2. Choose a new **v1.8** tag targeting the reviewed main commit.
-3. Title the release **XON Shader 1.8 — Better Lighting, Richer Shadows & Improved Performance**.
-4. Paste [the prepared release body](releases/1.8.md).
-5. Upload `XON-Shader-v1.8.zip` from the fresh build or verified workflow artifact.
+2. Choose a new **v1.8.1** tag targeting the reviewed main commit.
+3. Title the release **XON Shader 1.8.1 — A More Atmospheric End**.
+4. Paste [the prepared release body](releases/1.8.1.md).
+5. Upload `XON-Shader-v1.8.1.zip` from the fresh build or verified workflow artifact.
 6. Publish when ready. No release has been created by the local preparation steps.
 
 The prepared body uses absolute project/document links so it can be pasted into
-GitHub's release editor. Upload the canonical `XON-Shader-v1.8.zip`; local test
+GitHub's release editor. Upload the canonical `XON-Shader-v1.8.1.zip`; local test
 suffixes are not the public release filename.
 
 ## Prepare the Modrinth version
 
-Use version number **1.8** and upload the same verified `XON-Shader-v1.8.zip`.
-Paste [the Modrinth changelog](releases/1.8-modrinth.md) into the version description.
+Use version number **1.8.1** and upload the same verified `XON-Shader-v1.8.1.zip`.
+Paste [the Modrinth changelog](releases/1.8.1-modrinth.md) into the version description.
 The development target is Minecraft Java 26.3 with Iris 1.11.7 and Sodium 0.9.2;
 select only game versions/loaders verified for the release. Publishing the
 Modrinth version is separate from committing or pushing the repository.

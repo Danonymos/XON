@@ -33,8 +33,7 @@ vec3 xonLighting(vec3 albedo, vec3 normal, vec3 viewPosition, vec3 playerPositio
     vec3 illumination = (vec3(0.46, 0.35, 0.34) * XON_NETHER_FILL_GAIN + biomeAmbient * (1.15 * XON_NETHER_FILL_GAIN)) * netherVertical
                       + (vec3(0.32, 0.14, 0.06) * XON_NETHER_FILL_GAIN) * lavaUpfill;
 #elif XON_DIMENSION == 1
-    float endVertical = 0.75 + abs(normal.y + 0.25) * 0.25;
-    vec3 illumination = (vec3(0.38, 0.33, 0.48) * XON_END_FILL_GAIN) * endVertical;
+    vec3 illumination = xonEndAmbient(normal) * XON_END_FILL_GAIN;
     illumination += vec3(0.28, 0.20, 0.36) * endFlashIntensity;
 #else
     vec3 sun = xonSunDirection();

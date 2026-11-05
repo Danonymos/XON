@@ -1,5 +1,6 @@
 """Exercise production sky vertices/fragments with native cube/celestial blending."""
 import ctypes as ct
+import argparse
 import json
 import re
 import zipfile
@@ -14,10 +15,11 @@ from validate import Driver, SHADERS, variant_source
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run():
+def run(overworld_baseline=None):
     driver = Driver()
     renderer = Renderer(driver, 480, 270)
     baseline = zipfile.ZipFile(ROOT.parent / 'XON-Shader-v1.3-before-end-sky-fix.zip')
+    accepted = zipfile.ZipFile(overworld_baseline) if overworld_baseline else None
     stages, programs, checks = [], [], []
     f = driver.function
     enable = f('glEnable', None, ct.c_uint)
@@ -28,15 +30,16 @@ def run():
     vertex = f('glVertex3f', None, ct.c_float, ct.c_float, ct.c_float)
     color = f('glColor4f', None, ct.c_float, ct.c_float, ct.c_float, ct.c_float)
 
-    def old(name):
-        source = baseline.read('shaders/' + name).decode()
+    def old(name, reference):
+        source = reference.read('shaders/' + name).decode()
         return re.sub(r'^\s*#include\s+"([^"]+)"\s*$',
-                      lambda m: old(m[1].lstrip('/')), source, flags=re.M)
+                      lambda m: old(m[1].lstrip('/'), reference), source, flags=re.M)
 
     def program(name, previous=False, mode=0):
         pair = []
         for suffix in ['vsh', 'fsh']:
-            source = (old(name + '.' + suffix) if previous else
+            reference = accepted if accepted is not None and name == 'gbuffers_skytextured' else baseline
+            source = (old(name + '.' + suffix, reference) if previous else
                       variant_source(SHADERS / (name + '.' + suffix), {'XON_RENDER_MODE': mode}))
             if previous:
                 source = source.replace('#version 330 compatibility',
@@ -180,10 +183,13 @@ def run():
         assert not re.search(r'^blend\.(?:world1/)?gbuffers_skytextured=', properties, re.M)
         checks.append({'case': 'native End cube and celestial blend states are not overridden'})
         report = {'passed': True, 'checks': checks,
+                  'overworld_baseline': str(overworld_baseline) if overworld_baseline else str(baseline.filename),
                   'scope': 'Production sky vertex/fragment programs, synthetic six-face cube and masked flash, real OpenGL blending. Not a live Minecraft reload.'}
         (ROOT / 'validation-end-sky-pipeline.json').write_text(json.dumps(report, indent=2) + '\n')
         print(json.dumps(report, indent=2))
     finally:
+        if accepted is not None:
+            accepted.close()
         baseline.close()
         for selected in programs:
             driver.delete_program(selected)
@@ -194,4 +200,7 @@ def run():
 
 
 if __name__ == '__main__':
-    run()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--overworld-baseline', type=Path,
+                        help='Accepted Overworld reference; the End regressions retain their original 1.3 fixture.')
+    run(parser.parse_args().overworld_baseline)

@@ -139,7 +139,7 @@ value.XON_WAVE_HEIGHT.1.25=125%
 value.XON_WAVE_HEIGHT.1.50=150%
 
 option.XON_FOG_AMOUNT=Fog Density
-option.XON_FOG_AMOUNT.comment=Density of distant border fog and underwater/Nether fog. Nearby Haze is separate. Default: 100%.
+option.XON_FOG_AMOUNT.comment=Density of distant border fog and underwater/Nether/End fog. Atmosphere Density also controls the End's layered haze. Default: 100%.
 value.XON_FOG_AMOUNT.0.60=60%
 value.XON_FOG_AMOUNT.0.80=80%
 value.XON_FOG_AMOUNT.1.00=100%
@@ -368,7 +368,7 @@ value.XON_GROUND_BOUNCE.1.25=125%
 value.XON_GROUND_BOUNCE.1.50=150%
 
 option.XON_ATMOSPHERE_DENSITY=Atmosphere Density
-option.XON_ATMOSPHERE_DENSITY.comment=Stratified atmospheric density and aerial perspective. Low terrain and building bases gain natural depth while peaks, sky and close views stay crystal clear. Default: 100%.
+option.XON_ATMOSPHERE_DENSITY.comment=Height-layered aerial perspective outdoors and drifting violet-magenta haze in the End. Close views stay clear. Off removes the added atmosphere; distant border fog remains. Default: 100%.
 value.XON_ATMOSPHERE_DENSITY.0.00=Off
 value.XON_ATMOSPHERE_DENSITY.0.50=50%
 value.XON_ATMOSPHERE_DENSITY.0.75=75%

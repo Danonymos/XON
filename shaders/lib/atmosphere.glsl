@@ -1,6 +1,8 @@
 #ifndef XON_ATMOSPHERE
 #define XON_ATMOSPHERE
 
+#include "/lib/end_atmosphere.glsl"
+
 // Computes distinct Overworld time-of-day weights from the 3D solar vector:
 // x = Early Morning (East sunrise), y = High Noon, z = Warm Afternoon (West mid-sun), w = Evening Dusk (West sunset).
 vec4 xonTimePhases(vec3 sun) {
@@ -157,7 +159,7 @@ vec3 xonFog(vec3 color, vec3 viewPosition, float skylight) {
         fog = vec3(0.75, 0.83, 0.92);
         amount = 1.0 - exp(-distanceToEye * 0.9);
     } else {
-#if XON_DIMENSION != -1
+#if XON_DIMENSION == 0
         // Normalizing after clamping the horizon is sufficient; the prior scale cancels.
         vec3 skyDir = xonSafeNormalize(vec3(worldOffset.x, max(worldOffset.y, 0.0), worldOffset.z));
         fog = xonSky(skyDir);
@@ -171,6 +173,12 @@ vec3 xonFog(vec3 color, vec3 viewPosition, float skylight) {
                                        max(max(fogEnd, far), fogStart + 1.0), distanceToEye);
         amount = max(amount, max(terrainFade, borderFog));
 #elif XON_DIMENSION == 1
+        vec4 haze = xonEndHaze(worldOffset, distanceToEye);
+        color = mix(color, haze.rgb, haze.a);
+        vec3 skyDir = xonSafeNormalize(worldOffset);
+        float horizon = xonSquare(1.0 - abs(skyDir.y)) * (1.0 - abs(skyDir.y));
+        fog = mix(vec3(0.002, 0.002, 0.008), vec3(0.014, 0.006, 0.025), horizon);
+        fog += vec3(0.011, 0.008, 0.017) * endFlashIntensity;
         float density = 0.0012;
         amount = 1.0 - exp(-distanceToEye * density * XON_FOG_AMOUNT);
         float terrainFade = smoothstep(max(fogStart, far * 0.68),

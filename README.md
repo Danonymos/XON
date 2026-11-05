@@ -7,11 +7,11 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/releases/1.8.md">1.8 release notes</a> ·
+  <a href="docs/releases/1.8.1.md">1.8.1 release notes</a> ·
   <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.8-35b8b0?style=flat-square" alt="Current version: 1.8">
+  <img src="https://img.shields.io/badge/version-1.8.1-35b8b0?style=flat-square" alt="Current version: 1.8.1">
   <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
   <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
@@ -25,6 +25,19 @@ the day, and edges receive built-in smoothing. Native resolution is the default.
 
 The gallery uses existing XON gameplay captures. It illustrates the pack's visual
 direction; it is not a controlled comparison or proof of the latest fixes.
+
+## What's new in 1.8.1
+
+**A more atmospheric End.** Lavender environmental light gives islands and
+structures more character, with violet-magenta haze that gathers around island
+height and drifts gently through the distance. Nearby surfaces stay clear,
+while the galaxy, stars and black hole retain their existing appearance.
+
+The effect uses the existing **Atmosphere Density** and **Fog Density** controls
+under **Sky & Atmosphere**, without adding render passes, texture reads or buffers.
+Overworld, Nether and the optimized 1.8 lamp system retain their current behavior.
+See the [1.8.1 notes](docs/releases/1.8.1.md) and
+[End atmosphere checks](docs/end-atmosphere-validation.md).
 
 ## What's new in 1.8
 
@@ -247,7 +260,7 @@ through 1.8, including the underwater, material and lighting improvements.
 ## Install
 
 1. Use a compatible **Minecraft: Java Edition + Iris + Sodium** installation.
-2. Get a packaged `XON-Shader-v1.8.zip` from [official releases](https://github.com/Danonymos/XON/releases).
+2. Get a packaged `XON-Shader-v1.8.1.zip` from [official releases](https://github.com/Danonymos/XON/releases).
    If a release has not been published yet, use the [source build](#build-from-source)
    or a successful [pack-build artifact](https://github.com/Danonymos/XON/actions/workflows/build.yml).
 3. Place the **shader-pack ZIP** directly in your instance's `shaderpacks` folder.

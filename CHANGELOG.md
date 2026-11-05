@@ -1,9 +1,27 @@
 # Changelog
 
-Player-facing changes from the first XON beta to the current **1.8** build.
+Player-facing changes from the first XON beta to the current **1.8.1** build.
 Versions describe the final behavior of each build; experimental implementations
 that were later corrected are identified below. Validation details and measured
 limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
+
+## 1.8.1 — A more atmospheric End
+
+4 November 2026.
+
+- Give End islands and structures lavender ambient light with subtle directional
+  color separation and readable shaded faces.
+- Add softly drifting violet-magenta haze, concentrated around island height,
+  with smooth distance buildup and a clear eight-block near zone.
+- Preserve the existing galaxy, stars, black hole and native sky/flash blending.
+- Use the existing Atmosphere Density and Fog Density controls. Speed omits
+  the added haze through its existing atmosphere setting.
+- Keep the effect within existing geometry shading, without ray marching,
+  additional render passes, texture lookups or image storage.
+- Retain the optimized 1.8 lamp system and the Overworld/Nether appearance.
+
+See the [End atmosphere validation](https://github.com/Danonymos/XON/blob/main/docs/end-atmosphere-validation.md)
+for checks and measurement scope.
 
 ## 1.8 — Better lighting, richer shadows and improved performance
 
