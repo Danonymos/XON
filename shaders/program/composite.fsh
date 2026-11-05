@@ -80,6 +80,11 @@ void main() {
             vec3 shadowStep = mat3(shadowMVP) * playerRay;
             float totalWeight = 0.0;
             float camY = cameraPosition.y;
+            float jitterMix = 0.35 + jitter * 0.65;
+            const float XON_SHAFT_STEP_WEIGHTS[10] = float[10](
+                0.04786301, 0.07156937, 0.08469103, 0.09427257, 0.10199911,
+                0.10855606, 0.11428972, 0.11941277, 0.12406600, 0.13328038
+            );
 
             for (int stepIndex = 0; stepIndex < 12; ++stepIndex) {
                 if (stepIndex >= sampleCount) break;
@@ -94,13 +99,11 @@ void main() {
                     float nearRamp = smoothstep(0.0, 4.5, distanceAlongRay);
                     weight = (end - start) * nearRamp * exp(-distanceAlongRay * 0.020);
                 } else {
-                    float t0 = float(stepIndex) / float(sampleCount);
-                    float t1 = float(stepIndex + 1) / float(sampleCount);
-                    float sampleT = mix(t0, t1, 0.35 + jitter * 0.65);
+                    float sampleT = (float(stepIndex) + jitterMix) * 0.1;
                     distanceAlongRay = rayLength * pow(sampleT, 1.32);
                     float worldY = camY + playerRay.y * distanceAlongRay;
                     float heightDensity = exp(-max(worldY - 64.0, 0.0) * 0.016);
-                    weight = (pow(t1, 1.32) - pow(t0, 1.32)) * exp(-distanceAlongRay * 0.014) * (0.45 + 0.55 * heightDensity);
+                    weight = XON_SHAFT_STEP_WEIGHTS[stepIndex] * exp(-distanceAlongRay * 0.014) * (0.45 + 0.55 * heightDensity);
                 }
                 vec3 shadowClip = shadowOrigin + shadowStep * distanceAlongRay;
                 float visibility = underwater ? xonWaterRayVisibilityClip(shadowClip) : xonRayVisibilityClip(shadowClip);

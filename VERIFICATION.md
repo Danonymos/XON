@@ -1,3 +1,26 @@
+# XON Shader 1.8.2 - Circular light pools and movement/warmup optimization
+
+5 November 2026. Runtime package: `XON-Shader-v1.8.2.zip`.
+
+## Automated GPU and package evidence
+
+On NVIDIA GeForce RTX 5060 Ti / OpenGL 4.6.0 NVIDIA 621.01:
+
+- **2,088 graphics compile/link configurations** (`tools/validate.py`, 87 pairs × 24 variants, 2,310 unique stages): zero shader warnings or failures across all dimensions, PBR modes and AA modes.
+- **Light-source census (`tools/circular_light_checks.py`, `tools/lamp_source_checks.py`):** **83 voxelized block-light families** (**75** lamp/plant/crystal families + **8** ore families across **85** material groups and **228** block selectors in `shaders/block.properties`), plus **1** Euclidean dynamic held-light path and **1** scalar lightmap fallback; 66 source groups / 188 state selectors verified against installed Minecraft 26.3 assets. The user reference lawn scene contains **24** flush Verdant Froglight floor lamps in a 6×4 grid plus surrounding structure lamps.
+- **Circular pool isotropy & room contrast (`tools/circular_light_checks.py`):** all 77 emitter material groups captured across `world0`, `world-1` and `world1`; all 75 lamp families finite, monotonic and zero at `d = 15` with zero ore cross-leak; all 8 ore families `< 0.002` cardinal error with circular diagonal pools (`ore(2,2) >= ore(3,0)`); flush floor lamps achieve circular radial isotropy at `R = 3` across `0..90°` (`lantern` `Diag/Card = 1.0315`, `min/max = 0.9095`; `soul_lantern` `1.0837` / `0.8473`; `verdant_froglight` `1.0436` / `0.8948`; `sea_lantern` `1.0315` / `0.9097`); planar walls and diagonal corner-touching walls seal with `0.0` leakage; ping-pong steady state has `0.0` drift; teleport (`> 16` blocks) clears empty air on step 1; decorative families `6/7/8/21` claim `0.0` coverage and exclude self-aura; six-lantern `20×20` room preserves contrast (`p10/p95 = 0.4756`, `p10 = 0.2544`, `p95 = 0.5349`).
+- **Non-lamp visual parity & regression suites:** PBR/POM/atmosphere/lighting near+far parity `max_error = 5.96e-8`; `final.fsh` moving motion-blur parity `max_error = 0.0`; `tools/temporal_aa_checks.py` passes all 46 checks (`0.0` guard/reset error); `tools/indoor_shape_checks.py` passes all 55 checks (471 verified full-cube selectors); `tools/end_sky_pipeline_checks.py --overworld-baseline ../XON-Shader-v1.8.zip` passes with exact Overworld celestial parity and `0.0` End cube error.
+- **Interleaved 1080p OpenGL hardware timer-query benchmarks (`tools/circular_light_checks.py`):**
+  - Near terrain PBR/POM/fog (`1920×1080`): `0.44815 ms -> 0.38145 ms` (**+14.88% faster**).
+  - Moving Temporal AA disocclusion (`1920×1080`): `0.15851 ms -> 0.13352 ms` (**+15.76% faster**).
+  - Moving final motion-blur pass (`1920×1080`): `0.28796 ms -> 0.28813 ms` (`0.0` parity delta).
+  - Volumetric shafts + bloom composite (`960×540`): `0.03708 ms -> 0.03690 ms` (**+0.47% faster**).
+  - Voxel compute 24-lamp lawn steady state (`96×48×96`): `0.03356 ms` (6-neighbor) -> `0.10556 ms` (26-neighbor + opposing-hemisphere + `3×3×3` RGB smoothing with empty-tile skipping); post-teleport reset step: `0.02482 ms -> 0.02551 ms`. Net 1080p frame pass sum improves (`0.9653 ms -> 0.9456 ms`).
+
+Note: legacy fixtures targeting pre-1.7 / pre-1.8 archives (`render_checks.py` assuming `0.90` pre-1.5 exposure, `pbr_checks.py` diffing against `v1.4`, and `end_atmosphere_checks.py` asserting byte-for-byte 1.8 `emissive_light.glsl` text) remain unchanged as historical baselines; live Minecraft `/rtp` chunk-build scheduling in Iris/Sodium still contributes CPU/driver upload work outside shader execution and requires in-game verification.
+
+---
+
 # XON Shader 1.7 - Indoor lighting and partial-shape correction
 
 3 November 2026. The official 1.7 source incorporates the final private

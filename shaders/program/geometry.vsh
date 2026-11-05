@@ -112,10 +112,9 @@ void main() {
     xonDist = length(viewPosition.xyz);
 
 #if defined XON_TERRAIN || defined XON_WATER
-    vec2 midCoord = (gl_TextureMatrix[0] * mc_midTexCoord).st;
-    vec2 texMinMidCoord = xonTexCoord - midCoord;
+    vec2 texMinMidCoord = xonTexCoord - midUV;
     xonAtlasAM.pq = abs(texMinMidCoord) * 2.0;
-    xonAtlasAM.st = min(xonTexCoord, midCoord - texMinMidCoord);
+    xonAtlasAM.st = min(xonTexCoord, midUV - texMinMidCoord);
     xonLocalUV = sign(texMinMidCoord) * 0.5 + 0.5;
 #else
     xonAtlasAM = vec4(0.0, 0.0, 1.0, 1.0);

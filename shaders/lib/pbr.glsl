@@ -8,12 +8,15 @@ uniform sampler2D specular;
 
 vec4 xonSamplePBRTexture(sampler2D surfaceTexture, vec2 coord, vec2 dcdx, vec2 dcdy, bool retainMipmaps) {
     ivec2 size = textureSize(surfaceTexture, 0);
-    vec2 dx = dcdx * vec2(size);
-    vec2 dy = dcdy * vec2(size);
-    if (retainMipmaps && max(dot(dx, dx), dot(dy, dy)) > 1.0) return textureGrad(surfaceTexture, coord, dcdx, dcdy);
+    vec2 fSize = vec2(size);
+    if (retainMipmaps) {
+        vec2 dx = dcdx * fSize;
+        vec2 dy = dcdy * fSize;
+        if (max(dot(dx, dx), dot(dy, dy)) > 1.0) return textureGrad(surfaceTexture, coord, dcdx, dcdy);
+    }
 
     // Iris can bind nearest filtering; height intersections need a continuous surface.
-    vec2 texel = coord * vec2(size) - 0.5;
+    vec2 texel = coord * fSize - 0.5;
     ivec2 base = ivec2(floor(texel));
     vec2 weight = fract(texel);
     ivec2 limit = size - 1;
@@ -34,6 +37,21 @@ vec2 xonPBRAtlasCoord(vec2 localUV, vec4 atlasAM) {
                  atlasAM.st + inset, atlasAM.st + atlasAM.pq - inset);
 }
 
+vec2 xonPBRAtlasCoordFast(vec2 localUV, vec4 atlasAM, vec2 minBound, vec2 maxBound) {
+    return clamp(fract(localUV) * atlasAM.pq + atlasAM.st, minBound, maxBound);
+}
+
+float xonSamplePBRHeight(vec2 coord, vec2 fSize, ivec2 limit) {
+    vec2 texel = coord * fSize - 0.5;
+    ivec2 base = ivec2(floor(texel));
+    vec2 weight = fract(texel);
+    float a = texelFetch(normals, clamp(base, ivec2(0), limit), 0).a;
+    float b = texelFetch(normals, clamp(base + ivec2(1, 0), ivec2(0), limit), 0).a;
+    float c = texelFetch(normals, clamp(base + ivec2(0, 1), ivec2(0), limit), 0).a;
+    float d = texelFetch(normals, clamp(base + ivec2(1, 1), ivec2(0), limit), 0).a;
+    return mix(mix(a, b, weight.x), mix(c, d, weight.x), weight.y);
+}
+
 vec2 xonGetParallaxCoord(vec2 texCoord, vec2 localUV, vec4 atlasAM, vec3 viewVector, float parallaxFade) {
     float viewLength = length(viewVector);
     if (viewVector != viewVector || viewLength < 0.0001 || parallaxFade >= 1.0 || viewVector.z >= -0.00001
@@ -41,37 +59,40 @@ vec2 xonGetParallaxCoord(vec2 texCoord, vec2 localUV, vec4 atlasAM, vec3 viewVec
         return texCoord;
     }
 
-    vec2 dcdx = dFdx(texCoord);
-    vec2 dcdy = dFdy(texCoord);
-    vec2 coord = localUV;
-
     float viewFacing = -viewVector.z / viewLength;
     float grazingFade = smoothstep(0.04, 0.16, viewFacing);
     if (grazingFade <= 0.001) return texCoord;
+
+    ivec2 texSize = textureSize(normals, 0);
+    vec2 fSize = vec2(texSize);
+    ivec2 limit = texSize - 1;
+    vec2 inset = min(0.5 / fSize, atlasAM.pq * 0.499);
+    vec2 minBound = atlasAM.st + inset;
+    vec2 maxBound = atlasAM.st + atlasAM.pq - inset;
+
+    vec2 initialCoord = clamp(texCoord, minBound, maxBound);
+    vec4 initialNormal = xonSamplePBRTexture(normals, initialCoord, vec2(0.0), vec2(0.0), false);
+    if (initialNormal.x + initialNormal.y < 0.0005) return texCoord;
+
+    float height = initialNormal.a;
+    if (height >= 0.999) return texCoord;
+
     vec2 scaledDir = viewVector.xy * (XON_PARALLAX_DEPTH / -viewVector.z)
                    * ((1.0 - parallaxFade) * grazingFade);
-    vec2 rayTexels = abs(scaledDir) * atlasAM.pq * vec2(textureSize(normals, 0));
+    vec2 rayTexels = abs(scaledDir) * atlasAM.pq * fSize;
     int quality = int(clamp(max(float(XON_PARALLAX_QUALITY), ceil(max(rayTexels.x, rayTexels.y) * 2.0)),
                             float(XON_PARALLAX_QUALITY), min(float(XON_PARALLAX_QUALITY) * 8.0, 512.0)));
     float sampleStep = 1.0 / float(quality);
     float currentStep = 1.0;
     vec2 stepDir = scaledDir * sampleStep;
-
-    vec2 inset = min(0.5 / vec2(textureSize(normals, 0)), atlasAM.pq * 0.499);
-    vec2 initialCoord = clamp(texCoord, atlasAM.st + inset, atlasAM.st + atlasAM.pq - inset);
-    vec4 initialNormal = xonSamplePBRTexture(normals, initialCoord, dcdx, dcdy, false);
-    if (initialNormal.x + initialNormal.y < 0.0005) return texCoord;
-
-    float height = initialNormal.a;
-    if (height >= 0.999) return texCoord;
+    vec2 coord = localUV;
     float previousHeight = height;
 
     for (int i = 0; i < quality; ++i) {
         if (currentStep <= height) break;
         previousHeight = height;
         coord += stepDir;
-        vec2 atlasCoord = xonPBRAtlasCoord(coord, atlasAM);
-        height = xonSamplePBRTexture(normals, atlasCoord, dcdx, dcdy, false).a;
+        height = xonSamplePBRHeight(xonPBRAtlasCoordFast(coord, atlasAM, minBound, maxBound), fSize, limit);
         currentStep -= sampleStep;
     }
 
@@ -81,7 +102,7 @@ vec2 xonGetParallaxCoord(vec2 texCoord, vec2 localUV, vec4 atlasAM, vec3 viewVec
     for (int i = 0; i < 5; ++i) {
         vec2 middleCoord = (aboveCoord + coord) * 0.5;
         float middleDepth = (aboveDepth + currentStep) * 0.5;
-        float middleHeight = xonSamplePBRTexture(normals, xonPBRAtlasCoord(middleCoord, atlasAM), dcdx, dcdy, false).a;
+        float middleHeight = xonSamplePBRHeight(xonPBRAtlasCoordFast(middleCoord, atlasAM, minBound, maxBound), fSize, limit);
         if (middleDepth > middleHeight) {
             aboveCoord = middleCoord;
             aboveDepth = middleDepth;
@@ -98,7 +119,7 @@ vec2 xonGetParallaxCoord(vec2 texCoord, vec2 localUV, vec4 atlasAM, vec3 viewVec
     float weight = denominator > 0.000001 ? clamp(aboveGap / denominator, 0.0, 1.0) : 0.5;
     coord = mix(aboveCoord, coord, weight);
 
-    return xonPBRAtlasCoord(coord, atlasAM);
+    return xonPBRAtlasCoordFast(coord, atlasAM, minBound, maxBound);
 }
 
 vec3 xonGetMetalColor(float f0) {
@@ -193,7 +214,9 @@ vec3 xonGetPBRSpecular(vec3 normal, vec3 playerPos, float smoothness, float meta
 #else
     vec3 baseReflectance = mix(vec3(f0), albedo, metalness);
 #endif
-    vec3 F = baseReflectance + (1.0 - baseReflectance) * pow(clamp(1.0 - vDotH, 0.0, 1.0), 5.0);
+    float fBase = clamp(1.0 - vDotH, 0.0, 1.0);
+    float f2 = fBase * fBase;
+    vec3 F = baseReflectance + (1.0 - baseReflectance) * (f2 * f2 * fBase);
 
     // Smith-Schlick Geometry Masking
     float k = (roughness + 1.0) * (roughness + 1.0) * 0.125;

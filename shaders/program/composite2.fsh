@@ -58,6 +58,7 @@ vec3 xonResolveTemporal(vec3 current, vec2 currentUV, float depth, vec2 depthOff
 
     vec2 fraction = fract(historyPixel);
     ivec2 origin = ivec2(floor(historyPixel));
+    ivec2 maxPixel = ivec2(size) - 1;
     float expectedDepth = sky ? 65000.0 : abs(previousView.z);
     float tolerance = max(0.04, expectedDepth * 0.02);
     vec3 history = vec3(0.0);
@@ -65,26 +66,41 @@ vec3 xonResolveTemporal(vec3 current, vec2 currentUV, float depth, vec2 depthOff
     float depthError = 1e20;
     vec4 weightsX = xonCubicWeights(fraction.x);
     vec4 weightsY = xonCubicWeights(fraction.y);
-    for (int y = 0; y < 4; ++y) {
-        for (int x = 0; x < 4; ++x) {
+    // Evaluate inner 2x2 depth agreement first so disoccluded pixels during camera movement skip the 12 outer taps + 8 variance taps.
+    for (int y = 1; y <= 2; ++y) {
+        for (int x = 1; x <= 2; ++x) {
             float weight = weightsX[x] * weightsY[y];
             if (abs(weight) < 0.00001) continue;
-            ivec2 tapPixel = clamp(origin + ivec2(x - 1, y - 1), ivec2(0), ivec2(size) - 1);
+            ivec2 tapPixel = clamp(origin + ivec2(x - 1, y - 1), ivec2(0), maxPixel);
             vec4 tap = texelFetch(colortex6, tapPixel, 0);
             if (tap.a <= 0.0) continue;
-            if (x >= 1 && x <= 2 && y >= 1 && y <= 2) depthError = min(depthError, abs(tap.a - expectedDepth));
+            depthError = min(depthError, abs(tap.a - expectedDepth));
             history += tap.rgb * weight;
             coverage += weight;
         }
     }
-    if (coverage < 0.80 || depthError > tolerance) return current;
+    if (depthError > tolerance) return current;
+    for (int y = 0; y < 4; ++y) {
+        for (int x = 0; x < 4; ++x) {
+            if (x >= 1 && x <= 2 && y >= 1 && y <= 2) continue;
+            float weight = weightsX[x] * weightsY[y];
+            if (abs(weight) < 0.00001) continue;
+            ivec2 tapPixel = clamp(origin + ivec2(x - 1, y - 1), ivec2(0), maxPixel);
+            vec4 tap = texelFetch(colortex6, tapPixel, 0);
+            if (tap.a <= 0.0) continue;
+            history += tap.rgb * weight;
+            coverage += weight;
+        }
+    }
+    if (coverage < 0.80) return current;
     history /= coverage;
 
     vec3 low = current, high = current;
-    vec3 sum = vec3(0.0), squares = vec3(0.0);
+    vec3 sum = current, squares = current * current;
     vec2 pixel = 1.0 / (size * XON_RENDER_SCALE);
     for (int y = -1; y <= 1; ++y) {
         for (int x = -1; x <= 1; ++x) {
+            if (x == 0 && y == 0) continue;
             vec3 tap = texture(colortex0, xonSourceUV(currentUV + vec2(x, y) * pixel)).rgb;
             low = min(low, tap);
             high = max(high, tap);
@@ -116,6 +132,7 @@ void main() {
         vec2 pixel = 1.0 / (vec2(viewWidth, viewHeight) * XON_RENDER_SCALE);
         for (int y = -1; y <= 1; ++y) {
             for (int x = -1; x <= 1; ++x) {
+                if (x == 0 && y == 0) continue;
                 vec2 offset = vec2(x, y) * pixel;
                 float neighbor = texture(depthtex0, xonSourceUV(currentUV + offset)).r;
                 if (neighbor < depth) {

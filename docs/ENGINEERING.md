@@ -1,5 +1,50 @@
 # Engineering notes
 
+## Circular local light propagation and movement/warmup optimization in 1.8.2
+
+`shadowcomp.csh` replaces 6-neighbor Manhattan propagation (`|dx| + |dy| + |dz|`,
+which produced 45-degree diamond pools) with shared-memory tiled 26-neighbor
+obstacle-checked quasi-Euclidean propagation (`1.0`, `1.375`, `1.75` step costs
+in exact `1/8`-block binary fractions) for both the **8 glowing ore families**
+and the **75 lamp, plant and crystal families** (**83 voxelized light families**
+across **228 block selectors** in `block.properties`). A `12×12×12` halo tile
+(`25,828` bytes of shared memory per `8×8×8` workgroup, within OpenGL 4.3's
+32 KiB minimum) caches occupancy, packed lamp state and packed RGB/family state.
+Diagonal and corner steps verify an open intermediate path (`xonStepOpen12`) so
+light never leaks across corner-touching solid walls while embedded floor, wall
+and ceiling sources radiate cleanly into adjacent open air.
+
+`lib/lamp_light.glsl` stores the 75 lamp profiles and base levels in constant
+lookup tables (`XON_LAMP_PROFILES`, `XON_LAMP_LEVELS`), encodes `family` and
+`1/8`-block `level` via `#version 330`-compatible IEEE-754 bit packing, and uses
+a cushioned inverse-square radial falloff (`xonLampFalloff`). In open air,
+opposing-hemisphere candidates within a convergent Voronoi seam contribute a
+bounded secondary blend before a non-recursive `[1,4,1]^3` `3×3×3` RGB filter
+smooths staircase facets without altering steady-state distance metadata.
+`program/geometry.fsh` weights local bounce and indoor ambient floor by actual
+pool luminance relative to `lampCoverage` (`0.25..0.70`), preserving deep dark
+contrast between spaced lamps (`20×20` six-lantern room `p10/p95 = 0.4756`).
+
+For post-teleport (`/rtp`) chunk warmup and moving-camera frame pacing:
+- `shadowcomp.csh` builds a workgroup `xonTileFlags` mask (active ore, active
+  lamp, occluder present) during tile load so empty/sky/unlit tiles skip contact
+  plane scans, 26-neighbor loops and `3×3×3` smoothing completely, skips zero or
+  solid neighbors before `xonStepOpen12`, and skips stale VRAM history fetches
+  immediately when `!historyValid` after teleports (`> 16` blocks).
+- `program/composite2.fsh` evaluates inner `2×2` `colortex6` history depth
+  agreement before fetching the 12 outer bicubic taps and 8 `colortex0` variance
+  taps on disoccluded pixels during camera motion (`+15.76%` faster at 1080p),
+  and omits redundant `(0,0)` center fetches in both `3×3×3` loops.
+- `lib/pbr.glsl` and `lib/atmosphere.glsl` hoist `textureSize(normals, 0)` and
+  atlas bounds out of up to 512 POM ray steps and skip `xonSky` + solar Mie
+  evaluation when near-terrain/indoor fog `amount == 0.0` (`+14.88%` faster at
+  1080p with `5.96e-8` max RGB delta).
+- `program/final.fsh`, `program/composite.fsh`, `program/geometry.vsh`,
+  `lib/lighting.glsl` and `program/shadow.vsh` eliminate `mat4 × mat4` velocity
+  products (`0.0` max RGB delta), precompute volumetric shaft step weights,
+  deduplicate vertex `midUV` transforms, gate rim backlight behind `rimMask > 0`
+  and cull non-capturing shadow vertices early when sun shadows are inactive.
+
 ## Source-specific lamp lighting in 1.8
 
 `lib/lamp_light.glsl` defines 75 source/state profiles separately from the eight

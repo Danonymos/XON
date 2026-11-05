@@ -16,6 +16,19 @@ const float XON_EMISSIVE_REACH = XON_EMISSIVE_RADIUS + 3.0;
 const float XON_EMISSIVE_STEP = 1.0 / (XON_EMISSIVE_REACH + 1.0);
 const float XON_EMISSIVE_COLOR_FLOOR = 0.01;
 
+const vec3 XON_ORE_COLORS[10] = vec3[10](
+    vec3(0.0),
+    vec3(0.0),
+    vec3(0.25, 0.90, 1.00),
+    vec3(0.20, 1.00, 0.40) * 0.90,
+    vec3(1.00, 0.12, 0.06),
+    vec3(0.18, 0.35, 1.00),
+    vec3(1.00, 0.74, 0.20) * 0.90,
+    vec3(0.95, 0.72, 0.58) * 0.45,
+    vec3(1.00, 0.52, 0.28) * 0.70,
+    vec3(0.64, 0.32, 1.00) * 0.60
+);
+
 uint xonLampFamily(float material);
 
 uint xonVoxelEmitterId(float material) {
@@ -45,15 +58,7 @@ vec3 xonSaturateEmitterColor(vec3 color) {
 
 // Linear light colour premultiplied by per-family strength.
 vec3 xonVoxelEmitterColor(uint id) {
-    if (id == 2u) return vec3(0.25, 0.90, 1.00);
-    if (id == 3u) return vec3(0.20, 1.00, 0.40) * 0.90;
-    if (id == 4u) return vec3(1.00, 0.12, 0.06);
-    if (id == 5u) return vec3(0.18, 0.35, 1.00);
-    if (id == 6u) return vec3(1.00, 0.74, 0.20) * 0.90;
-    if (id == 7u) return vec3(0.95, 0.72, 0.58) * 0.45;
-    if (id == 8u) return vec3(1.00, 0.52, 0.28) * 0.70;
-    if (id == 9u) return vec3(0.64, 0.32, 1.00) * 0.60;
-    return vec3(0.0);
+    return id <= 9u ? XON_ORE_COLORS[id] : vec3(0.0);
 }
 
 ivec3 xonWorldToVoxel(vec3 playerPos) {
@@ -164,6 +169,7 @@ void xonSampleLocalLights(vec3 playerPos, vec3 normal, uint receiverFamily, bool
     if (volumeFade <= 0.0) return;
     ivec3 base = ivec3(floor(voxelPos));
     vec3 blend = voxelPos - vec3(base);
+    bool readFirst = (frameCounter & 1) == 0;
     vec3 colorSum = vec3(0.0);
     float levelSum = 0.0;
     float weightSum = 0.0;
@@ -176,21 +182,22 @@ void xonSampleLocalLights(vec3 playerPos, vec3 normal, uint receiverFamily, bool
         if (interpolation == 0.0) continue;
         ivec3 cell = base + offset;
         if (sampleOre) {
-            vec4 light = xonFetchInteriorLight(cell);
+            vec4 light = readFirst ? texelFetch(xonLightTex0, cell, 0) : texelFetch(xonLightTex1, cell, 0);
             float weight = interpolation * step(0.0, light.a);
             colorSum += light.rgb * (light.a * weight);
             levelSum += light.a * weight;
             weightSum += weight;
         }
         if (sampleLamp) {
-            vec4 light = (frameCounter & 1) == 0 ? texelFetch(xonLampTex0, cell, 0) : texelFetch(xonLampTex1, cell, 0);
+            vec4 light = readFirst ? texelFetch(xonLampTex0, cell, 0) : texelFetch(xonLampTex1, cell, 0);
             float weight = interpolation * step(0.0, light.a);
-            int code = int(max(light.a, 0.0) + 0.5);
-            int family = code / 16;
-            bool ownAura = receiverFamily >= 6u && receiverFamily <= 8u && receiverFamily == uint(family);
+            uint family;
+            float unpackedLevel;
+            xonUnpackLampState(max(light.a, 0.0), family, unpackedLevel);
+            bool ownAura = receiverFamily >= 6u && receiverFamily <= 8u && receiverFamily == family;
             lampColor += ownAura ? vec3(0.0) : light.rgb * weight;
-            bool decorative = (family >= 6 && family <= 8) || family == 21;
-            lampRemaining += decorative ? 0.0 : float(code % 16) * (weight / 15.0);
+            bool decorative = (family >= 6u && family <= 8u) || family == 21u;
+            lampRemaining += decorative ? 0.0 : unpackedLevel * (weight / 15.0);
             lampWeight += weight;
         }
     }

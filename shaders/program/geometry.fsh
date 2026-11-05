@@ -224,8 +224,10 @@ void main() {
 #ifdef XON_ENTITY
     surface.rgb = mix(surface.rgb, entityColor.rgb, entityColor.a);
 #endif
-    vec3 color = xonToLinear(surface.rgb);
-    vec3 normal = isCrossPlant ? vec3(0.0, 1.0, 0.0) : xonSafeNormalize(xonWorldNormal);
+    vec3 baseLinearAlbedo = xonToLinear(surface.rgb);
+    vec3 color = baseLinearAlbedo;
+    vec3 geomNormal = xonSafeNormalize(xonWorldNormal);
+    vec3 normal = isCrossPlant ? vec3(0.0, 1.0, 0.0) : geomNormal;
     bool isLava = abs(xonMaterial - 10005.0) < 0.5;
     float emission = max(float(abs(xonMaterial - 10002.0) < 0.5 || abs(xonMaterial - 10027.0) < 0.5 || isLava),
                          xonLampSurfaceEmission(xonMaterial, texel.rgb));
@@ -279,25 +281,26 @@ void main() {
     independentMaterial = independentMaterial || abs(xonMaterial - 10001.0) < 0.5;
 #endif
     if (!independentMaterial) {
+        vec2 lightingLevels = xonLightLevels;
 #ifdef XON_EMISSIVE_SAMPLING
-        vec3 lightSamplingNormal = xonSafeNormalize(xonWorldNormal);
+        vec3 lightSamplingNormal = geomNormal;
         uint emitter = xonVoxelEmitterId(xonMaterial);
         uint receiverFamily = emitter >= XON_LAMP_FIRST ? emitter - 128u : 0u;
         vec3 oreLight;
         vec4 lampLight;
         xonSampleLocalLights(xonPlayerPosition, lightSamplingNormal, receiverFamily,
                              emitter == XON_VOXEL_EMPTY, emission < 0.5, oreLight, lampLight);
-        float lampCoverage = smoothstep(0.35, 0.80, lampLight.a / max(xonLightLevels.x, 1.0 / 15.0)) * (1.0 - nightVision);
+        float lampCoverage = smoothstep(0.25, 0.70, lampLight.a / max(xonLightLevels.x, 1.0 / 15.0)) * (1.0 - nightVision);
+        float lampLuma = max(xonLuminance(lampLight.rgb), 0.0);
+        float poolBounce = clamp(sqrt(lampLuma) * 0.76, 0.0, 0.75);
+        float ambientFloor = xonLightLevels.x * mix(0.46, 0.10, xonLightLevels.y);
         float lampShade = lampCoverage * (1.0 - smoothstep(0.20, 0.85, xonLightLevels.y))
-                        * (1.0 - smoothstep(0.02, 0.20, xonLuminance(lampLight.rgb)));
+                        * (1.0 - smoothstep(0.02, 0.20, lampLuma));
         float localForm = xonLocalLightForm(normal, xonLightLevels.y, foliage, emission);
         vec3 localSpill = color * lampLight.rgb * (1.45 * XON_LAMP_POOL_GAIN * XON_LOCAL_LIGHT_STRENGTH / 0.80) * localForm;
         localSpill += color * oreLight * 1.45 * localForm;
-#else
-        float lampCoverage = 0.0;
+        lightingLevels.x = mix(lightingLevels.x, max(ambientFloor, poolBounce), lampCoverage);
 #endif
-        vec2 lightingLevels = xonLightLevels;
-        lightingLevels.x *= mix(1.0, mix(0.56, 0.68, xonLightLevels.y), lampCoverage);
         color = xonLighting(color, normal, xonViewPosition, xonPlayerPosition, lightingLevels, emission, foliage, sunVisibility);
 #ifdef XON_EMISSIVE_SAMPLING
         color *= mix(1.0, XON_LAMP_SHADE_GAIN, lampShade);
@@ -308,7 +311,7 @@ void main() {
         if (pbrSmoothness > 0.02) {
             vec3 sunCol = mix(xonNightColor() * 0.74, xonSunlightColor(), xonDaylight());
             vec3 specHighlight = xonGetPBRSpecular(normal, xonPlayerPosition, pbrSmoothness, pbrMetalness, pbrF0,
-                                                   xonToLinear(surface.rgb), sunCol, sunVisibility * smoothstep(0.55, 0.97, xonLightLevels.y) * (1.0 - rainStrength * 0.90));
+                                                   baseLinearAlbedo, sunCol, sunVisibility * smoothstep(0.55, 0.97, xonLightLevels.y) * (1.0 - rainStrength * 0.90));
 #if XON_SPECULAR_HIGHLIGHT == 2
             specHighlight *= 1.6;
 #endif
@@ -317,7 +320,7 @@ void main() {
 #endif
 #endif
         if (pbrEmission > 0.0) {
-            color += xonToLinear(surface.rgb) * (pbrEmission * 2.0);
+            color += baseLinearAlbedo * (pbrEmission * 2.0);
         }
 #endif
 #ifdef XON_EMISSIVE_SAMPLING
@@ -449,7 +452,7 @@ void main() {
 #endif
 
 #ifdef XON_EMISSIVE
-    color = max(color, xonToLinear(surface.rgb) * 1.8);
+    color = max(color, baseLinearAlbedo * 1.8);
 #endif
 
 #ifdef XON_WATER

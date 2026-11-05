@@ -69,14 +69,12 @@ vec2 xonCameraVelocity(float depth) {
     vec4 current = vec4(xonUV * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
     vec4 viewPosition = gbufferProjectionInverse * current;
     if (abs(viewPosition.w) < 0.000001) return vec2(0.0);
-    viewPosition /= viewPosition.w;
-    vec4 playerPosition = gbufferModelViewInverse * viewPosition;
-    if (depth >= 0.999999) {
-        playerPosition = vec4(mat3(gbufferModelViewInverse) * viewPosition.xyz, 0.0);
-    } else {
-        playerPosition.xyz += cameraDelta;
-    }
-    vec4 previous = gbufferPreviousProjection * gbufferPreviousModelView * playerPosition;
+    viewPosition.xyz /= viewPosition.w;
+    vec3 playerOffset = mat3(gbufferModelViewInverse) * viewPosition.xyz;
+    vec4 playerPosition = depth >= 0.999999
+        ? vec4(playerOffset, 0.0)
+        : vec4(playerOffset + gbufferModelViewInverse[3].xyz + cameraDelta, 1.0);
+    vec4 previous = gbufferPreviousProjection * (gbufferPreviousModelView * playerPosition);
     if (previous.w <= 0.000001) return vec2(0.0);
     vec2 previousUV = previous.xy / previous.w * 0.5 + 0.5;
     vec2 velocity = (xonUV - previousUV) * XON_BLUR_EXPOSURE / clamp(frameTime, 0.002, 0.05);

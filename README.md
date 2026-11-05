@@ -7,11 +7,11 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/releases/1.8.1.md">1.8.1 release notes</a> ·
+  <a href="docs/releases/1.8.2.md">1.8.2 release notes</a> ·
   <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.8.1-35b8b0?style=flat-square" alt="Current version: 1.8.1">
+  <img src="https://img.shields.io/badge/version-1.8.2-35b8b0?style=flat-square" alt="Current version: 1.8.2">
   <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
   <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
@@ -25,6 +25,24 @@ the day, and edges receive built-in smoothing. Native resolution is the default.
 
 The gallery uses existing XON gameplay captures. It illustrates the pack's visual
 direction; it is not a controlled comparison or proof of the latest fixes.
+
+## What's new in 1.8.2
+
+**Smooth circular light pools and faster movement/warmup.** All **83 voxelized
+block-light families** (**75** lamps, glowing plants and crystals plus **8**
+glowing ores across **228** block selectors) now propagate across a 26-neighbor
+obstacle-checked quasi-Euclidean grid with inverse-square cushioned radial
+falloff and open-air `3×3×3` radiance smoothing, replacing sharp 45-degree
+diamond edges and square Voronoi creases with soft circular pools while keeping
+deep dark contrast between spaced lamps.
+
+Post-teleport (`/rtp`) chunk warmup and camera-motion frame pacing are also
+streamlined via workgroup empty-tile skipping and teleport-history gates in
+compute, early depth-gated Temporal AA disocclusion, branchless right-associated
+motion-blur reprojection, scalar-hoisted POM raymarching, zero-fog near-terrain
+sky/Mie skipping, and precomputed light-shaft weights — preserving 100% of
+XON's palette, PBR/POM relief and End atmosphere. See the
+[1.8.2 notes](docs/releases/1.8.2.md) and [verification record](VERIFICATION.md).
 
 ## What's new in 1.8.1
 
@@ -260,7 +278,7 @@ through 1.8, including the underwater, material and lighting improvements.
 ## Install
 
 1. Use a compatible **Minecraft: Java Edition + Iris + Sodium** installation.
-2. Get a packaged `XON-Shader-v1.8.1.zip` from [official releases](https://github.com/Danonymos/XON/releases).
+2. Get a packaged `XON-Shader-v1.8.2.zip` from [official releases](https://github.com/Danonymos/XON/releases).
    If a release has not been published yet, use the [source build](#build-from-source)
    or a successful [pack-build artifact](https://github.com/Danonymos/XON/actions/workflows/build.yml).
 3. Place the **shader-pack ZIP** directly in your instance's `shaderpacks` folder.

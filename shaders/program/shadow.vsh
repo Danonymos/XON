@@ -35,9 +35,23 @@ void xonVoxelize(vec4 shadowView) {
 #endif
 
 void main() {
+#if XON_DIMENSION != 0 || !defined XON_SHADOWS
+#ifdef XON_COLORED_EMISSIVE_LIGHTING
+    if ((gl_VertexID & 3) != 0) {
+        xonShadowUV = vec2(0.0);
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+        return;
+    }
+#else
+    xonShadowUV = vec2(0.0);
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+    return;
+#endif
+#endif
 #ifdef XON_COLORED_EMISSIVE_LIGHTING
     if (renderStage == MC_RENDER_STAGE_TERRAIN_TRANSLUCENT
         && ((gl_VertexID & 3) != 0 || xonVoxelEmitterId(mc_Entity.x) == XON_VOXEL_EMPTY)) {
+        xonShadowUV = vec2(0.0);
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
         return;
     }

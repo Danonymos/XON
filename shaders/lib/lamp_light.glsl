@@ -4,8 +4,96 @@
 const uint XON_LAMP_FIRST = 129u;
 const uint XON_LAMP_LAST = 203u;
 const float XON_LAMP_HISTORY_REACH = 16.0;
-const float XON_LAMP_POOL_GAIN = 0.85;
+const float XON_LAMP_POOL_GAIN = 1.22;
 const float XON_LAMP_SHADE_GAIN = 0.85;
+
+// Precomputed peak linear radiance (RGB) and nominal open-path radius in blocks (A) for families 0..75.
+const vec4 XON_LAMP_PROFILES[76] = vec4[76](
+    vec4(0.0000000, 0.0000000, 0.0000000, 0.0000),
+    vec4(0.0688000, 0.1280000, 0.0928000, 2.5000),
+    vec4(0.4800000, 0.1920000, 0.0384000, 3.5000),
+    vec4(1.2500000, 0.8375000, 0.3750000, 6.0000),
+    vec4(0.1710000, 0.6650000, 0.9500000, 4.5000),
+    vec4(1.0500000, 0.5250000, 0.1575000, 5.5000),
+    vec4(0.2520000, 0.1400000, 0.3500000, 3.5000),
+    vec4(0.0300000, 0.1800000, 0.2125000, 3.0000),
+    vec4(0.1496000, 0.0990000, 0.2200000, 3.0000),
+    vec4(1.0500000, 0.7560000, 0.2940000, 5.0000),
+    vec4(0.1200000, 0.5200000, 0.8000000, 4.0000),
+    vec4(0.7820000, 1.0810000, 1.1500000, 6.0000),
+    vec4(0.9450000, 0.9870000, 1.0500000, 5.5000),
+    vec4(1.1500000, 0.8970000, 0.4830000, 6.0000),
+    vec4(1.1000000, 0.5280000, 0.1980000, 5.5000),
+    vec4(1.1500000, 0.4945000, 0.1150000, 5.0000),
+    vec4(0.1020000, 0.5525000, 0.8500000, 4.0000),
+    vec4(0.6175000, 0.8740000, 0.9500000, 5.5000),
+    vec4(0.2200000, 0.0484000, 0.0066000, 2.0000),
+    vec4(0.8500000, 0.3995000, 0.1020000, 4.5000),
+    vec4(1.1000000, 0.7480000, 0.3080000, 5.5000),
+    vec4(0.3000000, 0.0300000, 0.0075000, 2.5000),
+    vec4(1.2000000, 0.5520000, 0.1200000, 5.5000),
+    vec4(0.1080000, 0.5850000, 0.9000000, 4.0000),
+    vec4(1.1000000, 0.3080000, 0.0385000, 5.0000),
+    vec4(1.0000000, 0.7800000, 0.4000000, 5.5000),
+    vec4(0.5700000, 0.9500000, 0.6840000, 5.5000),
+    vec4(0.8550000, 0.6840000, 0.9500000, 5.5000),
+    vec4(0.3800000, 0.2356000, 0.0836000, 2.2500),
+    vec4(0.5300000, 0.3286000, 0.1166000, 3.0000),
+    vec4(0.6800000, 0.4216000, 0.1496000, 3.7500),
+    vec4(0.8300000, 0.5146000, 0.1826000, 4.5000),
+    vec4(0.1820000, 0.2800000, 0.1120000, 2.2500),
+    vec4(0.2600000, 0.4000000, 0.1600000, 3.0000),
+    vec4(0.3380000, 0.5200000, 0.2080000, 3.7500),
+    vec4(0.4160000, 0.6400000, 0.2560000, 4.5000),
+    vec4(0.1280000, 0.0600000, 0.2000000, 2.7500),
+    vec4(0.2560000, 0.1200000, 0.4000000, 3.5000),
+    vec4(0.3840000, 0.1800000, 0.6000000, 4.2500),
+    vec4(0.5120000, 0.2400000, 0.8000000, 5.0000),
+    vec4(0.2925000, 0.1260000, 0.4500000, 3.5000),
+    vec4(0.4550000, 0.1625000, 0.6500000, 4.5000),
+    vec4(0.3120000, 0.4550000, 0.6500000, 4.0000),
+    vec4(0.1120000, 0.2100000, 0.2380000, 2.5000),
+    vec4(0.1000000, 0.0480000, 0.0120000, 1.0000),
+    vec4(0.0600000, 0.0520000, 0.0280000, 1.0000),
+    vec4(0.1050000, 0.1400000, 0.0448000, 1.5000),
+    vec4(1.0500000, 0.7350000, 0.3150000, 6.0000),
+    vec4(0.7221000, 0.6308000, 0.3320000, 4.7500),
+    vec4(0.4514000, 0.5002000, 0.3050000, 3.5000),
+    vec4(0.2379000, 0.3432000, 0.2340000, 2.2500),
+    vec4(0.5500000, 1.1000000, 0.7150000, 5.5000),
+    vec4(0.5000000, 1.0000000, 0.6500000, 5.0000),
+    vec4(0.4500000, 0.9000000, 0.5850000, 4.5000),
+    vec4(0.4000000, 0.8000000, 0.5200000, 4.0000),
+    vec4(0.4050000, 0.9000000, 0.5580000, 4.5000),
+    vec4(0.2700000, 0.1584000, 0.3600000, 3.1000),
+    vec4(0.2175000, 0.1276000, 0.2900000, 2.4500),
+    vec4(0.1650000, 0.0968000, 0.2200000, 1.8000),
+    vec4(0.1125000, 0.0660000, 0.1500000, 1.1500),
+    vec4(0.6175000, 0.3575000, 0.1430000, 4.0000),
+    vec4(0.0666667, 0.0586667, 0.0466667, 1.0000),
+    vec4(0.1333333, 0.1173333, 0.0933333, 1.0000),
+    vec4(0.2000000, 0.1760000, 0.1400000, 1.2000),
+    vec4(0.2666667, 0.2346667, 0.1866667, 1.6000),
+    vec4(0.3333333, 0.2933333, 0.2333333, 2.0000),
+    vec4(0.4000000, 0.3520000, 0.2800000, 2.4000),
+    vec4(0.4666667, 0.4106667, 0.3266667, 2.8000),
+    vec4(0.5333333, 0.4693333, 0.3733333, 3.2000),
+    vec4(0.6000000, 0.5280000, 0.4200000, 3.6000),
+    vec4(0.6666667, 0.5866667, 0.4666667, 4.0000),
+    vec4(0.7333333, 0.6453333, 0.5133333, 4.4000),
+    vec4(0.8000000, 0.7040000, 0.5600000, 4.8000),
+    vec4(0.8666667, 0.7626667, 0.6066667, 5.2000),
+    vec4(0.9333333, 0.8213333, 0.6533333, 5.6000),
+    vec4(1.0000000, 0.8800000, 0.7000000, 6.0000)
+);
+
+const int XON_LAMP_LEVELS[76] = int[76](
+    15, 7, 14, 15, 10, 15, 5, 4, 4, 14, 10, 15, 14, 15, 15, 15,
+    10, 15, 3, 13, 15, 7, 15, 10, 15, 15, 15, 15, 3, 6, 9, 12,
+    6, 9, 12, 15, 3, 7, 11, 15, 10, 11, 15, 7, 1, 1, 2, 15,
+    12, 8, 4, 15, 15, 15, 15, 14, 5, 4, 2, 1, 13, 1, 2, 3,
+    4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+);
 
 uint xonLampFamily(float material) {
     int id = int(material + 0.5);
@@ -23,107 +111,74 @@ uint xonLampFamily(float material) {
     return 0u;
 }
 
-// RGB is peak linear radiance; alpha is the visible open-path radius in blocks.
 vec4 xonLampProfile(uint family) {
-    if (family == 1u) return vec4(vec3(0.43, 0.80, 0.58) * 0.16, 2.5);
-    if (family == 2u) return vec4(vec3(1.00, 0.40, 0.08) * 0.48, 3.5);
-    if (family == 3u) return vec4(vec3(1.00, 0.67, 0.30) * 1.25, 6.0);
-    if (family == 4u) return vec4(vec3(0.18, 0.70, 1.00) * 0.95, 4.5);
-    if (family == 5u) return vec4(vec3(1.00, 0.50, 0.15) * 1.05, 5.5);
-    if (family == 6u) return vec4(vec3(0.72, 0.40, 1.00) * 0.35, 3.5);
-    if (family == 7u) return vec4(vec3(0.12, 0.72, 0.85) * 0.25, 3.0);
-    if (family == 8u) return vec4(vec3(0.68, 0.45, 1.00) * 0.22, 3.0);
-    if (family == 9u) return vec4(vec3(1.00, 0.72, 0.28) * 1.05, 5.0);
-    if (family == 10u) return vec4(vec3(0.15, 0.65, 1.00) * 0.80, 4.0);
-    if (family == 11u) return vec4(vec3(0.68, 0.94, 1.00) * 1.15, 6.0);
-    if (family == 12u) return vec4(vec3(0.90, 0.94, 1.00) * 1.05, 5.5);
-    if (family == 13u) return vec4(vec3(1.00, 0.78, 0.42) * 1.15, 6.0);
-    if (family == 14u) return vec4(vec3(1.00, 0.48, 0.18) * 1.10, 5.5);
-    if (family == 15u) return vec4(vec3(1.00, 0.43, 0.10) * 1.15, 5.0);
-    if (family == 16u) return vec4(vec3(0.12, 0.65, 1.00) * 0.85, 4.0);
-    if (family == 17u) return vec4(vec3(0.65, 0.92, 1.00) * 0.95, 5.5);
-    if (family == 18u) return vec4(vec3(1.00, 0.22, 0.03) * 0.22, 2.0);
-    if (family == 19u) return vec4(vec3(1.00, 0.47, 0.12) * 0.85, 4.5);
-    if (family == 20u) return vec4(vec3(1.00, 0.68, 0.28) * 1.10, 5.5);
-    if (family == 21u) return vec4(vec3(1.00, 0.10, 0.025) * 0.30, 2.5);
-    if (family == 22u) return vec4(vec3(1.00, 0.46, 0.10) * 1.20, 5.5);
-    if (family == 23u) return vec4(vec3(0.12, 0.65, 1.00) * 0.90, 4.0);
-    if (family == 24u) return vec4(vec3(1.00, 0.28, 0.035) * 1.10, 5.0);
-    if (family == 25u) return vec4(vec3(1.00, 0.78, 0.40) * 1.00, 5.5);
-    if (family == 26u) return vec4(vec3(0.60, 1.00, 0.72) * 0.95, 5.5);
-    if (family == 27u) return vec4(vec3(0.90, 0.72, 1.00) * 0.95, 5.5);
-    if (family >= 28u && family <= 31u) {
-        float count = float(family - 27u);
-        return vec4(vec3(1.00, 0.62, 0.22) * (0.23 + count * 0.15), 1.5 + count * 0.75);
-    }
-    if (family >= 32u && family <= 35u) {
-        float count = float(family - 31u);
-        return vec4(vec3(0.65, 1.00, 0.40) * (0.16 + count * 0.12), 1.5 + count * 0.75);
-    }
-    if (family >= 36u && family <= 39u) {
-        float charge = float(family - 35u);
-        return vec4(vec3(0.64, 0.30, 1.00) * (charge * 0.20), 2.0 + charge * 0.75);
-    }
-    if (family == 40u) return vec4(vec3(0.65, 0.28, 1.00) * 0.45, 3.5);
-    if (family == 41u) return vec4(vec3(0.70, 0.25, 1.00) * 0.65, 4.5);
-    if (family == 42u) return vec4(vec3(0.48, 0.70, 1.00) * 0.65, 4.0);
-    if (family == 43u) return vec4(vec3(0.40, 0.75, 0.85) * 0.28, 2.5);
-    if (family == 44u) return vec4(vec3(1.00, 0.48, 0.12) * 0.10, 1.0);
-    if (family == 45u) return vec4(vec3(0.75, 0.65, 0.35) * 0.08, 1.0);
-    if (family == 46u) return vec4(vec3(0.75, 1.00, 0.32) * 0.14, 1.5);
-    if (family >= 47u && family <= 50u) {
-        float age = float(family - 47u);
-        return vec4(vec3(1.00 - age * 0.13, 0.70 + age * 0.06, 0.30 + age * 0.10)
-                    * (1.05 - age * 0.22), 6.0 - age * 1.25);
-    }
-    if (family >= 51u && family <= 54u) {
-        float age = float(family - 51u);
-        return vec4(vec3(0.50, 1.00, 0.65) * (1.10 - age * 0.10), 5.5 - age * 0.50);
-    }
-    if (family == 55u) return vec4(vec3(0.45, 1.00, 0.62) * 0.90, 4.5);
-    if (family >= 56u && family <= 59u) {
-        float size = float(60u - family);
-        return vec4(vec3(0.75, 0.44, 1.00) * (0.08 + size * 0.07), 0.5 + size * 0.65);
-    }
-    if (family == 60u) return vec4(vec3(0.95, 0.55, 0.22) * 0.65, 4.0);
-    if (family >= 61u && family <= 75u) {
-        float level = float(family - 60u);
-        return vec4(vec3(1.00, 0.88, 0.70) * (level / 15.0), max(1.0, level * 0.40));
-    }
-    return vec4(0.0);
+    return family <= 75u ? XON_LAMP_PROFILES[family] : vec4(0.0);
 }
 
 int xonLampLevel(uint family) {
-    if (family == 6u) return 5;
-    if (family == 7u || family == 8u) return 4;
-    if (family == 1u || family == 43u || family == 21u) return 7;
-    if (family == 2u || family == 9u || family == 12u || family == 55u) return 14;
-    if (family == 4u || family == 10u || family == 16u || family == 23u) return 10;
-    if (family == 18u) return 3;
-    if (family == 19u || family == 60u) return 13;
-    if (family == 41u) return 11;
-    if (family >= 28u && family <= 31u) return int(family - 27u) * 3;
-    if (family >= 32u && family <= 35u) return int(family - 31u) * 3 + 3;
-    if (family >= 36u && family <= 39u) return int(family - 35u) * 4 - 1;
-    if (family == 40u) return 10;
-    if (family == 44u || family == 45u) return 1;
-    if (family == 46u) return 2;
-    if (family >= 47u && family <= 50u) return family == 47u ? 15 : (family == 48u ? 12 : (family == 49u ? 8 : 4));
-    if (family >= 56u && family <= 59u) return family == 56u ? 5 : (family == 57u ? 4 : (family == 58u ? 2 : 1));
-    if (family >= 61u && family <= 75u) return int(family - 60u);
-    return 15;
+    return family <= 75u ? XON_LAMP_LEVELS[family] : 0;
 }
 
+// Smooth inverse-square cushioned radial falloff: zero cusp at d=0, circular mid-pool, smooth zero at outer edge.
 float xonLampFalloff(float distanceToSource, float radius) {
-    float t = clamp(1.0 - distanceToSource / (radius + 1.0), 0.0, 1.0);
-    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+    float d = max(distanceToSource, 0.0);
+    float rNorm = d / max(radius, 0.5);
+    float u = clamp(1.0 - d / (radius * 0.98 + 1.05), 0.0, 1.0);
+    float window = u * u * (3.0 - 2.0 * u);
+    return (window * window) / (1.0 + 0.95 * rNorm * rNorm);
+}
+
+// Packs family (1..75) + fractional Euclidean level (0..15] losslessly at 1/8-block resolution in normal fp16,
+// while preserving exact legacy integer codes >= 16.0 at integer levels for families 1..63.
+float xonPackLampState(uint family, float level) {
+    if (family == 0u || family > 75u || level <= 0.0) return 0.0;
+    float rounded = floor(level + 0.5);
+    if (family <= 63u && abs(level - rounded) < 0.001 && rounded >= 1.0 && rounded <= 15.0) {
+        return float(family * 16u + uint(rounded));
+    }
+    uint group = family / 6u;
+    uint sub = family - group * 6u;
+    float slot = float(sub * 16u) + clamp(level, 0.0, 15.875);
+    uint mant = uint(slot * 65536.0 + 0.5) & 0x7FFFFFu;
+    return uintBitsToFloat(((113u + group) << 23u) | mant);
+}
+
+void xonUnpackLampState(float encodedState, out uint family, out float level) {
+    family = 0u;
+    level = 0.0;
+    if (encodedState <= 0.0) return;
+    if (encodedState >= 16.0) {
+        int code = int(encodedState + 0.5);
+        family = uint(code / 16);
+        level = float(code % 16);
+        if (family > 75u || level <= 0.0) {
+            family = 0u;
+            level = 0.0;
+        }
+        return;
+    }
+    uint bits = floatBitsToUint(encodedState);
+    int group = int((bits >> 23u) & 255u) - 113;
+    if (group < 0 || group > 12) return;
+    float slot = float(bits & 0x7FFFFFu) * (1.0 / 65536.0);
+    uint sub = min(uint(slot * 0.0625 + 0.0001), 5u);
+    family = uint(group) * 6u + sub;
+    level = max(slot - float(sub * 16u), 0.0);
+    if (family == 0u || family > 75u || level <= 0.0) {
+        family = 0u;
+        level = 0.0;
+    }
+}
+
+vec4 xonLampValueF(uint family, float level) {
+    if (family == 0u || level <= 0.0) return vec4(0.0);
+    vec4 profile = xonLampProfile(family);
+    float distanceToSource = max(float(xonLampLevel(family)) - level, 0.0);
+    return vec4(profile.rgb * xonLampFalloff(distanceToSource, profile.a), xonPackLampState(family, level));
 }
 
 vec4 xonLampValue(uint family, int level) {
-    if (family == 0u || level <= 0) return vec4(0.0);
-    vec4 profile = xonLampProfile(family);
-    float distanceToSource = float(xonLampLevel(family) - level);
-    return vec4(profile.rgb * xonLampFalloff(distanceToSource, profile.a), float(family * 16u + uint(level)));
+    return xonLampValueF(family, float(level));
 }
 
 #ifdef XON_EMISSIVE_SAMPLING

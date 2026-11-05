@@ -1,9 +1,29 @@
 # Changelog
 
-Player-facing changes from the first XON beta to the current **1.8.1** build.
+Player-facing changes from the first XON beta to the current **1.8.2** build.
 Versions describe the final behavior of each build; experimental implementations
 that were later corrected are identified below. Validation details and measured
 limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
+
+## 1.8.2 — Smooth circular light pools and faster movement / warmup
+
+5 November 2026.
+
+- Replace sharp 45-degree diamond light pools and square Voronoi seams with soft,
+  smooth circular radial pools across all **83 voxelized block-light families**
+  (**75** lamps, glowing plants and crystals plus **8** glowing ores across
+  **228** block selectors), using 26-neighbor obstacle-checked quasi-Euclidean
+  propagation, inverse-square cushioned falloff, opposing-hemisphere convergence
+  blending and open-air `3×3×3` RGB smoothing.
+- Preserve rich dark separation between spaced indoor and outdoor lamps while
+  keeping solid planar and diagonal corner-touching walls sealed against leaks.
+- Streamline post-teleport (`/rtp`) chunk warmup and camera-motion frame pacing
+  through workgroup empty-tile and teleport-history skips in voxel compute,
+  early depth-gated Temporal AA disocclusion, scalar-hoisted POM raymarching,
+  zero-fog near-terrain sky/Mie skipping, branchless right-associated motion
+  reprojection, precomputed shaft weights and early shadow-vertex culling.
+- Retain 100% of XON's visual palette, exposure, PBR/POM surface relief, water,
+  clouds and 1.8.1 End atmosphere across all 2,088 compiled OpenGL shader pairs.
 
 ## 1.8.1 — A more atmospheric End
 

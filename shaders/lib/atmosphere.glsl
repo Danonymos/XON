@@ -140,8 +140,8 @@ vec3 xonFog(vec3 color, vec3 viewPosition, float skylight) {
     }
 #endif
 #endif
-    vec3 fog;
-    float amount;
+    vec3 fog = vec3(0.0);
+    float amount = 0.0;
     if (isEyeInWater == 1) {
         float exposure = max(xonSaturate(float(eyeBrightnessSmooth.y) / 240.0), skylight);
         float day = xonDaylight();
@@ -159,11 +159,6 @@ vec3 xonFog(vec3 color, vec3 viewPosition, float skylight) {
         fog = vec3(0.75, 0.83, 0.92);
         amount = 1.0 - exp(-distanceToEye * 0.9);
     } else {
-#if XON_DIMENSION == 0
-        // Normalizing after clamping the horizon is sufficient; the prior scale cancels.
-        vec3 skyDir = xonSafeNormalize(vec3(worldOffset.x, max(worldOffset.y, 0.0), worldOffset.z));
-        fog = xonSky(skyDir);
-#endif
 #if XON_DIMENSION == -1
         float density = 0.0065;
         fog = max(xonToLinear(fogColor), vec3(0.02, 0.01, 0.01));
@@ -200,26 +195,34 @@ vec3 xonFog(vec3 color, vec3 viewPosition, float skylight) {
                                        max(max(fogEnd, far), fogStart + 1.0), distanceToEye);
         amount = max(amount, max(terrainFade, borderFog));
 
-        // Modern Stratified Aerial Perspective & Solar In-Scattering Aura
-        if (XON_ATMOSPHERE_DENSITY > 0.001 && isEyeInWater == 0) {
-            float effectiveDist = max(distanceToEye - 20.0, 0.0);
-            float worldY = cameraPosition.y + worldOffset.y;
-            float minH = min(cameraPosition.y, worldY);
+        if (XON_ATMOSPHERE_DENSITY > 0.001 && distanceToEye > 20.0) {
+            float effectiveDist = distanceToEye - 20.0;
+            float minH = min(cameraPosition.y, cameraPosition.y + worldOffset.y);
             float heightScale = exp(-max(minH - 62.0, 0.0) * 0.016);
             float aerialAmount = (1.0 - exp(-effectiveDist * 0.00095 * XON_ATMOSPHERE_DENSITY)) * heightScale * skylight;
-
-            vec3 sunDir = xonSunDirection();
-            float sunDot = dot(xonSafeNormalize(worldOffset), sunDir);
-            float mieGlow = pow(max(sunDot, 0.0), 10.0) * 0.35 + pow(max(sunDot, 0.0), 40.0) * 0.65;
-            vec3 inScattered = xonSunlightColor(sunDir) * (mieGlow * xonDaylight() * (1.0 - rainStrength * 0.85) * 0.45);
-
-            fog += inScattered;
             amount = max(amount, aerialAmount);
+        }
+
+        // Only evaluate full sky & solar Mie scattering when fog actually blends into the pixel (amount > 0.0).
+        if (amount > 0.0) {
+            vec3 skyDir = xonSafeNormalize(vec3(worldOffset.x, max(worldOffset.y, 0.0), worldOffset.z));
+            fog = xonSky(skyDir);
+            if (XON_ATMOSPHERE_DENSITY > 0.001) {
+                vec3 sunDir = xonSunDirection();
+                float s = max(dot(xonSafeNormalize(worldOffset), sunDir), 0.0);
+                float s2 = s * s;
+                float s4 = s2 * s2;
+                float s8 = s4 * s4;
+                float s10 = s8 * s2;
+                float s20 = s10 * s10;
+                float mieGlow = s10 * 0.35 + (s20 * s20) * 0.65;
+                fog += xonSunlightColor(sunDir) * (mieGlow * xonDaylight(sunDir.y) * (1.0 - rainStrength * 0.85) * 0.45);
+            }
         }
 #endif
     }
     float visionFog = 1.0 - exp(-distanceToEye * max(blindness, darknessFactor) * 0.16);
-    color = mix(color, fog, xonSaturate(amount));
+    if (amount > 0.0) color = mix(color, fog, xonSaturate(amount));
     return mix(color, vec3(0.0), xonSaturate(visionFog));
 }
 
