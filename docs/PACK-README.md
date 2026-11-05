@@ -1,4 +1,4 @@
-# XON Shader 1.8.2
+# XON Shader 1.9
 
 Warm light, clear water and a world in motion. XON is an Iris shader pack for
 Minecraft: Java Edition, with directional shadows, moving cloud shade, colored
@@ -8,13 +8,25 @@ ore illumination, layered water, volumetric light shafts and built-in anti-alias
 
 1. Use a compatible Minecraft Java + Iris + Sodium installation. The development
    target is Minecraft Java 26.3, Iris 1.11.7 and Sodium 0.9.2.
-2. Place XON-Shader-v1.8.2.zip directly in your instance's shaderpacks folder.
+2. Place XON-Shader-v1.9.zip directly in your instance's shaderpacks folder.
    Do not extract it or install it as a mod/resource pack.
 3. Open Video Settings → Shader Packs, select XON and Apply.
 4. Start with Balanced + Native. Speed lowers the effect budget.
 
 ## Highlights
 
+- Shape-aware colored lighting for stairs, slabs and trapdoors, with cleaner
+  transitions on neighboring pillars and other building details.
+- Small decorations, chains and planted pots no longer block a whole voxel of light.
+- More consistent indoor fill around windows and covered lights, retaining
+  individual source colors, strengths, ranges and the existing optimized pipeline.
+- Continuous light filtering near quartz pillars and covered lamps, with
+  corrected corner transitions and protected bright source cores.
+- Corrected blocked-light fallback and stale blocker history; circular pools,
+  source colors/radii, filtering and previous performance optimizations remain.
+- Sealed 1-block wall and corner occlusion for both lamps and glowing ores,
+  smooth floor-to-ceiling falloff on Quartz pillars, and rebalanced indoor light
+  intensity that preserves rich shadows while keeping circular light radii intact.
 - Smooth circular light pools across all 83 voxelized block-light families
   (75 lamps, plants and crystals plus 8 glowing ores across 228 block selectors),
   with faster post-teleport warmup and camera-motion frame pacing.
@@ -69,7 +81,8 @@ and adds GPU work. Flat or missing height maps remain flat.
 - Amber jack-o-lantern spill and cyan-teal soul-lantern spill on nearby blocks.
 - Soft distant-foliage shading that follows the sun/moon, with a broader shadow handoff.
 - Purple amethyst blocks, mint glow lichen, warm glow berries and cyan sculk veins.
-- Violet quartz stairs/slabs, extending the existing full-block quartz aura.
+- Full quartz blocks retain their violet aura; quartz stairs/slabs receive
+  neighboring light without originating an opaque full-cell aura.
 - Brighter regular/soul lantern cores with normally shaded metal frames.
 - Compact, smoothly eased bloom with about 30% more shared bloom energy.
 - Occluder-edge light sampling fades tiny contributions instead of amplifying flashes.

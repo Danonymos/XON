@@ -6,7 +6,7 @@ const float XON_DAY_FILL_GAIN = 0.94;
 const float XON_CAVE_FILL_GAIN = 0.92;
 const float XON_NETHER_FILL_GAIN = 0.84;
 const float XON_END_FILL_GAIN = 0.90;
-const float XON_INDOOR_LOCAL_GAIN = 0.80;
+const float XON_INDOOR_LOCAL_GAIN = 0.68;
 const float XON_OUTDOOR_LOCAL_GAIN = 0.90;
 
 float xonLocalLightForm(vec3 normal, float skylight, float foliage, float emission) {

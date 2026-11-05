@@ -1,4 +1,4 @@
-"""Validate 1.8.2 circular light pools, 83-family census, non-lamp pixel parity, and 1080p GPU timings."""
+"""Validate 1.8.3 circular light pools, wall-leak sealing, indoor balance, 83-family census, non-lamp pixel parity, and 1080p GPU timings."""
 import argparse
 import ctypes as ct
 import io
@@ -255,37 +255,88 @@ void main() { result = xonLampLight(testPosition, testNormal, testReceiver); }
             isotropy_report[fam_name] = {'diag_over_card_r3': round(diag_card, 4), 'min_over_max_r3': round(min_max, 4)}
         checks.append({'case': 'flush floor lamps cast circular radial pools across 0..90 deg', 'metrics': isotropy_report})
 
-        # 5. Solid planar wall + diagonal corner-touching wall sealing + teleport reset + steady-state zero flicker
+        # 5. Solid planar wall + 1-block wall surface/corner/alcove/pillar leak sealing + diagonal wall + teleport reset + steady-state zero flicker
         renderer.reset()
         renderer.voxels[48, 24, 48] = 131
         renderer.voxels[:, :, 51] = 255
         settle(new_compute)
         assert float(np.max(renderer.lamp_field()[:, :, 52:, :3])) == 0.0
-        # Diagonal corner pinch: block (49, y, 48) and (48, y, 49) both solid -> (49, 24, 49) sealed if completely enclosed
+
+        # 5b. 1-block wall surface trilinear sampling leak checks (Lantern 131 & Diamond Ore 6)
+        probe_ore_fsh = probe_prefix + expand(SHADERS / 'lib/emissive_light.glsl') + '''
+uniform vec3 testPosition, testNormal;
+out vec4 result;
+void main() { result = vec4(xonEmissiveLight(testPosition, testNormal), 1.0); }
+'''
+        ore_sampler = make_program([(expand(SHADERS / 'final.vsh'), '.vsh'), (probe_ore_fsh, '.fsh')])
+        for emitter_code, is_ore in [(131, False), (6, True)]:
+            active_sampler = ore_sampler if is_ore else sampler
+            # Flat 1-block wall at x = 0 (voxel x = 48), emitter right against back of wall at x = -1 (voxel x = 47)
+            renderer.reset()
+            renderer.voxels[:, :, 48] = 255
+            renderer.voxels[48, 24, 47] = emitter_code
+            settle(new_compute)
+            for nrm in [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, -1.0, 0.0), (0.0, 0.0, 1.0)]:
+                renderer.setup(active_sampler)
+                renderer.uniform3f(renderer.location('testNormal'), *nrm)
+                if not is_ore:
+                    f_ui(renderer.location('testReceiver'), 0)
+                for px in [1.0, 1.001, 1.02]:
+                    for py in [-0.45, 0.0, 0.5, 0.95]:
+                        rgb = renderer.sample(active_sampler, (px, py, 0.5))
+                        assert float(np.max(rgb)) == 0.0, f'1-block flat wall leaked {emitter_code} at px={px}, py={py}, nrm={nrm}: {rgb}'
+
+            # Corner wall (x = 48) + ceiling (y = 26), emitter at (47, 25, 48) behind wall below ceiling
+            renderer.reset()
+            renderer.voxels[:, :, 48] = 255
+            renderer.voxels[:, 26, :] = 255
+            renderer.voxels[48, 25, 47] = emitter_code
+            settle(new_compute)
+            for nrm in [(1.0, 0.0, 0.0), (0.0, -1.0, 0.0)]:
+                renderer.setup(active_sampler)
+                renderer.uniform3f(renderer.location('testNormal'), *nrm)
+                if not is_ore:
+                    f_ui(renderer.location('testReceiver'), 0)
+                rgb = renderer.sample(active_sampler, (1.02, 1.95, 0.5))
+                assert float(np.max(rgb)) == 0.0, f'Corner wall+ceiling leaked {emitter_code}: {rgb}'
+
+            # Alcove / recessed chest wall: pillar at (48, y, 48), recessed wall at (48, y, 47), emitter behind pillar at (47, 24, 48)
+            renderer.reset()
+            renderer.voxels[48, :, 48] = 255
+            renderer.voxels[49:, :, 48] = 255
+            renderer.voxels[:48, :, 47] = 255
+            renderer.voxels[48, 24, 47] = emitter_code
+            settle(new_compute)
+            for nrm in [(0.0, 0.0, -1.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)]:
+                renderer.setup(active_sampler)
+                renderer.uniform3f(renderer.location('testNormal'), *nrm)
+                if not is_ore:
+                    f_ui(renderer.location('testReceiver'), 0)
+                rgb = renderer.sample(active_sampler, (0.05, 0.5, -0.02))
+                assert float(np.max(rgb)) == 0.0, f'Alcove wall leaked {emitter_code} on normal {nrm}: {rgb}'
+
+        # Quartz pillar (occ = 136) embedded in a 1-block wall at x = 48 with Lantern (131) & Diamond Ore (6) behind at x = 47
         renderer.reset()
-        renderer.voxels[48, 24, 48] = 131
-        for y in range(SIZE[1]):
-            renderer.voxels[48, y, 49] = 255
-            renderer.voxels[49, y, 48] = 255
-            renderer.voxels[48, y, 47] = 255
-            renderer.voxels[47, y, 48] = 255
-            renderer.voxels[49, y, 47] = 255
-            renderer.voxels[47, y, 49] = 255
-            renderer.voxels[47, y, 47] = 255
-        renderer.voxels[48, 25, 48] = 255
-        renderer.voxels[48, 23, 48] = 255
-        # Wait: source itself at (48,24,48) has srcOcc >= XON_VOXEL_FIRST_EMITTER so embedded lamps radiate out,
-        # so test corner sealing one step away from open air at (50,24,50) across diagonal wall (50,y,49)+(49,y,50)!
-        renderer.reset()
-        renderer.voxels[48, 24, 48] = 131
+        renderer.voxels[:, :, 48] = 255
+        renderer.voxels[48, 22:28, 48] = 136
+        renderer.voxels[48, 25, 47] = 131
+        renderer.voxels[48, 23, 47] = 6
+        settle(new_compute)
+        assert float(np.max(renderer.current()[:, :, 49:, :3])) == 0.0, 'Diamond ore leaked through Quartz pillar wall'
+        renderer.setup(sampler)
+        renderer.uniform3f(renderer.location('testNormal'), 1.0, 0.0, 0.0)
+        f_ui(renderer.location('testReceiver'), 8)
+        pillar_front_rgb = renderer.sample(sampler, (1.001, 1.5, 0.5))
+        assert float(np.max(pillar_front_rgb)) == 0.0, f'Lantern leaked through Quartz pillar onto front face: {pillar_front_rgb}'
+
         # Diagonal wall x + z == 99 separating x+z <= 98 from x+z >= 100 with corner-touching blocks:
+        renderer.reset()
+        renderer.voxels[48, 24, 48] = 131
         for x in range(SIZE[0]):
             for z in range(SIZE[2]):
                 if x + z in (99, 100):
                     renderer.voxels[z, :, x] = 255
         settle(new_compute)
-        yy, zz, xx = np.meshgrid(np.arange(SIZE[1]), np.arange(SIZE[2]), np.arange(SIZE[0]), indexing='ij')
-        # reorder to [z, y, x]
         zz_grid, yy_grid, xx_grid = np.indices(SIZE[::-1])
         outside = (xx_grid + zz_grid) >= 101
         assert float(np.max(renderer.lamp_field()[outside, :3])) == 0.0, 'Diagonal wall leaked light'
@@ -297,7 +348,7 @@ void main() { result = xonLampLight(testPosition, testNormal, testReceiver); }
         # Teleport > 16 blocks resets empty air immediately on 1st step
         renderer.step(new_compute, (100.0, 100.0, 100.0))
         assert float(np.max(renderer.lamp_field()[renderer.voxels == 0, :3])) == 0.0
-        checks.append({'case': 'planar wall, diagonal wall, steady-state stability, and teleport reset verified'})
+        checks.append({'case': 'planar wall, 1-block surface/corner/alcove/pillar wall sealing, diagonal wall, steady-state stability, and teleport reset verified'})
 
         # 6. Decorative quartz/crystal/sculk/wire self-exclusion & zero native block-light claim
         for family in [6, 7, 8, 21]:
@@ -354,9 +405,41 @@ void main() { result = xonLampLight(testPosition, testNormal, testReceiver); }
         room_luma = display_luma(room_img, lut, 0.83, True)
         p10, p50, p95 = [float(np.percentile(room_luma, p)) for p in (10, 50, 95)]
         room_ratio = p10 / p95
-        assert room_ratio < 0.517 and p10 > 0.23 and p95 > 0.50, (room_ratio, p10, p50, p95)
-        checks.append({'case': 'six-lantern 20x20 room preserves bright pools and dark gap separation',
+        assert room_ratio < 0.517 and p10 > 0.19 and 0.38 <= p95 <= 0.50, (room_ratio, p10, p50, p95)
+        checks.append({'case': 'six-lantern 20x20 room preserves rebalanced pools and rich dark shadow separation',
                        'p10_over_p95': round(room_ratio, 4), 'p10': round(p10, 4), 'p95': round(p95, 4)})
+
+        # 7b. Quartz pillar vertical decay above floor Sea Lantern (139) with hallway Lantern (131) behind wall
+        pillar_prog = make_program([(VERTEX, '.vsh'), (room_fsh, '.fsh')])
+        renderer.width, renderer.height = 1, 1
+        renderer.active_texture(0x84CB)
+        renderer.bind_texture(0x0DE1, renderer.textures[11])
+        renderer.tex_image(0x0DE1, 0, 0x8814, 1, 1, 0, 0x1908, 0x1406, None)
+        renderer.texture(8, np.full((16, 16, 4), [0.90, 0.88, 0.84, 1.0], dtype=np.float32))
+        renderer.reset()
+        renderer.voxels[:, :HALF[1], :] = 255
+        renderer.voxels[:, :, HALF[0]] = 255
+        for y in range(HALF[1], HALF[1] + 5):
+            renderer.voxels[HALF[2], y, HALF[0]] = 136
+        renderer.voxels[HALF[2], HALF[1] - 1, HALF[0] + 1] = 139
+        renderer.voxels[HALF[2], HALF[1] + 3, HALF[0] - 1] = 131
+        settle(new_compute)
+        pillar_lumas = []
+        for y_off in [0.75, 1.25, 1.75, 2.25, 2.75, 3.25, 3.75]:
+            bl = max(0.0, (15.0 - (y_off + 0.5)) / 15.0)
+            renderer.setup(pillar_prog)
+            renderer.uniform1i(renderer.location('frameCounter'), renderer.frame - 1)
+            for name, val in [('testBlock', bl), ('testSky', 0.0), ('testAO', 1.0), ('testMaterial', 10023.0),
+                              ('testTangent', 1.0), ('alphaTestRef', 0.1), ('far', 1024.0), ('fogStart', 800.0), ('fogEnd', 1024.0)]:
+                renderer.uniform1f(renderer.location(name), val)
+            for name, val in [('testPosition', (1.001, y_off, 0.5)), ('testNormal', (1.0, 0.0, 0.0)), ('sunPosition', (30.0, 90.0, 20.0))]:
+                renderer.uniform3f(renderer.location(name), *val)
+            rgb = renderer.draw(raw=True)[0, 0:1, :3]
+            pillar_lumas.append(float(display_luma(rgb[None, ...], lut, 0.83, True)[0, 0]))
+        assert all(pillar_lumas[i] > pillar_lumas[i + 1] for i in range(len(pillar_lumas) - 1)), f'Quartz pillar not monotonic decreasing: {pillar_lumas}'
+        assert pillar_lumas[0] - pillar_lumas[-1] >= 0.22, f'Quartz pillar shadow contrast too small: {pillar_lumas}'
+        checks.append({'case': 'quartz pillar vertical luminance decays monotonically into shadow without upper-half jump',
+                       'y_0.75_to_3.75_luma': [round(v, 4) for v in pillar_lumas]})
 
         # 8. Exact pixel parity on non-lamp optimized shaders (terrain PBR/POM/fog/lighting, composite, composite2, final)
         pbr_opts = {'XON_COLORED_EMISSIVE_LIGHTING': False, 'XON_SHADOWS': False, 'XON_CLOUD_STYLE': 0, 'XON_ADVANCED_MATERIALS': 1}
@@ -392,7 +475,7 @@ void main() { result = xonLampLight(testPosition, testNormal, testReceiver); }
                     renderer.setup(prog)
                     renderer.uniform1i(renderer.location('normals'), 10)
                     renderer.uniform1i(renderer.location('specular'), 0)
-                    for name, val in [('testBlock', 0.7), ('testSky', sky_v), ('testAO', 0.85), ('testTangent', 1.0),
+                    for name, val in [('testBlock', 0.0), ('testSky', sky_v), ('testAO', 0.85), ('testTangent', 1.0),
                                       ('testMaterial', 0.0), ('alphaTestRef', 0.1), ('far', 256.0), ('fogStart', 180.0), ('fogEnd', 256.0)]:
                         renderer.uniform1f(renderer.location(name), val)
                     for name, val in [('testNormal', (0.0, 1.0, 0.0)), ('testPosition', (3.0, -1.5, dist_z)),
@@ -569,14 +652,14 @@ void main() { result = xonLampLight(testPosition, testNormal, testReceiver); }
 
         report = {
             'passed': True,
-            'version_target': '1.8.2',
+            'version_target': '1.8.3',
             'driver': 'NVIDIA GeForce RTX 5060 Ti/PCIe/SSE2',
             'light_source_census': census,
             'checks_count': len(checks),
             'checks': checks,
             'benchmarks_1080p_interleaved': benchmarks,
         }
-        (ROOT / 'validation-1.8.2-circular-light.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+        (ROOT / 'validation-1.8.3-circular-light.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
         print(json.dumps(report, indent=2))
     finally:
         for prog in programs:

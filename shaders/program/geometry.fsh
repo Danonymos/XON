@@ -285,20 +285,24 @@ void main() {
 #ifdef XON_EMISSIVE_SAMPLING
         vec3 lightSamplingNormal = geomNormal;
         uint emitter = xonVoxelEmitterId(xonMaterial);
-        uint receiverFamily = emitter >= XON_LAMP_FIRST ? emitter - 128u : 0u;
+        uint receiverFamily = xonLampFamily(xonMaterial);
         vec3 oreLight;
         vec4 lampLight;
         xonSampleLocalLights(xonPlayerPosition, lightSamplingNormal, receiverFamily,
-                             emitter == XON_VOXEL_EMPTY, emission < 0.5, oreLight, lampLight);
-        float lampCoverage = smoothstep(0.25, 0.70, lampLight.a / max(xonLightLevels.x, 1.0 / 15.0)) * (1.0 - nightVision);
+                             emitter == XON_VOXEL_EMPTY || xonPartialVoxel(emitter), emission < 0.5, oreLight, lampLight);
+        float indoorEnv = (1.0 - smoothstep(0.20, 0.85, xonLightLevels.y)) * (1.0 - nightVision);
+        // Native block light uses one composition regime, including rooms with window skylight.
+        float lampCoverage = xonLocalLightVolumeFade(xonPlayerPosition) * (1.0 - nightVision)
+                           * float(emission < 0.5) * smoothstep(0.0, 1.0 / 15.0, xonLightLevels.x);
         float lampLuma = max(xonLuminance(lampLight.rgb), 0.0);
-        float poolBounce = clamp(sqrt(lampLuma) * 0.76, 0.0, 0.75);
-        float ambientFloor = xonLightLevels.x * mix(0.46, 0.10, xonLightLevels.y);
-        float lampShade = lampCoverage * (1.0 - smoothstep(0.20, 0.85, xonLightLevels.y))
-                        * (1.0 - smoothstep(0.02, 0.20, lampLuma));
+        float bounceCap = mix(0.72, 0.46, indoorEnv);
+        float poolBounce = clamp(sqrt(lampLuma) * bounceCap, 0.0, bounceCap);
+        float ambientFloor = xonLightLevels.x * mix(mix(0.26, 0.10, xonLightLevels.y), 0.44, indoorEnv);
+        float lampShade = lampCoverage * indoorEnv * (1.0 - smoothstep(0.02, 0.32, lampLuma));
         float localForm = xonLocalLightForm(normal, xonLightLevels.y, foliage, emission);
-        vec3 localSpill = color * lampLight.rgb * (1.45 * XON_LAMP_POOL_GAIN * XON_LOCAL_LIGHT_STRENGTH / 0.80) * localForm;
-        localSpill += color * oreLight * 1.45 * localForm;
+        float indoorSpillScale = mix(1.10, 0.90 / (1.0 + lampLuma * 0.34), indoorEnv);
+        vec3 localSpill = color * lampLight.rgb * (1.45 * XON_LAMP_POOL_GAIN * XON_LOCAL_LIGHT_STRENGTH / 0.80 * indoorSpillScale) * localForm;
+        localSpill += color * oreLight * (1.45 * mix(1.0, 0.84, indoorEnv)) * localForm;
         lightingLevels.x = mix(lightingLevels.x, max(ambientFloor, poolBounce), lampCoverage);
 #endif
         color = xonLighting(color, normal, xonViewPosition, xonPlayerPosition, lightingLevels, emission, foliage, sunVisibility);

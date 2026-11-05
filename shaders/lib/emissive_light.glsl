@@ -1,5 +1,6 @@
 #ifndef XON_EMISSIVE_LIGHT
 #define XON_EMISSIVE_LIGHT
+#include "/lib/block_shapes.glsl"
 
 // Camera-centred voxel volume shared by the shadow pass (voxelization), shadowcomp
 // (flood fill) and geometry passes (sampling). Must match the image sizes in shaders.properties.
@@ -33,6 +34,9 @@ uint xonLampFamily(float material);
 
 uint xonVoxelEmitterId(float material) {
     int id = int(material + 0.5);
+    if (id >= 11000 && id < 11000 + XON_SHAPE_COUNT) return uint(id - 11000) + 10u;
+    if (id >= 11100 && id < 11100 + XON_SHAPE_COUNT) return uint(id - 11100) + 10u;
+    if (id >= 11200 && id < 11206) return uint(id - 11200) + 64u;
     uint family = xonLampFamily(material);
     if (family > 0u) return 128u + family;
     if (id == 10010) return 2u;
@@ -67,6 +71,12 @@ ivec3 xonWorldToVoxel(vec3 playerPos) {
 
 bool xonVoxelInBounds(ivec3 voxel) {
     return all(greaterThanEqual(voxel, ivec3(0))) && all(lessThan(voxel, XON_VOXEL_SIZE));
+}
+
+float xonLocalLightVolumeFade(vec3 playerPos) {
+    vec3 position = playerPos + fract(cameraPosition) + vec3(XON_VOXEL_HALF);
+    vec3 margin = min(position, vec3(XON_VOXEL_SIZE) - position);
+    return smoothstep(2.0, 8.0, min(margin.x, min(margin.y, margin.z)));
 }
 
 vec3 xonVoxelSurfacePosition(vec3 position, vec3 normal) {
@@ -123,7 +133,9 @@ float xonIndoorOcclusion(vec3 playerPos, vec3 normal) {
             // even with small camera-roundtrip components in the geometric normal.
             ivec3 plane = base;
             if (normal[axis] < 0.0) plane[axis] -= 1;
-            uint occupancy = (texelFetch(xonContactTex, plane, 0).r >> uint(axis * 9)) & 511u;
+            uint contact = texelFetch(xonContactTex, plane, 0).r;
+            if ((contact >> 27u) != 0u) contact &= ~XON_TRAPDOOR_META;
+            uint occupancy = (contact >> uint(axis * 9)) & 511u;
             if (occupancy == 0u) return 1.0;
             for (int v = -1; v <= 1; ++v) {
                 for (int u = -1; u <= 1; ++u) {
@@ -157,48 +169,183 @@ float xonIndoorOcclusion(vec3 playerPos, vec3 normal) {
     return 1.0 - 0.72 * volumeFade * blocked / max(total, 0.0001);
 }
 
+uint xonAdjacentLightCorners(uint corners) {
+    return ((corners & 85u) << 1u) | ((corners & 170u) >> 1u)
+         | ((corners & 51u) << 2u) | ((corners & 204u) >> 2u)
+         | ((corners & 15u) << 4u) | ((corners & 240u) >> 4u);
+}
+
+uint xonConnectedLightCorners(uint open, uint anchor) {
+    uint reachable = open & (1u << anchor);
+    if (open == 255u || reachable == 0u) return reachable == 0u ? 0u : open;
+    // Neighboring open anchors share one component, so crossing a cell edge cannot change the filter abruptly.
+    for (int step = 0; step < 7; ++step) {
+        uint neighbors = xonAdjacentLightCorners(reachable);
+        uint connected = (reachable | neighbors) & open;
+        if (connected == reachable) break;
+        reachable = connected;
+    }
+    return reachable;
+}
+
+uint xonVisibleLampCorners(uint open, uint terminals, uint anchor) {
+    uint visible = xonConnectedLightCorners(open, anchor);
+    // Opaque emitters contribute their own light as endpoints, never as paths to other samples.
+    return visible | (terminals & (xonAdjacentLightCorners(visible) | (1u << anchor)));
+}
+
+uint xonShapeNeighbors(uint reached, uvec3 edges) {
+    return ((reached & edges.x) << 1u) | ((reached >> 1u) & edges.x)
+         | ((reached & edges.y) << 2u) | ((reached >> 2u) & edges.y)
+         | ((reached & edges.z) << 4u) | ((reached >> 4u) & edges.z);
+}
+
+uint xonVisibleShapeCorners(uint open, uint terminals, uint anchor, uvec3 edges) {
+    uint reached = open & (1u << anchor);
+    for (int step = 0; step < 7; ++step) {
+        uint next = (reached | xonShapeNeighbors(reached, edges)) & open;
+        if (next == reached) break;
+        reached = next;
+    }
+    return reached | (terminals & (xonShapeNeighbors(reached, edges) | (1u << anchor)));
+}
+
+uint xonStencilVoid(uvec2 shapes, int corner) {
+    return (shapes[corner >> 2] >> uint((corner & 3) * 8)) & 255u;
+}
+
 void xonSampleLocalLights(vec3 playerPos, vec3 normal, uint receiverFamily, bool sampleOre, bool sampleLamp,
                            out vec3 oreLight, out vec4 lampLight) {
     oreLight = vec3(0.0);
     lampLight = vec4(0.0);
     if (!sampleOre && !sampleLamp) return;
-    vec3 voxelPos = xonVoxelSurfacePosition(playerPos + fract(cameraPosition) + vec3(XON_VOXEL_HALF), normal)
-                  + normal * 0.5 - 0.5;
+    vec3 position = playerPos + fract(cameraPosition) + vec3(XON_VOXEL_HALF);
+    vec3 projected = xonVoxelSurfacePosition(position, normal);
+    vec3 voxelPos = projected + normal * 0.5 - 0.5;
+    if (dot(projected - position, projected - position) > 0.0001) {
+        ivec3 owner = ivec3(floor(position - normal * 0.01));
+        uint shape = xonVoxelInBounds(owner) ? texelFetch(xonContactTex, owner, 0).r >> 27u : 0u;
+        if (shape != 0u) {
+            // A 3/16 trapdoor face needs the empty side of its conservative half-cell, not the outer cube boundary.
+            float faceInset = dot(vec3(owner) + 0.5 - position, normal);
+            const float trapdoorInset = 0.5 - 3.0 / 16.0;
+            if (abs(faceInset - trapdoorInset) < 0.001) position += normal * faceInset;
+            voxelPos = position + normal * 0.02 - 0.5;
+        }
+    }
     vec3 edgeDistance = min(voxelPos, vec3(XON_VOXEL_SIZE) - 1.0 - voxelPos);
     float volumeFade = smoothstep(0.0, 6.0, min(edgeDistance.x, min(edgeDistance.y, edgeDistance.z)));
     if (volumeFade <= 0.0) return;
     ivec3 base = ivec3(floor(voxelPos));
     vec3 blend = voxelPos - vec3(base);
+    ivec3 fOff = clamp(ivec3(floor(voxelPos + 0.5)) - base, 0, 1);
+    int fc = fOff.x | (fOff.y << 1) | (fOff.z << 2);
     bool readFirst = (frameCounter & 1) == 0;
+    vec4 oreSamples[8];
+    vec4 lampSamples[8];
+    uint oreOpen = 0u;
+    uint lampOpen = 0u;
+    uint lampTerminals = 0u;
+    uint shapeCandidates = 0u;
+    for (int corner = 0; corner < 8; ++corner) {
+        ivec3 cell = base + ivec3(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
+        if (sampleOre) {
+            vec4 s = readFirst ? texelFetch(xonLightTex0, cell, 0) : texelFetch(xonLightTex1, cell, 0);
+            if (s.a > -1.0 && (floatBitsToUint(s.a) & 0x80000000u) != 0u) shapeCandidates |= 1u << uint(corner);
+            oreSamples[corner] = s;
+            if (s.a >= 0.0) oreOpen |= 1u << uint(corner);
+        }
+        if (sampleLamp) {
+            vec4 s = readFirst ? texelFetch(xonLampTex0, cell, 0) : texelFetch(xonLampTex1, cell, 0);
+            if (s.a != -1.0 && (floatBitsToUint(s.a) & 0x80000000u) != 0u) shapeCandidates |= 1u << uint(corner);
+            lampSamples[corner] = s;
+            if (s.a >= 0.0) lampOpen |= 1u << uint(corner);
+            if (s.a < -16.0) lampTerminals |= 1u << uint(corner);
+        }
+    }
     vec3 colorSum = vec3(0.0);
     float levelSum = 0.0;
     float weightSum = 0.0;
     vec3 lampColor = vec3(0.0);
     float lampRemaining = 0.0, lampWeight = 0.0;
+    uint oreVisible = sampleOre ? xonConnectedLightCorners(oreOpen, uint(fc)) : 0u;
+    uint lampVisible = sampleLamp ? xonVisibleLampCorners(lampOpen, lampTerminals, uint(fc)) : 0u;
+    if (shapeCandidates != 0u) {
+        uint shapeCorners = 0u;
+        uint thinCorners = 0u;
+        uvec2 shapeCodes = uvec2(0xFFFFFFFFu);
+        for (int corner = 0; corner < 8; ++corner) {
+            uint bit = 1u << uint(corner);
+            if ((shapeCandidates & bit) == 0u) continue;
+            ivec3 cell = base + ivec3(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
+            uint contact = texelFetch(xonContactTex, cell, 0).r;
+            uint shape = contact >> 27u;
+            if (shape == 0u) continue;
+            shapeCorners |= bit;
+            if ((contact & XON_TRAPDOOR_META) != 0u) thinCorners |= bit;
+            shapeCodes[corner >> 2] &= ~(XON_SHAPE_SOLID[shape - 1u] << uint((corner & 3) * 8));
+            if (sampleOre) {
+                oreSamples[corner].a = abs(oreSamples[corner].a);
+                oreOpen |= bit;
+            }
+            if (sampleLamp) {
+                lampSamples[corner].a = abs(lampSamples[corner].a);
+                lampOpen |= bit;
+                lampTerminals &= ~bit;
+            }
+        }
+        uvec3 edges = uvec3(0u);
+        edges.x = uint(xonShapeFaceOpen(xonStencilVoid(shapeCodes, 0), xonStencilVoid(shapeCodes, 1), 0, true))
+                | (uint(xonShapeFaceOpen(xonStencilVoid(shapeCodes, 2), xonStencilVoid(shapeCodes, 3), 0, true)) << 2u)
+                | (uint(xonShapeFaceOpen(xonStencilVoid(shapeCodes, 4), xonStencilVoid(shapeCodes, 5), 0, true)) << 4u)
+                | (uint(xonShapeFaceOpen(xonStencilVoid(shapeCodes, 6), xonStencilVoid(shapeCodes, 7), 0, true)) << 6u);
+        edges.y = uint(xonShapeFaceOpen(xonStencilVoid(shapeCodes, 0), xonStencilVoid(shapeCodes, 2), 1, true))
+                | (uint(xonShapeFaceOpen(xonStencilVoid(shapeCodes, 1), xonStencilVoid(shapeCodes, 3), 1, true)) << 1u)
+                | (uint(xonShapeFaceOpen(xonStencilVoid(shapeCodes, 4), xonStencilVoid(shapeCodes, 6), 1, true)) << 4u)
+                | (uint(xonShapeFaceOpen(xonStencilVoid(shapeCodes, 5), xonStencilVoid(shapeCodes, 7), 1, true)) << 5u);
+        edges.z = uint(xonShapeFaceOpen(xonStencilVoid(shapeCodes, 0), xonStencilVoid(shapeCodes, 4), 2, true))
+                | (uint(xonShapeFaceOpen(xonStencilVoid(shapeCodes, 1), xonStencilVoid(shapeCodes, 5), 2, true)) << 1u)
+                | (uint(xonShapeFaceOpen(xonStencilVoid(shapeCodes, 2), xonStencilVoid(shapeCodes, 6), 2, true)) << 2u)
+                | (uint(xonShapeFaceOpen(xonStencilVoid(shapeCodes, 3), xonStencilVoid(shapeCodes, 7), 2, true)) << 3u);
+        oreVisible = sampleOre ? xonVisibleShapeCorners(oreOpen, 0u, uint(fc), edges) : 0u;
+        lampVisible = sampleLamp ? xonVisibleShapeCorners(lampOpen, lampTerminals, uint(fc), edges) : 0u;
+        if ((shapeCorners & (1u << uint(fc))) != 0u) {
+            vec3 point = position + normal * 0.02 - vec3(base + fOff);
+            uint octant = uint(point.x >= 0.5) | (uint(point.y >= 0.5) << 1u) | (uint(point.z >= 0.5) << 2u);
+            uint solid = 255u ^ xonStencilVoid(shapeCodes, fc);
+            bool inside = (thinCorners & (1u << uint(fc))) != 0u ? xonTrapdoorPointSolid(solid, point) : (solid & (1u << octant)) != 0u;
+            if (inside) {
+                oreVisible = 0u;
+                lampVisible = 0u;
+            }
+        }
+    }
     for (int corner = 0; corner < 8; ++corner) {
         ivec3 offset = ivec3(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1);
         vec3 axis = mix(1.0 - blend, blend, vec3(offset));
         float interpolation = axis.x * axis.y * axis.z;
         if (interpolation == 0.0) continue;
-        ivec3 cell = base + offset;
-        if (sampleOre) {
-            vec4 light = readFirst ? texelFetch(xonLightTex0, cell, 0) : texelFetch(xonLightTex1, cell, 0);
-            float weight = interpolation * step(0.0, light.a);
-            colorSum += light.rgb * (light.a * weight);
-            levelSum += light.a * weight;
-            weightSum += weight;
+        uint cornerBit = 1u << uint(corner);
+        if ((oreVisible & cornerBit) != 0u) {
+            vec4 light = oreSamples[corner];
+            colorSum += light.rgb * (light.a * interpolation);
+            levelSum += light.a * interpolation;
+            weightSum += interpolation;
         }
         if (sampleLamp) {
-            vec4 light = readFirst ? texelFetch(xonLampTex0, cell, 0) : texelFetch(xonLampTex1, cell, 0);
-            float weight = interpolation * step(0.0, light.a);
+            vec4 light = lampSamples[corner];
             uint family;
             float unpackedLevel;
-            xonUnpackLampState(max(light.a, 0.0), family, unpackedLevel);
-            bool ownAura = receiverFamily >= 6u && receiverFamily <= 8u && receiverFamily == family;
-            lampColor += ownAura ? vec3(0.0) : light.rgb * weight;
+            xonUnpackLampState(abs(light.a), family, unpackedLevel);
             bool decorative = (family >= 6u && family <= 8u) || family == 21u;
-            lampRemaining += decorative ? 0.0 : unpackedLevel * (weight / 15.0);
-            lampWeight += weight;
+            // Coverage identifies captured Minecraft light even when its radiance is occluded.
+            // Losing visibility must not restore the brighter, unoccluded scalar fallback.
+            lampRemaining += decorative ? 0.0 : unpackedLevel * (interpolation / 15.0);
+            if ((lampVisible & cornerBit) != 0u) {
+                bool ownAura = receiverFamily >= 6u && receiverFamily <= 8u && receiverFamily == family;
+                lampColor += ownAura ? vec3(0.0) : light.rgb * interpolation;
+                lampWeight += interpolation;
+            }
         }
     }
     if (levelSum > 0.0001) {
@@ -208,7 +355,7 @@ void xonSampleLocalLights(vec3 playerPos, vec3 normal, uint receiverFamily, bool
         oreLight = (colorSum / levelSum) * falloff * volumeFade * occlusionFade * XON_EMISSIVE_INTENSITY;
     }
     float confidence = smoothstep(0.0, 0.5, lampWeight) * volumeFade / max(lampWeight, 0.0001);
-    lampLight = vec4(lampColor, lampRemaining) * confidence;
+    lampLight = vec4(lampColor * confidence, lampRemaining * volumeFade);
 }
 
 vec3 xonEmissiveLight(vec3 playerPos, vec3 normal) {

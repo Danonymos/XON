@@ -47,26 +47,45 @@ bool xonIsSolidOcc(uint occ) {
     return occ == XON_VOXEL_SOLID || occ == XON_VOXEL_OCCLUDER;
 }
 
-// Diagonal and corner steps require an open intermediate path so light never leaks diagonally through corner-touching walls,
-// while embedded floor/wall/ceiling emitters still radiate cleanly into adjacent diagonal open air.
+bool xonBlocksLightStep(uint occ) {
+    return xonIsSolidOcc(occ)
+        || xonPartialVoxel(occ)
+        || (occ >= XON_VOXEL_FIRST_EMITTER && occ <= 9u)
+        || (occ >= 134u && occ <= 136u);
+}
+
+// Diagonal and corner steps require a continuous face-connected open path so light never leaks through or around walls,
+// while flush-embedded floor/wall/ceiling emitters still radiate isotropically through their exposed open face.
 bool xonStepOpen12(ivec3 dst12, ivec3 d) {
-    int manhattan = abs(d.x) + abs(d.y) + abs(d.z);
-    if (manhattan <= 1) return true;
     uint srcOcc = xonOccTile[xonTile12(dst12 + d)];
-    if (srcOcc >= XON_VOXEL_FIRST_EMITTER && srcOcc < XON_VOXEL_OCCLUDER) return true;
+    if (xonIsSolidOcc(srcOcc)) return false;
+    int manhattan = abs(d.x) + abs(d.y) + abs(d.z);
+    uint dstOcc = xonOccTile[xonTile12(dst12)];
+    bool partial = xonPartialVoxel(srcOcc) || xonPartialVoxel(dstOcc);
+    if (manhattan == 0) return true;
+    if (manhattan == 1) {
+        int axis = d.x != 0 ? 0 : (d.y != 0 ? 1 : 2);
+        return !partial || xonShapeFaceOpen(xonVoxelOpenOctants(dstOcc), xonVoxelOpenOctants(srcOcc), axis, d[axis] > 0);
+    }
+    if (partial) return false;
+    bool fromEmitter = srcOcc >= XON_VOXEL_FIRST_EMITTER && srcOcc < XON_VOXEL_OCCLUDER && !(srcOcc >= 134u && srcOcc <= 136u);
     if (manhattan == 2) {
         ivec3 a = d.x != 0 ? ivec3(d.x, 0, 0) : ivec3(0, d.y, 0);
         ivec3 b = d - a;
-        return !xonIsSolidOcc(xonOccTile[xonTile12(dst12 + a)])
-            || !xonIsSolidOcc(xonOccTile[xonTile12(dst12 + b)]);
+        bool openA = !xonBlocksLightStep(xonOccTile[xonTile12(dst12 + a)]);
+        bool openB = !xonBlocksLightStep(xonOccTile[xonTile12(dst12 + b)]);
+        return fromEmitter ? (openA || openB) : (openA && openB);
     }
-    bool openFace = !xonIsSolidOcc(xonOccTile[xonTile12(dst12 + ivec3(d.x, 0, 0))])
-                 || !xonIsSolidOcc(xonOccTile[xonTile12(dst12 + ivec3(0, d.y, 0))])
-                 || !xonIsSolidOcc(xonOccTile[xonTile12(dst12 + ivec3(0, 0, d.z))]);
-    bool openEdge = !xonIsSolidOcc(xonOccTile[xonTile12(dst12 + ivec3(d.x, d.y, 0))])
-                 || !xonIsSolidOcc(xonOccTile[xonTile12(dst12 + ivec3(d.x, 0, d.z))])
-                 || !xonIsSolidOcc(xonOccTile[xonTile12(dst12 + ivec3(0, d.y, d.z))]);
-    return openFace && openEdge;
+    bool fx = !xonBlocksLightStep(xonOccTile[xonTile12(dst12 + ivec3(d.x, 0, 0))]);
+    bool fy = !xonBlocksLightStep(xonOccTile[xonTile12(dst12 + ivec3(0, d.y, 0))]);
+    bool fz = !xonBlocksLightStep(xonOccTile[xonTile12(dst12 + ivec3(0, 0, d.z))]);
+    bool exy = !xonBlocksLightStep(xonOccTile[xonTile12(dst12 + ivec3(d.x, d.y, 0))]);
+    bool exz = !xonBlocksLightStep(xonOccTile[xonTile12(dst12 + ivec3(d.x, 0, d.z))]);
+    bool eyz = !xonBlocksLightStep(xonOccTile[xonTile12(dst12 + ivec3(0, d.y, d.z))]);
+    if (fromEmitter) {
+        return (exy && fx && fy) || (exz && fx && fz) || (eyz && fy && fz);
+    }
+    return fx && fy && fz && exy && exz && eyz;
 }
 
 // Exact 1/8-block binary-fraction quasi-Euclidean step weights (1.0 = 8/8, 1.375 = 11/8, 1.75 = 14/8).
@@ -117,6 +136,7 @@ void main() {
             ivec3 prevCell = cell + camShift;
             if (xonVoxelInBounds(prevCell)) {
                 prevLampA = (!writeFirst ? texelFetch(xonLampTex0, prevCell, 0) : texelFetch(xonLampTex1, prevCell, 0)).a;
+                if ((occ >= 134u && occ <= 136u) || xonPartialVoxel(occ)) prevLampA = abs(prevLampA);
                 if (prevLampA > 0.0) threadFlags |= 2u;
             }
         }
@@ -129,6 +149,7 @@ void main() {
             vec4 prevOre = vec4(0.0);
             if (xonVoxelInBounds(prevCell)) {
                 prevOre = !writeFirst ? texelFetch(xonLightTex0, prevCell, 0) : texelFetch(xonLightTex1, prevCell, 0);
+                if (prevOre.a > -1.0) prevOre.a = abs(prevOre.a);
                 if (prevOre.a > 0.0) threadFlags |= 1u;
             }
             xonRgbTile[index] = xonPackVec4(prevOre);
@@ -142,15 +163,22 @@ void main() {
     ivec3 c10 = ivec3(gl_LocalInvocationID) + 1;
     uint data = xonOccTile[xonTile12(local12)];
     uint contactMask = (tileFlags & 4u) != 0u ? xonContactPlanes(local12) : 0u;
+    if (xonPartialVoxel(data)) contactMask |= (xonVoxelShapeIndex(data) + 1u) << 27u;
+    if (xonTrapdoorVoxel(data)) contactMask |= XON_TRAPDOOR_META;
     imageStore(xonContactImg, voxel, uvec4(contactMask, 0u, 0u, 0u));
 
     bool lampSource = data >= XON_LAMP_FIRST && data <= XON_LAMP_LAST;
+    bool decorativeSolid = data >= 134u && data <= 136u;
     vec4 light = vec4(0.0, 0.0, 0.0, -1.0);
     if (data == XON_VOXEL_OCCLUDER) {
         light.a = -2.0;
-    } else if (data >= XON_VOXEL_FIRST_EMITTER && !lampSource) {
+    } else if (decorativeSolid) {
+        light.a = -1.0;
+    } else if (data >= XON_VOXEL_FIRST_EMITTER && data <= 9u) {
         light = vec4(xonSaturateEmitterColor(xonVoxelEmitterColor(data)), 1.0);
-    } else if (data == XON_VOXEL_EMPTY || lampSource) {
+    } else if (lampSource) {
+        light = vec4(0.0);
+    } else if (data == XON_VOXEL_EMPTY || xonPartialVoxel(data)) {
         if ((tileFlags & 1u) != 0u && oreHistoryValid) {
             float brightest = 0.0;
             vec3 colorSum = vec3(0.0);
@@ -160,6 +188,8 @@ void main() {
                     for (int dx = -1; dx <= 1; ++dx) {
                         if (dx == 0 && dy == 0 && dz == 0) continue;
                         ivec3 d = ivec3(dx, dy, dz);
+                        uint sourceOcc = xonOccTile[xonTile12(local12 + d)];
+                        if (sourceOcc != XON_VOXEL_EMPTY && !xonPartialVoxel(sourceOcc) && !(sourceOcc >= XON_VOXEL_FIRST_EMITTER && sourceOcc <= 9u)) continue;
                         uvec2 packedNeighbor = xonRgbTile[xonTile10(c10 + d)];
                         uint alphaHalf = packedNeighbor.y >> 16u;
                         if (alphaHalf == 0u || alphaHalf >= 0x8000u) continue;
@@ -192,7 +222,7 @@ void main() {
                 vec4 val = xonLampValue(fam, xonLampLevel(fam));
                 xonLampStateB[index] = floatBitsToUint(val.a);
                 xonRgbTile[index] = xonPackVec4(vec4(val.rgb, float(fam)));
-            } else if (xonIsSolidOcc(occ)) {
+            } else if (xonIsSolidOcc(occ) || (occ >= XON_VOXEL_FIRST_EMITTER && occ <= 9u)) {
                 xonLampStateB[index] = floatBitsToUint(-1.0);
                 xonRgbTile[index] = xonPackVec4(vec4(0.0, 0.0, 0.0, -1.0));
             } else {
@@ -200,7 +230,7 @@ void main() {
                 float bestLevel = 0.0;
                 uint bestFamily = 0u;
                 vec3 bestRgb = vec3(0.0);
-                vec3 bestDir = vec3(0.0);
+                bool bestDecorative = true;
                 if (lampHistoryValid) {
                     for (int dz = -1; dz <= 1; ++dz) {
                         for (int dy = -1; dy <= 1; ++dy) {
@@ -209,57 +239,34 @@ void main() {
                                 ivec3 d = ivec3(dx, dy, dz);
                                 uint rawState = xonLampStateA[xonTile12(p12 + d)];
                                 if (rawState == 0u || rawState >= 0x80000000u) continue;
+                                uint sourceOcc = xonOccTile[xonTile12(p12 + d)];
+                                if (sourceOcc >= XON_VOXEL_FIRST_EMITTER && sourceOcc <= 9u) continue;
                                 if (!xonStepOpen12(p12, d)) continue;
                                 uint family;
                                 float prevLevel;
                                 xonUnpackLampState(uintBitsToFloat(rawState), family, prevLevel);
+                                if (sourceOcc >= XON_LAMP_FIRST && sourceOcc <= XON_LAMP_LAST && family != sourceOcc - 128u) continue;
                                 float level = prevLevel - xonStepCost(d);
                                 if (level <= 0.0) continue;
                                 if (family == bestFamily && level <= bestLevel) continue;
                                 vec4 profile = xonLampProfile(family);
                                 float dist = max(float(xonLampLevel(family)) - level, 0.0);
                                 vec3 rgb = profile.rgb * xonLampFalloff(dist, profile.a);
+                                bool isDeco = (family >= 6u && family <= 8u) || family == 21u;
                                 float score = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
-                                if (score > bestScore + 0.00001 || (abs(score - bestScore) <= 0.00001 && level > bestLevel)) {
+                                bool stronger = score > bestScore + 0.00001 || (abs(score - bestScore) <= 0.00001 && level > bestLevel);
+                                // Native-light coverage must survive beyond the shorter colored pool.
+                                bool preferred = bestFamily == 0u || (bestDecorative && !isDeco)
+                                              || (bestDecorative == isDeco && stronger);
+                                if (preferred) {
                                     bestScore = score;
                                     bestLevel = level;
                                     bestFamily = family;
                                     bestRgb = rgb;
-                                    bestDir = normalize(vec3(d));
+                                    bestDecorative = isDeco;
                                 }
                             }
                         }
-                    }
-                    if (bestFamily > 0u && !(bestFamily >= 6u && bestFamily <= 8u)) {
-                        vec3 oppRgb = vec3(0.0);
-                        float oppScore = 0.0;
-                        for (int dz = -1; dz <= 1; ++dz) {
-                            for (int dy = -1; dy <= 1; ++dy) {
-                                for (int dx = -1; dx <= 1; ++dx) {
-                                    if (dx == 0 && dy == 0 && dz == 0) continue;
-                                    ivec3 d = ivec3(dx, dy, dz);
-                                    uint rawState = xonLampStateA[xonTile12(p12 + d)];
-                                    if (rawState == 0u || rawState >= 0x80000000u) continue;
-                                    if (dot(normalize(vec3(d)), bestDir) >= -0.15) continue;
-                                    if (!xonStepOpen12(p12, d)) continue;
-                                    uint family;
-                                    float prevLevel;
-                                    xonUnpackLampState(uintBitsToFloat(rawState), family, prevLevel);
-                                    if ((family >= 6u && family <= 8u) || prevLevel <= bestLevel + 0.10) continue;
-                                    float level = prevLevel - xonStepCost(d);
-                                    if (level <= 0.0) continue;
-                                    vec4 profile = xonLampProfile(family);
-                                    float dist = max(float(xonLampLevel(family)) - level, 0.0);
-                                    vec3 rgb = profile.rgb * xonLampFalloff(dist, profile.a);
-                                    float s = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
-                                    if (s > oppScore) {
-                                        oppScore = s;
-                                        oppRgb = rgb;
-                                    }
-                                }
-                            }
-                        }
-                        bestRgb += oppRgb * 0.90;
                     }
                 }
                 xonLampStateB[index] = floatBitsToUint(xonPackLampState(bestFamily, bestLevel));
@@ -272,8 +279,9 @@ void main() {
         float outPacked = uintBitsToFloat(xonLampStateB[idx10]);
         vec4 centerRgbFam = xonUnpackVec4(xonRgbTile[idx10]);
         if (lampSource) {
-            lamp = vec4(centerRgbFam.rgb, outPacked);
-        } else if (!xonIsSolidOcc(data) && outPacked > 0.0) {
+            // Opaque decorative emitters radiate outwards but remain closed to surface interpolation.
+            lamp = vec4(centerRgbFam.rgb, decorativeSolid ? -outPacked : outPacked);
+        } else if ((!xonBlocksLightStep(data) || xonPartialVoxel(data)) && outPacked > 0.0) {
             uint centerFam = uint(centerRgbFam.a + 0.5);
             bool selfExcluded = centerFam >= 6u && centerFam <= 8u;
             vec3 rgbAcc = vec3(0.0);
@@ -301,6 +309,10 @@ void main() {
         }
     }
 
+    if (xonPartialVoxel(data)) {
+        light.a = -max(light.a, 0.0);
+        lamp.a = -max(lamp.a, 0.0);
+    }
     if (writeFirst) imageStore(xonLightImg0, voxel, light);
     else imageStore(xonLightImg1, voxel, light);
     if (writeFirst) imageStore(xonLampImg0, voxel, lamp);

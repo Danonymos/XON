@@ -22,7 +22,7 @@ void xonVoxelize(vec4 shadowView) {
                 || renderStage == MC_RENDER_STAGE_TERRAIN_TRANSLUCENT;
     if (!terrain) return;
     uint data = xonVoxelEmitterId(mc_Entity.x);
-    if (data == XON_VOXEL_EMPTY && (mc_Entity.x == 10003.0 || mc_Entity.x == 10004.0 || mc_Entity.x == 10006.0)) return;
+    if (data == XON_VOXEL_EMPTY && (mc_Entity.x == 10003.0 || mc_Entity.x == 10004.0 || mc_Entity.x == 10006.0 || mc_Entity.x == 10029.0)) return;
     // Only opaque full-layer blocks occlude; glass, leaves and plants let light through.
     if (data == XON_VOXEL_EMPTY && renderStage == MC_RENDER_STAGE_TERRAIN_SOLID) {
         data = mc_Entity.x == 10028.0 ? XON_VOXEL_OCCLUDER : XON_VOXEL_SOLID;

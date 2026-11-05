@@ -11,7 +11,7 @@ CLIENT = Path.home() / 'AppData/Roaming/ModrinthApp/meta/versions/26.3-0.20.1/26
 
 def selectors(client, properties):
     assigned = {':'.join(token.split(':')[:2]) for line in properties.splitlines()
-                if line.startswith('block.') and not line.startswith('block.10028=')
+                if line.startswith('block.') and not line.startswith(('block.10028=', 'block.110', 'block.111'))
                 for token in line.split('=', 1)[1].split()}
     with zipfile.ZipFile(client) as archive:
         names = set(archive.namelist())

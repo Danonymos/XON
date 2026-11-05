@@ -1,11 +1,12 @@
 #ifndef XON_LAMP_LIGHT
 #define XON_LAMP_LIGHT
+#include "/lib/block_shapes.glsl"
 
 const uint XON_LAMP_FIRST = 129u;
 const uint XON_LAMP_LAST = 203u;
 const float XON_LAMP_HISTORY_REACH = 16.0;
-const float XON_LAMP_POOL_GAIN = 1.22;
-const float XON_LAMP_SHADE_GAIN = 0.85;
+const float XON_LAMP_POOL_GAIN = 0.94;
+const float XON_LAMP_SHADE_GAIN = 0.72;
 
 // Precomputed peak linear radiance (RGB) and nominal open-path radius in blocks (A) for families 0..75.
 const vec4 XON_LAMP_PROFILES[76] = vec4[76](
@@ -97,6 +98,7 @@ const int XON_LAMP_LEVELS[76] = int[76](
 
 uint xonLampFamily(float material) {
     int id = int(material + 0.5);
+    if (id >= 11100 && id < 11100 + XON_SHAPE_COUNT) return 8u;
     if (id >= 10030 && id <= 10096) return uint(id - 10021);
     if (id == 10006) return 1u;
     if (id == 10024) return 2u;

@@ -1,9 +1,59 @@
 # Changelog
 
-Player-facing changes from the first XON beta to the current **1.8.2** build.
+Player-facing changes from the first XON beta to the current **1.9** build.
 Versions describe the final behavior of each build; experimental implementations
 that were later corrected are identified below. Validation details and measured
 limits are recorded in [VERIFICATION.md](https://github.com/Danonymos/XON/blob/main/VERIFICATION.md).
+
+## 1.9 — Smoother Lighting & Cleaner Shadows
+
+5 November 2026.
+
+- Improve light on stairs, slabs and trapdoors, including open/closed positions
+  and neighboring surfaces that previously showed hard rectangular dark patches.
+- Prevent chains, small decorations and planted pots from blocking an entire
+  block of colored light.
+- Stabilize indoor fill around quartz pillars, covered sea lanterns, ceiling
+  details and rooms with window skylight, with bright cores and readable shade.
+- Prevent blocked colored-light samples from restoring bright warm scalar fill,
+  reducing abrupt light/tint changes near pillars, bases and ceiling edges.
+- Replace discontinuous corner-visibility rules with connected open-cell filtering,
+  retaining wall barriers while preventing sample jumps across block boundaries.
+- Keep real lamp coverage ahead of decorative quartz glow even beyond the
+  shorter colored pool, avoiding a premature switch back to broad room lighting.
+- Reject stale lamp and ore history inside newly placed blockers or changed
+  source types before it propagates into neighboring air.
+- Remove an overlap boost that could count multiple paths from one lamp as
+  additional illumination. Retain circular propagation and smooth RGB filtering.
+- Retain 1.8.3 intensity tuning, source colors/radii, bright cores, daylight,
+  End atmosphere and existing quality settings.
+- Keep the existing performance optimizations and reuse the current light
+  volumes and compute pass. Shape handling adds conditional sampling work.
+
+This release consolidates the private 1.8.4 lighting revisions into **1.9**.
+
+See the [repair validation](https://github.com/Danonymos/XON/blob/main/docs/local-light-repair-validation.md)
+for reproduced bugs, measured costs and live-check scope.
+
+## 1.8.3 — Wall light-leak fix, Quartz pillar falloff and balanced indoor lighting
+
+5 November 2026.
+
+- Fix local light leakage through 1-block walls, wall-ceiling corners, recessed
+  alcoves and Quartz pillars for both lamps (such as Lanterns) and glowing ores
+  (such as Diamond Ore) by requiring continuous open face/edge paths in
+  26-neighbor propagation, treating ore and decorative Quartz/Amethyst/Sculk
+  blocks as opaque light-step obstacles, and restricting trilinear surface
+  sampling to corners reachable from the receiving front cell without crossing
+  solid blocks (`0.0` leakage).
+- Fix the upper/lower brightness split on Quartz pillars lit by floor Sea
+  Lanterns by weighting decorative self-auras below active illumination sources
+  during candidate selection so real lamp coverage is retained across the full
+  pillar height and brightness decays smoothly from the floor into shadow.
+- Rebalance indoor lighting intensity across all 75 lamp families (`XON_LAMP_POOL_GAIN`
+  `1.22 -> 0.94`, `XON_LAMP_SHADE_GAIN` `0.85 -> 0.72`, `XON_INDOOR_LOCAL_GAIN`
+  `0.80 -> 0.68`, and softer indoor bounce/ambient caps) while keeping every
+  light source's radius, circular pool shape and outdoor/End appearance intact.
 
 ## 1.8.2 — Smooth circular light pools and faster movement / warmup
 

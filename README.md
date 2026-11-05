@@ -7,11 +7,11 @@
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/releases/1.8.2.md">1.8.2 release notes</a> ·
+  <a href="docs/releases/1.9.md">1.9 release notes</a> ·
   <a href="https://github.com/Danonymos/XON/issues/new/choose">Report an issue</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.8.2-35b8b0?style=flat-square" alt="Current version: 1.8.2">
+  <img src="https://img.shields.io/badge/version-1.9-35b8b0?style=flat-square" alt="Current version: 1.9">
   <img src="https://img.shields.io/badge/loader-Iris-6177b9?style=flat-square" alt="Shader loader: Iris">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-personal_use-c39a61?style=flat-square" alt="Personal use and contribution license"></a>
   <a href="https://github.com/Danonymos/XON/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/Danonymos/XON/build.yml?branch=main&amp;label=pack%20build&amp;style=flat-square" alt="Pack build status"></a>
@@ -25,6 +25,37 @@ the day, and edges receive built-in smoothing. Native resolution is the default.
 
 The gallery uses existing XON gameplay captures. It illustrates the pack's visual
 direction; it is not a controlled comparison or proof of the latest fixes.
+
+## What's new in 1.9
+
+**Smoother lighting, cleaner shadows and better-lit building details.** Stairs,
+slabs and open/closed trapdoors receive shape-aware colored light. Small decorations,
+chains and planted pots no longer become whole-block light blockers, and thin
+trapdoors no longer falsely darken the empty space beside their panels.
+
+Indoor fill stays stable around quartz pillars, covered lamps and windows.
+Connected surface filtering reduces block-boundary bands, while solid barriers
+and stale-history rejection improve light blocking. Individual source colors,
+strength profiles, circular pools and earlier performance optimizations are
+retained. See the [1.9 notes](docs/releases/1.9.md),
+[player changelog](docs/releases/1.9-modrinth.md) and
+[repair validation](docs/local-light-repair-validation.md).
+
+## What's new in 1.8.3
+
+**Sealed wall occlusion, smooth Quartz pillar falloff and balanced indoor shade.**
+1.8.3 eliminates local light leakage through 1-block walls, wall-ceiling corners
+and recessed alcoves for both lamps (such as Lanterns) and glowing ores (such as
+Diamond Ore) by requiring continuous open face/edge paths during 26-neighbor
+propagation, treating ore and decorative Quartz/Amethyst/Sculk blocks as opaque
+light-step obstacles, and restricting trilinear surface sampling to corners
+reachable from the receiving front cell without crossing solid blocks.
+
+It also prevents decorative Quartz pillar auras from overriding active floor
+Sea Lantern coverage on the upper half of pillars (restoring smooth bottom-to-top
+light falloff) and reduces indoor light intensity while preserving every source's
+radius and circular pool shape so indoor shadows stay rich and balanced. See the
+[1.8.3 notes](docs/releases/1.8.3.md) and [verification record](VERIFICATION.md).
 
 ## What's new in 1.8.2
 
@@ -255,7 +286,7 @@ renders and measured costs. These are synthetic views, not Minecraft captures.
   camera-following sun/moon shadow rings while retaining real object shadows.
 
 Read the [complete changelog](CHANGELOG.md) for every version from the first beta
-through 1.8, including the underwater, material and lighting improvements.
+through 1.9, including the underwater, material and lighting improvements.
 
 ## The XON look
 
@@ -278,7 +309,7 @@ through 1.8, including the underwater, material and lighting improvements.
 ## Install
 
 1. Use a compatible **Minecraft: Java Edition + Iris + Sodium** installation.
-2. Get a packaged `XON-Shader-v1.8.2.zip` from [official releases](https://github.com/Danonymos/XON/releases).
+2. Get a packaged `XON-Shader-v1.9.zip` from [official releases](https://github.com/Danonymos/XON/releases).
    If a release has not been published yet, use the [source build](#build-from-source)
    or a successful [pack-build artifact](https://github.com/Danonymos/XON/actions/workflows/build.yml).
 3. Place the **shader-pack ZIP** directly in your instance's `shaderpacks` folder.

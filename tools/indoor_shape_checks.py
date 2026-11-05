@@ -113,7 +113,7 @@ void main(){result=vec4(vec3(xonIndoorOcclusion(testPosition,testNormal)),1);}
         caster = program([(variant_source(SHADERS / 'shadow.vsh', {}), '.vsh'),
                           (variant_source(SHADERS / 'shadow.fsh', {}), '.fsh')])
         compute = program([(expand(SHADERS / 'shadowcomp.csh'), '.csh')])
-        for material, code, alpha in [(0, 1, -1), (10028, 255, -2), (10025, 131, 0)]:
+        for material, code, alpha in [(0, 1, -1), (10028, 255, -2), (10025, 131, 0), (10029, 0, 0)]:
             renderer.reset()
             cell = renderer.capture(caster, material)
             assert renderer.read(0)[cell] == code
@@ -123,6 +123,30 @@ void main(){result=vec4(vec3(xonIndoorOcclusion(testPosition,testNormal)),1);}
                 assert renderer.lamp_field()[cell][3] == 63
             checks.append({'case': 'actual shadow capture and compute marker', 'material': material,
                            'occupancy': code, 'alpha': alpha})
+        from small_light_shapes import selectors
+        small = selectors()
+        mapped = next(line.split('=', 1)[1].split() for line in (SHADERS / 'block.properties').read_text().splitlines()
+                      if line.startswith('block.10029='))
+        assert mapped == small
+        assert 'minecraft:flower_pot' in small and 'minecraft:iron_chain' in small
+        assert not any(name in small for name in ['minecraft:stone', 'minecraft:quartz_pillar',
+                                                  'minecraft:oak_door', 'minecraft:cobblestone_wall'])
+        fields = []
+        for material in [10029, 0]:
+            renderer.reset()
+            cell = renderer.capture(caster, material)
+            renderer.voxels = renderer.read(0)
+            source_cell = list(cell)
+            source_cell[2] -= 1
+            renderer.voxels[tuple(source_cell)] = 132
+            renderer.upload(0, renderer.voxels)
+            for _ in range(16):
+                renderer.step(compute)
+            fields.append(renderer.lamp_field())
+        receiver = list(cell)
+        receiver[2] += 1
+        assert np.linalg.norm(fields[0][tuple(receiver)][:3]) > np.linalg.norm(fields[1][tuple(receiver)][:3])
+        checks.append({'case': 'model-verified small objects preserve direct soul-light paths', 'selectors': len(small)})
         transported = []
         for code in [1, 255]:
             renderer.reset()

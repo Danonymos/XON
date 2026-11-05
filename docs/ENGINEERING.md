@@ -1,5 +1,51 @@
 # Engineering notes
 
+## Shape-aware local lighting in 1.9
+
+The public 1.9 runtime uses the final private 1.8.4-r9 implementation. Surface
+sampling follows connected open cells and treats opaque decorative sources as
+endpoints. Native ambient replacement is independent of dominant lamp identity,
+including mixed-skylight rooms. Current occupancy rejects stale history, and
+real lamp coverage takes priority over decorative auras.
+
+Native partial blocks share 30 half-grid masks; six separate trapdoor capture IDs
+retain their orientation and actual 3/16 thickness for receiver exclusion.
+The 4,434 generated state selectors include 352 trapdoor states. A separate
+164-selector decoration group avoids whole-voxel blocking by small open objects.
+Unknown geometry stays conservative; no individual lamp-shadow ray tracing is added.
+
+Shape identity occupies the existing contact cache's upper five bits. A repeated
+centre AO bit, necessarily zero for a partial cell, tags thin panels; contact-AO
+decoding restores that zero before use. Existing volumes, dispatch count and
+shared-memory allocation remain. Conditional shape decoding adds shader work.
+See [the repair record](local-light-repair-validation.md) for tests, costs and scope.
+Earlier sections describe their respective historical versions.
+
+## Wall light-leak sealing, Quartz pillar priority and indoor balance in 1.8.3
+
+`shadowcomp.csh` tightens `xonStepOpen12` so air-to-air diagonal (`manhattan == 2`)
+steps require both orthogonal intermediates open (`openA && openB`), air-to-air
+3D corner (`manhattan == 3`) steps require all six bounding face/edge
+intermediates open, and embedded emitters require a continuous face-connected
+open path. `xonBlocksLightStep` treats solid occupancy (`1`, `255`), glowing ore
+blocks (`2..9`) and solid decorative blocks (`134..136`: Amethyst, Sculk and
+Quartz blocks/pillars/stairs/slabs) as opaque light-step obstacles, while
+decorative solid blocks write `light.a = -1.0` in `xonLightTex` so glowing ores
+cannot propagate through Quartz pillars or walls. In `lib/emissive_light.glsl`,
+`xonSampleLocalLights` records 8-corner open bitmasks (`oreOpen`, `lampOpen`)
+and requires all sub-cube intermediates (`req`) between the receiving front cell
+`fc` and each trilinear corner to be open before blending, eliminating 1-block
+wall, ceiling-corner and alcove surface sampling leaks.
+
+To prevent decorative self-auras (`family 6..8, 21`, which store `lampRemaining = 0.0`)
+from overwriting real lamp coverage (`lampRemaining > 0`) on the upper half of
+Quartz pillars (`y >= 3` above floor Sea Lanterns), `shadowcomp.csh` weights
+decorative candidates by `0.001` in `bestScore`. Indoor light intensity is
+rebalanced in `lib/lamp_light.glsl` (`XON_LAMP_POOL_GAIN = 0.94`,
+`XON_LAMP_SHADE_GAIN = 0.72`), `lib/lighting.glsl` (`XON_INDOOR_LOCAL_GAIN = 0.68`)
+and `program/geometry.fsh` (softer indoor bounce, ambient floor and local spill
+caps) while keeping all 75 lamp radii (`XON_LAMP_PROFILES[i].a`) unchanged.
+
 ## Circular local light propagation and movement/warmup optimization in 1.8.2
 
 `shadowcomp.csh` replaces 6-neighbor Manhattan propagation (`|dx| + |dy| + |dz|`,

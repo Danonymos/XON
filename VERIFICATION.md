@@ -1,3 +1,51 @@
+# XON Shader 1.9 - Lighting and partial-shape repair
+
+5 November 2026. Public package: `XON-Shader-v1.9.zip`. This release promotes
+the final private 1.8.4-r9 shader sources without changing their runtime bytes.
+
+On NVIDIA GeForce RTX 5060 Ti / OpenGL 4.6 / NVIDIA 621.01:
+
+- **Compile/link:** 2,310 unique stages and 2,088 graphics configurations
+  (87 pairs x 24 variants), with no warnings or failures.
+- **Shapes:** 36 ordinary/thin capture groups, 12 sealed panel orientations,
+  5,400 shape-pair apertures, 120 inset receivers and 24 thin-panel faces pass.
+  The generated map covers 4,434 native states, including 352 trapdoor states.
+- **Trapdoor regression:** 72 exposed receiver positions reproduce R8's false
+  dark band; the candidate removes the constant-radiance discontinuity while
+  retaining actual panel/slab blocking and correct contact-AO decoding.
+- **Composition:** 37 groups, including all 52,488 terminal-stencil states, pass.
+  The 12 aggregate circular/source/wall/room/parity groups, 57 existing shape
+  groups and 471 verified full-cube mappings pass.
+- **Package:** the canonical build and release checks validate inventory, source
+  parity, entrypoints, includes, Python syntax, settings and documentation links.
+  The packaged shader assets match the final R9 candidate byte for byte.
+
+Interleaved 1080p adjacent-panel sampler timings were 0.145488 ms for R8 and
+0.147060 ms for R9. The populated compute proxy was 0.11511 / 0.12822 ms.
+These are isolated GPU costs, not a new full-game FPS measurement or an
+identical-performance guarantee. The latest trapdoor-room visual comparison
+and AMD/Intel hardware coverage remain unverified. Detailed reproductions and
+historical private revisions are in [the repair record](docs/local-light-repair-validation.md).
+Regression scripts use preserved local baseline ZIPs; the public pack needs none
+of those files or Python tools.
+
+---
+
+# XON Shader 1.8.3 - Wall light-leak sealing, Quartz pillar falloff and indoor balance
+
+5 November 2026. Runtime package: `XON-Shader-v1.8.3.zip`.
+
+## Automated GPU and package evidence
+
+On NVIDIA GeForce RTX 5060 Ti / OpenGL 4.6.0 NVIDIA 621.01:
+
+- **2,088 graphics compile/link configurations** (`tools/validate.py`, 87 pairs × 24 variants, 2,310 unique stages): zero shader warnings or failures across all dimensions, PBR modes and AA modes.
+- **Wall light-leak sealing (`tools/circular_light_checks.py`):** 1-block flat solid wall surface sampling leak is `0.0` across `+X, +Y, -Y, +Z` face normals for both Lantern (`131`) and Diamond Ore (`6`); wall-ceiling corner leak is `0.0` for both Lantern and Diamond Ore; recessed alcove/chest-wall leak is `0.0` for both Lantern and Diamond Ore; Quartz pillar (`136`) embedded in a Stone Brick wall with Lantern and Diamond Ore directly behind the wall has `0.0` ore and lamp leak onto the front room face; diagonal corner-touching wall has `0.0` leak; ping-pong steady state has `0.0` drift.
+- **Quartz pillar vertical falloff & rebalanced indoor room (`tools/circular_light_checks.py`):** Quartz pillar (`block.10023`) lit by a floor Sea Lantern (`139`) with a hallway Lantern (`131`) behind the wall decays strictly monotonically from `y = 0.75` to `y = 3.75` (`[0.8937, 0.8751, 0.8501, 0.8116, 0.7572, 0.6804, 0.5998]`, `0.2939` top-to-bottom contrast, zero upper-pillar brightness jump); six-lantern `20×20` indoor room preserves rebalanced pool intensity and rich dark shadow separation (`p10/p95 = 0.5032`, `p10 = 0.2171`, `p95 = 0.4315`); circular radial isotropy at `R = 3` across `0..90°` is unchanged (`lantern` `Diag/Card = 1.0315`, `min/max = 0.9095`; `sea_lantern` `1.0315` / `0.9097`).
+- **Non-lamp visual parity & regression suites:** PBR/POM/atmosphere/lighting near+far parity `max_error = 8.94e-8`; `final.fsh` moving motion-blur parity `max_error = 0.0`; `tools/temporal_aa_checks.py`, `tools/indoor_shape_checks.py`, `tools/lamp_source_checks.py` and `tools/release_checks.py` all pass.
+
+---
+
 # XON Shader 1.8.2 - Circular light pools and movement/warmup optimization
 
 5 November 2026. Runtime package: `XON-Shader-v1.8.2.zip`.
